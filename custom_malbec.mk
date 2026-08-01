@@ -10,10 +10,10 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit_only.mk)
 # malbec (TB390FU) is a Wi-Fi only tablet, so no telephony is inherited.
 $(call inherit-product, vendor/custom/config/common_full_tablet_wifionly.mk)
 
-# TODO: confirm against `wm size` on the device. The dtbo carries a 1440-wide
-# panel timing, and ro.surface_flinger.primary_display_orientation is
-# ORIENTATION_270, so the panel is portrait-native and rotated to landscape.
-TARGET_SCREEN_WIDTH := 1440
+# Panel is 2190x3504 (confirmed by `wm size`; the Novatek digitizer reports a
+# coordinate space of exactly 10x that, 21900x35040). Stock physical density is
+# 360 with an override density of 306.
+TARGET_SCREEN_WIDTH := 2190
 
 # Inherit from malbec device
 $(call inherit-product, device/lenovo/malbec/device.mk)

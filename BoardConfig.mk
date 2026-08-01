@@ -54,9 +54,11 @@ TARGET_PROVIDES_LIBAR_PAL := true
 TARGET_BOOTLOADER_BOARD_NAME := sun
 
 # Display
-# ro.sf.lcd_density=360 in stock firmware.
+# 2190x3504, ro.sf.lcd_density=360 (stock override density is 306).
 # Panel is dual sourced (BOE nt36536e / CSOT nt36536), 144 Hz, selected at boot
 # via ro.boot.lcd_type. Do NOT hardcode panel specific values anywhere here.
+# This unit reports ro.boot.lcd_type=glossy — the value is a finish descriptor,
+# not a vendor name, so do not key anything off the supplier.
 TARGET_SCREEN_DENSITY := 360
 
 # Filesystem
@@ -129,9 +131,12 @@ BOARD_VENDOR_RAMDISK_KERNEL_MODULES_LOAD := $(patsubst %,$(RAMDISK_MODULES_PATH)
 BOARD_VENDOR_RAMDISK_RECOVERY_KERNEL_MODULES_LOAD := $(patsubst %,$(RAMDISK_MODULES_PATH)/%,$(shell cat $(RAMDISK_MODULES_PATH)/modules.load.recovery))
 BOARD_VENDOR_RAMDISK_KERNEL_MODULES_BLOCKLIST_FILE := $(RAMDISK_MODULES_PATH)/modules.blocklist
 
-# Partitions (sizes read from the factory images and super_empty.img)
+# Partitions
+# Sizes are the authoritative values from `fastboot getvar all` on the device,
+# not the factory image file sizes. Note dtbo: the shipped dtbo.img is 48 MiB
+# but the partition is 50 MiB.
 BOARD_BOOTIMAGE_PARTITION_SIZE := 100663296
-BOARD_DTBOIMG_PARTITION_SIZE := 50331648
+BOARD_DTBOIMG_PARTITION_SIZE := 52428800
 BOARD_INIT_BOOT_IMAGE_PARTITION_SIZE := 8388608
 BOARD_RECOVERYIMAGE_PARTITION_SIZE := 104857600
 BOARD_SUPER_PARTITION_SIZE := 23622320128
