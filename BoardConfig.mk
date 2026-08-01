@@ -54,12 +54,18 @@ TARGET_PROVIDES_LIBAR_PAL := true
 TARGET_BOOTLOADER_BOARD_NAME := sun
 
 # Display
-# 2190x3504, ro.sf.lcd_density=360 (stock override density is 306).
+# Panel is 2190x3504. Stock declares ro.sf.lcd_density=360.
+#
+# We ship 306 instead, which is stock's 0.85 "small" display-size step. On a
+# tablet this is the more useful default: a lower density means each dp maps to
+# fewer physical pixels, so more content fits on screen. Users can still scale
+# either way from Settings, this only moves where "Default" sits.
+#
 # Panel is dual sourced (BOE nt36536e / CSOT nt36536), 144 Hz, selected at boot
 # via ro.boot.lcd_type. Do NOT hardcode panel specific values anywhere here.
-# This unit reports ro.boot.lcd_type=glossy — the value is a finish descriptor,
-# not a vendor name, so do not key anything off the supplier.
-TARGET_SCREEN_DENSITY := 360
+# This unit reports ro.boot.lcd_type=glossy — that is a surface finish
+# descriptor, not a vendor name, so do not key anything off the supplier.
+TARGET_SCREEN_DENSITY := 306
 
 # Filesystem
 TARGET_FS_CONFIG_GEN := $(DEVICE_PATH)/configs/config.fs
