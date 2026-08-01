@@ -16,14 +16,26 @@
 #   ZUI_SETTING        -> SETTINGS        SPLIT_SCREEN  -> RECENT_APPS
 #   APP1               -> MACRO_1         APP2          -> MACRO_2
 #
+# Folio open and close are the two important ones. The folio does not signal
+# through the hall sensor — hall_irq stays silent through a full open/close
+# cycle. The keyboard itself reports it, on this same device:
+#
+#   scancode 655 (KEYBOARD_REVERSE) fires as the folio is closed or folded
+#   back, and kb_enable_status drops to 0 immediately after.
+#   scancode 654 (KEYBOARD_RESTORE) fires as it is opened, and
+#   kb_enable_status returns to 1.
+#
+# Measured over five consecutive cycles with no exceptions, so they are mapped
+# to SLEEP and WAKEUP to get AOSP's native close-to-sleep and open-to-wake.
+# WAKEUP carries the WAKE flag (POLICY_FLAG_WAKE); without it the event cannot
+# reach the policy while the device is asleep, and opening the folio would do
+# nothing.
+#
 # Dropped, with no sensible AOSP equivalent:
 #   FN_LOCK           handled inside the keyboard firmware
 #   TP_MUTE           AOSP has no touchpad toggle keycode
 #   SUPER_CONNECT     Lenovo device linking
 #   FN_Q              Lenovo private
-#   KEYBOARD_RESTORE / KEYBOARD_REVERSE
-#                     folio fold state signals, not keys; the state is readable
-#                     from /proc/folio_case_mode and the hall sensor instead
 #
 key 1     ESCAPE
 key 2     1
@@ -456,6 +468,8 @@ key usage 0x0c0395 RECENT_APPS
 key usage 0x0c0398 MACRO_1
 key usage 0x0c0399 MACRO_2
 key usage 0x0c039b SETTINGS
+key 654   WAKEUP    WAKE
+key 655   SLEEP
 
 # Joystick and game controller axes.
 # Axes that are not mapped will be assigned generic axis numbers by the input subsystem.
