@@ -93,8 +93,15 @@ BOARD_MKBOOTIMG_ARGS := --header_version $(BOARD_BOOT_HEADER_VERSION)
 BOARD_INIT_BOOT_HEADER_VERSION := 4
 BOARD_MKBOOTIMG_INIT_ARGS += --header_version $(BOARD_INIT_BOOT_HEADER_VERSION)
 
-# TODO: populate from `cat /proc/cmdline` on the stock ROM (04-device-dump.sh).
-BOARD_KERNEL_CMDLINE :=
+# Taken from the stock vendor_boot header, which is the only cmdline the boot
+# images actually carry — boot.img and recovery.img both ship an empty one.
+# Everything else visible in /proc/cmdline is contributed by the bootloader and
+# the DTB, including the panel selector
+# (msm_drm.dsi_display0=qcom,mdss_dsi_csot_nt36536_144hz_vid) and
+# kvm-arm.mode=protected. Do not copy those here; they are not ours to set.
+# The trailing "bootconfig" token is appended by the build system because
+# BOARD_BOOTCONFIG is set.
+BOARD_KERNEL_CMDLINE := video=vfb:640x400,bpp=32,memsize=3072000
 
 # Verbatim from the stock vendor_boot bootconfig section.
 BOARD_BOOTCONFIG := \
