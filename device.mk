@@ -5,6 +5,9 @@
 
 LOCAL_PATH := device/lenovo/malbec
 
+# Proprietary blobs
+$(call inherit-product, vendor/lenovo/malbec/malbec-vendor.mk)
+
 # Generic ramdisk allow list
 $(call inherit-product, $(SRC_TARGET_DIR)/product/generic_ramdisk.mk)
 
