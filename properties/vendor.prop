@@ -1,0 +1,37 @@
+# Display
+# The panel is dual sourced (BOE nt36536e / CSOT nt36536, both 144 Hz) and is
+# selected by the bootloader via ro.boot.lcd_type, resolved inside the prebuilt
+# dtbo and the vendor display HAL. Nothing here may be panel specific.
+#
+# primary_display_orientation is ORIENTATION_270: the panel is portrait native
+# and rotated to landscape. Getting this wrong gives a sideways boot animation
+# and a rotated touch mapping.
+ro.surface_flinger.has_HDR_display=true
+ro.surface_flinger.has_wide_color_display=true
+ro.surface_flinger.primary_display_orientation=ORIENTATION_270
+
+ro.vendor.display.cabl=2
+ro.vendor.display.idle_time=0
+ro.vendor.display.paneltype=1
+ro.vendor.display.sensortype=2
+ro.vendor.display.svi=1
+vendor.display.cabl.config=1
+vendor.display.cabl.config_path=/vendor/etc/cablconfig.xml
+vendor.display.comp_mask=0
+vendor.display.disable_3d_adaptive_tm=1
+vendor.display.disable_excl_rect=0
+vendor.display.disable_excl_rect_partial_fb=1
+vendor.display.disable_hw_recovery_dump=1
+vendor.display.disable_idle_fps_switch=1
+vendor.display.disable_offline_rotator=1
+vendor.display.disable_scaler=0
+vendor.display.disable_sdr_dimming=0
+vendor.display.disable_sdr_histogram=1
+vendor.display.disable_stc_dimming=1
+vendor.display.enable_async_powermode=0
+vendor.display.enable_async_vds_creation=1
+
+# TODO: the remaining ~240 stock vendor properties (audio, bluetooth, camera,
+# perf) are staged in work/analysis/properties-candidates/vendor.prop. They need
+# to be reviewed one by one against what PixelOS already sets before being
+# merged here — blindly importing them will conflict.
