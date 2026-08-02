@@ -92,8 +92,7 @@ PRODUCT_PACKAGES += \
     audiohalservice.qti \
     vendor.qti.hardware.display.allocator-service \
     vendor.qti.hardware.display.demura-service \
-    vendor.qti.qspa-service \
-    libsoundtriggerhal.qti
+    vendor.qti.qspa-service
 
 # Display composer
 # 整条显示栈本树都是从源码构建的：libsdmutils / libqdMetaData / libgralloccore /
@@ -129,22 +128,70 @@ PRODUCT_PACKAGES += \
 # 源码模块，于是树装了这个路径、判据就认为 blob 多余把它删掉；删掉之后又没人
 # 提供，下一轮再放回来。实测来回了三轮。
 #
-# 选源码的理由：出厂那三个 .so 的 DT_NEEDED 同时链了同一个 AIDL 接口的多个版本
-# （audio.common V3+V4、audio.core V2+V4、sounddose V1+V2+V3），
-# replace_needed 改不动这种（不是"旧换新"，是一个二进制里本来就有好几个），
-# 只能靠 ;DISABLE_DEPS 把它们整个排除在依赖图外 —— 那等于放弃构建期的
-# 链接检查。源码路径没有这个问题。
+# ⚠️ 上一版在这里选了「从源码构建」，理由是出厂那三个 .so 的 DT_NEEDED 同时链了
+# 同一个 AIDL 接口的多个版本，replace_needed 改不动。那个观察是对的，结论是错的
+# —— 正解是 ;DISABLE_DEPS 加并装旧版接口，onyx 就是这么做的。走源码有两个它没看
+# 到的代价：
 #
-# 注意 qcom-effects（libqcompostprocbundle / libqcomvisualizer /
-# libqcomvoiceprocessing / libvolumelistener）**仍然走 blob**：那几个源码模块
-# 内部版本没对齐（effects defaults 用 latest=V4，而
-# primary-hal/configs/audio-generic-modules.mk:3 把
-# LATEST_ANDROID_MEDIA_ADUIO_COMMON_TYPES 钉在 V3）。它们不进 PRODUCT_PACKAGES，
-# 出厂那份带 ;MODULE_SUFFIX=_vendor 提供，安装路径不变。
+#   1. 丢掉 Awinic 智能功放。出厂 libar-pal.so 导出 44 个 aw_ar_dsp_* /
+#      aw_ar_kmsg_* / aw_audioreach_* 符号，CAF 源码里 awinic 相关代码是 0。
+#      本机的功放就是它：设备上 aw882xx_dlkm 已加载（refcount 4），而本树还在发
+#      校准数据 vendor/firmware/aw882xx_acf.bin 和校准工具 vendor/bin/aw882xx_cali
+#      —— 数据和工具都在，消费它们的 API 没了。丢的不只是音质：excursion 和温度
+#      保护也在这套 API 里。
+#      把这个检查推广到全部 330 个「本树从源码构建且出厂也有」的库，扫 OEM 补丁
+#      特征符号，只有 libar-pal.so 中招 —— 所以只有音频要回退，显示栈是干净的。
+#
+#   2. 它根本编不过。hardware/qcom-caf/sm8750/audio/pal 在本树里有 8 个 .o 因为
+#      -Wformat 报错（Bluetooth.cpp、ResourceManager.cpp、SessionAlsa*.cpp、
+#      SoundTriggerEngineGsl.cpp、StreamHaptics.cpp、HapticsDevProtection.cpp）。
+#      m nothing 看不到这一层，上一轮的 mka bacon 在 9% 就死了，还没走到这里。
+#
+# 所以 PAL / AGM / graphservices / 三个 HAL 实现库 / st-hal 全部回到 blob，由
+# proprietary-files.txt 按「树不装这个路径」自动纳入，冲突用 ;DISABLE_DEPS 处理
+# （见 work/scripts/12-gen-proprietary-files.py 的 ENTRY_TAGS）。
+#
+# audiohalservice.qti 留在源码：它只是个壳，dlopen 那三个实现库，不链 PAL，实测
+# 编得过，而且它的 init_rc: 会带出 vendor/etc/init/audiohalservice_qti.rc。
+# libsoundtriggerhal.qti 则必须走 blob —— st-hal-ar/Android.bp:37 明确链 libar-pal。
+# onyx 的分法完全相同。
+
+# ;DISABLE_DEPS 让 blob 不进 Soong 的依赖图，但运行时它们仍然要在 /vendor/lib64
+# 里找到自己链的那个接口版本。本树解析到的是更新的版本，所以旧版必须显式并装。
+# 版本号来自对出厂二进制逐个 readelf -d 的结果，不是猜的。
+# 多版本共存本来就是支持的，本树已经有先例：android.media.audio.common.types
+# 的 V2 和 V4 现在就同时装着。
 PRODUCT_PACKAGES += \
-    libaudiocorehal.default \
-    libaudiocorehal.qti \
-    libaudioeffecthal.qti
+    android.hardware.audio.common-V3-ndk.vendor \
+    android.hardware.audio.core-V2-ndk.vendor \
+    android.hardware.audio.core.sounddose-V1-ndk.vendor \
+    android.hardware.audio.core.sounddose-V2-ndk.vendor \
+    android.hardware.audio.effect-V2-ndk.vendor \
+    android.hardware.bluetooth.audio-V3-ndk.vendor \
+    android.hardware.bluetooth.audio-V4-ndk.vendor \
+    android.hardware.drm-V1-ndk.vendor \
+    android.hardware.health-V1-ndk.vendor \
+    android.media.audio.common.types-V3-ndk.vendor \
+    vendor.qti.hardware.paleventnotifier-V2-ndk.vendor
+
+# 出厂音频 blob 依赖的 AOSP 支撑库的 vendor 变体。onyx 列的是同一批。
+PRODUCT_PACKAGES += \
+    libalsautilsv2.vendor \
+    libaudioaidlcommon.vendor \
+    libmediautils_vendor.vendor \
+    libmemunreachable.vendor
+
+# 这两个 VINTF 片段走源码而不是 blob。它们本来是 libaudiocorehal.default /
+# libaudioeffecthal.qti 的 required:，实现库改回 blob 之后就没人带它们了，而出厂
+# 那份提取出来会与源码那份重名（都是有名字的 prebuilt_etc，且
+# ;MODULE_SUFFIX= 对 prebuilt_etc 静默无效）：
+#   module "audioeffectservice_qti.xml": found in multiple
+#   namespaces(hardware/qcom-caf/sm8750 and vendor/lenovo/malbec)
+# 两份内容逐字段比对过，声明完全一致，只有注释不同，所以用哪份都行 ——
+# 用源码那份可以避开命名冲突。
+PRODUCT_PACKAGES += \
+    manifest_audiocorehal_default.xml \
+    audioeffectservice_qti.xml
 
 # IPA（数据路径加速）
 PRODUCT_PACKAGES += \

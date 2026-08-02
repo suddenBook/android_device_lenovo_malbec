@@ -125,6 +125,36 @@ lib_fixups: lib_fixups_user_type = {
 # work/unpacked/parts, not out of vendor/lenovo/malbec/proprietary — the latter
 # has already been patched by a previous run, so scanning it silently
 # under-reports and the next re-extract regresses.
+#
+# ⚠️ replace_needed is NOT the default answer, and this list used to treat it as
+# if it were. Rewriting a stock binary's DT_NEEDED to a newer version of a
+# stable AIDL interface is only safe when that binary is a *client*: for the NDK
+# backend, parcelable read/writeFromParcel are emitted out of line into the
+# -V<n>-ndk.so (system/tools/aidl/generate_ndk.cpp), while sizeof and field
+# offsets are baked into the caller. Appending interface methods keeps client
+# vtable indices stable.
+#
+# It is NOT safe when the blob *implements* the interface (Bn* classes), or when
+# the version bump grew a parcelable or a union: the new marshalling code then
+# reads and writes past the end of an old-shaped object, and a missing method
+# leaves an unfilled vtable slot. Six blobs were being rewritten across exactly
+# that boundary — the four soundfx Dolby/Quasar BnEffect libraries
+# (audio.effect V3 added Eraser to the Parameter/Descriptor unions),
+# android.hardware.bluetooth.audio_sw.so (BnModule/BnStreamIn/BnStreamOut) and
+# wfdhdcphalservice (BnDrmFactory/BnDrmPlugin/BnCryptoPlugin; drm V2 adds
+# ICryptoPlugin::getKeyHandle).
+#
+# The correct fix is to leave the binary alone and co-install the interface
+# version it was built against — several versions of one aidl_interface may be
+# installed side by side, and this tree already does it
+# (android.media.audio.common.types V2 and V4 are both installed today).
+# device.mk lists those; onyx uses the same approach, and
+# vendor/qcom/opensource/commonsys-intf/display installs all fifteen
+# display.config versions the same way.
+#
+# What is left below is only the client-side rewrites, where the bump is safe
+# and the alternative would mean co-installing a long tail of display.config and
+# graphics.allocator versions for no benefit.
 blob_fixups: blob_fixups_user_type = {
     (
         'system_ext/lib64/libwfddisplayconfig.so',
@@ -158,23 +188,6 @@ blob_fixups: blob_fixups_user_type = {
             'vendor.qti.hardware.display.config-V12-ndk.so',
         ),
 
-    'vendor/bin/wfdhdcphalservice': blob_fixup()
-        .replace_needed(
-            'android.hardware.drm-V1-ndk.so',
-            'android.hardware.drm-V2-ndk.so',
-        ),
-
-    (
-        'vendor/lib64/btaudio_offload_if.so',
-        'vendor/lib64/hw/android.hardware.bluetooth.audio-impl-qti.so',
-        'vendor/lib64/hw/audio.bluetooth_qti.default.so',
-        'vendor/lib64/libbluetooth_audio_session_aidl_qti.so',
-    ): blob_fixup()
-        .replace_needed(
-            'android.hardware.bluetooth.audio-V4-ndk.so',
-            'android.hardware.bluetooth.audio-V5-ndk.so',
-        ),
-
     (
         'vendor/lib64/camera/components/com.qti.node.dewarp.so',
         'vendor/lib64/hw/com.qti.chi.override.so',
@@ -184,29 +197,6 @@ blob_fixups: blob_fixups_user_type = {
         .replace_needed(
             'android.hardware.graphics.allocator-V1-ndk.so',
             'android.hardware.graphics.allocator-V2-ndk.so',
-        ),
-
-    (
-        'vendor/lib64/ftm_fm_lib.so',
-        'vendor/lib64/libbt-hidlclient.so',
-    ): blob_fixup()
-        .replace_needed(
-            'android.hardware.bluetooth.audio-V3-ndk.so',
-            'android.hardware.bluetooth.audio-V5-ndk.so',
-        ),
-
-    'vendor/lib64/hw/android.hardware.bluetooth.audio_sw.so': blob_fixup()
-        .replace_needed(
-            'android.hardware.audio.core-V2-ndk.so',
-            'android.hardware.audio.core-V4-ndk.so',
-        )
-        .replace_needed(
-            'android.hardware.bluetooth.audio-V4-ndk.so',
-            'android.hardware.bluetooth.audio-V5-ndk.so',
-        )
-        .replace_needed(
-            'android.media.audio.common.types-V3-ndk.so',
-            'android.media.audio.common.types-V4-ndk.so',
         ),
 
     # libgralloctypes / libui / libaudio_aidl_conversion_common_ndk used to be
@@ -235,56 +225,10 @@ blob_fixups: blob_fixups_user_type = {
             'vendor.qti.hardware.display.config-V12-ndk.so',
         ),
 
-    (
-        'vendor/lib64/libqtigefar.so',
-        'vendor/lib64/libsxrservice.so',
-    ): blob_fixup()
-        .replace_needed(
-            'android.hardware.audio.core-V2-ndk.so',
-            'android.hardware.audio.core-V4-ndk.so',
-        )
-        .replace_needed(
-            'android.media.audio.common.types-V3-ndk.so',
-            'android.media.audio.common.types-V4-ndk.so',
-        ),
-
     'vendor/lib64/libqvrservice.so': blob_fixup()
-        .replace_needed(
-            'android.hardware.audio.core-V2-ndk.so',
-            'android.hardware.audio.core-V4-ndk.so',
-        )
         .replace_needed(
             'android.hardware.graphics.allocator-V1-ndk.so',
             'android.hardware.graphics.allocator-V2-ndk.so',
-        )
-        .replace_needed(
-            'android.media.audio.common.types-V3-ndk.so',
-            'android.media.audio.common.types-V4-ndk.so',
-        ),
-
-    'vendor/lib64/libwfdmmsrc_proprietary.so': blob_fixup()
-        .replace_needed(
-            'android.hardware.audio.core-V2-ndk.so',
-            'android.hardware.audio.core-V4-ndk.so',
-        )
-        .replace_needed(
-            'android.media.audio.common.types-V2-ndk.so',
-            'android.media.audio.common.types-V4-ndk.so',
-        ),
-
-    (
-        'vendor/lib64/soundfx/libdlbvolaidl.so',
-        'vendor/lib64/soundfx/libquasar.so',
-        'vendor/lib64/soundfx/libswdapaidl.so',
-        'vendor/lib64/soundfx/libswgamedapaidl.so',
-    ): blob_fixup()
-        .replace_needed(
-            'android.hardware.audio.effect-V2-ndk.so',
-            'android.hardware.audio.effect-V3-ndk.so',
-        )
-        .replace_needed(
-            'android.media.audio.common.types-V3-ndk.so',
-            'android.media.audio.common.types-V4-ndk.so',
         ),
 
 }  # fmt: skip

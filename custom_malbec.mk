@@ -43,22 +43,35 @@ PRODUCT_MANUFACTURER := Lenovo
 PRODUCT_BRAND := Lenovo
 PRODUCT_MODEL := TB390FU
 
-# No PRODUCT_SYSTEM_NAME / PRODUCT_SYSTEM_DEVICE / PRODUCT_BUILD_PROP_OVERRIDES.
+# Report the stock ZUI identity rather than a generated custom_malbec one.
 #
-# Those four lines used to restate the stock ZUI fingerprint
-# (Lenovo/TB390FU_EEA/TB390FU:16/.../ZUI_18.0.10.335_260618_ROW:user/release-keys)
-# so the build would report itself as the factory ROM. Removed deliberately:
+# The reason is Play Protect certification, and it is worth being precise about
+# what this does and does not buy, because two of the three things people
+# usually cite are wrong:
 #
-#   - It buys nothing for Widevine. L1 depends on the keybox provisioned in
-#     TrustZone and on the widevine blob, neither of which reads
-#     ro.build.fingerprint.
-#   - It buys nothing for Play Integrity beyond the BASIC verdict, and
-#     DEVICE/STRONG cannot pass on an unlocked bootloader regardless.
-#   - The build system otherwise derives a consistent fingerprint from
-#     PRODUCT_NAME/PRODUCT_DEVICE for every partition, which is what a port
-#     should report.
+#   - It does NOT help Widevine L1. That depends on the keybox provisioned into
+#     TrustZone and on the widevine blob; neither reads ro.build.fingerprint.
+#   - It does NOT get Play Integrity past BASIC. DEVICE and STRONG additionally
+#     require a locked bootloader, which this device does not have.
+#   - It DOES matter for the "device is not Play Protect certified" dialog:
+#     that check compares the reported fingerprint against Google's certified
+#     device list, and the factory TB390FU_EEA build is on it. Without this the
+#     device reports an unknown fingerprint and the dialog appears on every
+#     Play Store launch until the GSF ID is registered by hand.
 #
-# Note that this is a deliberate divergence from onyx, which does carry the
-# equivalent block. Reinstating it is four lines if a concrete, measured reason
-# turns up -- record the measurement in the commit message if so.
+# onyx, an official PixelOS device, carries the equivalent block.
+#
+# Verify after first boot: `adb shell getprop ro.build.fingerprint` should match
+# the value below on every partition, and Play Store should not show the
+# uncertified dialog. If it still does, this block is not earning its keep and
+# should go.
+PRODUCT_SYSTEM_NAME := TB390FU_EEA
+PRODUCT_SYSTEM_DEVICE := TB390FU
+
+PRODUCT_BUILD_PROP_OVERRIDES += \
+    BuildDesc="TB390FU-user 16 BQ2A.250610.001-BP2A.250605.031.A3 18.0.10.335_260618 release-keys" \
+    BuildFingerprint=Lenovo/TB390FU_EEA/TB390FU:16/BQ2A.250610.001-BP2A.250605.031.A3/ZUI_18.0.10.335_260618_ROW:user/release-keys \
+    DeviceName=$(PRODUCT_SYSTEM_DEVICE) \
+    DeviceProduct=$(PRODUCT_SYSTEM_NAME)
+
 PRODUCT_GMS_CLIENTID_BASE := android-lenovo
