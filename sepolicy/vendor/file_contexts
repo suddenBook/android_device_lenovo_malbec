@@ -1,0 +1,19 @@
+# Labels taken verbatim from the stock vendor_file_contexts, minus the entries
+# for binaries this tree does not ship (vendor.lenovo.hardware.vibrator_dual has
+# no service binary in the factory vendor image).
+
+# Lenovo private AIDL HALs
+/(vendor|system/vendor)/bin/lenovo\.hardware\.ai-service                     u:object_r:hal_lenovo_ai_proc_exec:s0
+/(vendor|system/vendor)/bin/hw/vendor\.lenovo\.hardware\.battery-service     u:object_r:hal_lenovobattery_default_exec:s0
+/(vendor|system/vendor)/bin/hw/vendor\.lenovo\.hardware\.display-service     u:object_r:hal_lenovodisplay_default_exec:s0
+/(vendor|system/vendor)/bin/hw/vendor\.lenovo\.hardware\.factory-service     u:object_r:hal_lenovofactory_default_exec:s0
+/(vendor|system/vendor)/bin/hw/vendor\.lenovo\.hardware\.hyperschedule-service u:object_r:hal_lenovohyperschedule_default_exec:s0
+/(vendor|system/vendor)/bin/hw/vendor\.lenovo\.hardware\.keyboard-service    u:object_r:hal_lenovokeyboard_default_exec:s0
+/(vendor|system/vendor)/bin/hw/vendor\.lenovo\.hardware\.misc-service        u:object_r:hal_lenovomisc_default_exec:s0
+/(vendor|system/vendor)/bin/hw/vendor\.lenovo\.hardware\.performance-service u:object_r:hal_lenovoperformance_default_exec:s0
+/(vendor|system/vendor)/bin/hw/vendor\.lenovo\.hardware\.touchscreen-service u:object_r:hal_lenovotouchscreen_default_exec:s0
+/(vendor|system/vendor)/bin/hw/vendor\.lenovo\.hardware\.usb-service         u:object_r:hal_lenovousb_default_exec:s0
+
+# Device nodes
+/dev/ttyHS1                                                                 u:object_r:lenovo_keyboard_device:s0
+/dev/lenovo_penraw                                                          u:object_r:lenovo_device:s0

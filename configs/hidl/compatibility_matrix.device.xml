@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+
+     Framework compatibility matrix additions
+     (DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE).
+
+     Ten AIDL HALs on this device are Lenovo's own and appear in no AOSP
+     matrix. They are declared optional: the vendor image provides them and
+     they keep running, but nothing on the framework side is required to use
+     them, so a build that ignores them still passes the VINTF check.
+
+     Versions and instances are taken verbatim from the vendor manifest
+     fragments in /vendor/etc/vintf/manifest/ — those where no version is
+     declared are AIDL version 1.
+-->
+<compatibility-matrix version="8.0" type="framework">
+    <hal format="aidl" optional="true">
+        <name>lenovo.hardware.ai</name>
+        <interface>
+            <name>IDevice</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>vendor.lenovo.hardware.battery</name>
+        <version>5</version>
+        <interface>
+            <name>IBattery</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>vendor.lenovo.hardware.display</name>
+        <interface>
+            <name>IDisplay</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>vendor.lenovo.hardware.factory</name>
+        <version>2</version>
+        <interface>
+            <name>IFactory</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>vendor.lenovo.hardware.hyperschedule</name>
+        <version>2</version>
+        <interface>
+            <name>IHyperschedule</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>vendor.lenovo.hardware.keyboard</name>
+        <version>3</version>
+        <interface>
+            <name>IKeyboard</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>vendor.lenovo.hardware.misc</name>
+        <interface>
+            <name>IMisc</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>vendor.lenovo.hardware.performance</name>
+        <interface>
+            <name>IPerformance</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>vendor.lenovo.hardware.touchscreen</name>
+        <version>5</version>
+        <interface>
+            <name>ITouchscreen</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>vendor.lenovo.hardware.usb</name>
+        <version>2</version>
+        <interface>
+            <name>IUsb</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+</compatibility-matrix>

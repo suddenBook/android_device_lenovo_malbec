@@ -1,0 +1,111 @@
+//
+// SPDX-FileCopyrightText: The LineageOS Project
+// SPDX-License-Identifier: Apache-2.0
+//
+
+// This namespace has to exist even while the tree defines almost nothing of its
+// own: vendor/lenovo/malbec/Android.bp lists "device/lenovo/malbec" among its
+// imports, and Soong aborts when an imported namespace is not declared.
+soong_namespace {
+}
+
+// Symlinks the stock vendor image carries that point at runtime locations rather
+// than at files we ship, so extract-utils cannot generate them from
+// proprietary-files.txt. The build creates /vendor/odm and /vendor/lib/modules
+// on its own (build/make/core/Makefile create-partition-compat-symlink), so
+// those two are deliberately absent here.
+
+// WLAN firmware is fetched to /data at runtime by the OTA update path.
+install_symlink {
+    name: "malbec_wlanmdsp_otaupdate_symlink",
+    vendor: true,
+    installed_location: "firmware/wlanmdsp.otaupdate",
+    symlink_target: "/data/vendor/firmware/wlanmdsp.mbn",
+}
+
+// The qca_cld3 driver looks for its config and MAC under
+// /vendor/firmware/wlan/qca_cld/<chip>/. Stock redirects the config to the real
+// file in /vendor/etc/wifi/<chip>/ and the MAC to the persist partition, which
+// is where the per-unit address actually lives.
+//
+// This device runs wcn7750 (lsmod shows qca_cld3_wcn7750 bound), but the stock
+// vendor image ships all five chip directories because it is one image across
+// several SKUs. Keeping all five costs nothing and matches stock exactly.
+install_symlink {
+    name: "malbec_wlan_cfg_kiwi_v2_symlink",
+    vendor: true,
+    installed_location: "firmware/wlan/qca_cld/kiwi_v2/WCNSS_qcom_cfg.ini",
+    symlink_target: "/vendor/etc/wifi/kiwi_v2/WCNSS_qcom_cfg.ini",
+}
+
+install_symlink {
+    name: "malbec_wlan_cfg_peach_symlink",
+    vendor: true,
+    installed_location: "firmware/wlan/qca_cld/peach/WCNSS_qcom_cfg.ini",
+    symlink_target: "/vendor/etc/wifi/peach/WCNSS_qcom_cfg.ini",
+}
+
+install_symlink {
+    name: "malbec_wlan_cfg_peach_v2_symlink",
+    vendor: true,
+    installed_location: "firmware/wlan/qca_cld/peach_v2/WCNSS_qcom_cfg.ini",
+    symlink_target: "/vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini",
+}
+
+install_symlink {
+    name: "malbec_wlan_cfg_qca6750_symlink",
+    vendor: true,
+    installed_location: "firmware/wlan/qca_cld/qca6750/WCNSS_qcom_cfg.ini",
+    symlink_target: "/vendor/etc/wifi/qca6750/WCNSS_qcom_cfg.ini",
+}
+
+install_symlink {
+    name: "malbec_wlan_cfg_wcn7750_symlink",
+    vendor: true,
+    installed_location: "firmware/wlan/qca_cld/wcn7750/WCNSS_qcom_cfg.ini",
+    symlink_target: "/vendor/etc/wifi/wcn7750/WCNSS_qcom_cfg.ini",
+}
+
+install_symlink {
+    name: "malbec_wlan_mac_kiwi_v2_symlink",
+    vendor: true,
+    installed_location: "firmware/wlan/qca_cld/kiwi_v2/wlan_mac.bin",
+    symlink_target: "/mnt/vendor/persist/kiwi_v2/wlan_mac.bin",
+}
+
+install_symlink {
+    name: "malbec_wlan_mac_peach_symlink",
+    vendor: true,
+    installed_location: "firmware/wlan/qca_cld/peach/wlan_mac.bin",
+    symlink_target: "/mnt/vendor/persist/peach/wlan_mac.bin",
+}
+
+install_symlink {
+    name: "malbec_wlan_mac_peach_v2_symlink",
+    vendor: true,
+    installed_location: "firmware/wlan/qca_cld/peach_v2/wlan_mac.bin",
+    symlink_target: "/mnt/vendor/persist/peach_v2/wlan_mac.bin",
+}
+
+install_symlink {
+    name: "malbec_wlan_mac_qca6750_symlink",
+    vendor: true,
+    installed_location: "firmware/wlan/qca_cld/qca6750/wlan_mac.bin",
+    symlink_target: "/mnt/vendor/persist/qca6750/wlan_mac.bin",
+}
+
+install_symlink {
+    name: "malbec_wlan_mac_wcn7750_symlink",
+    vendor: true,
+    installed_location: "firmware/wlan/qca_cld/wcn7750/wlan_mac.bin",
+    symlink_target: "/mnt/vendor/persist/wcn7750/wlan_mac.bin",
+}
+
+// CneApp loads this from its own lib directory; stock points it at the copy in
+// /vendor/lib64 rather than shipping it twice.
+install_symlink {
+    name: "malbec_cneapp_vndfwk_detect_symlink",
+    vendor: true,
+    installed_location: "app/CneApp/lib/arm64/libvndfwk_detect_jni.qti_vendor.so",
+    symlink_target: "/vendor/lib64/libvndfwk_detect_jni.qti_vendor.so",
+}

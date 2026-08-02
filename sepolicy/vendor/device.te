@@ -1,0 +1,12 @@
+# Device node types for the two Lenovo-specific character devices.
+#
+# Names match the stock policy so the labels in file_contexts stay recognisable
+# against a stock dump:
+#
+#   /dev/ttyHS1        the UART the folio keyboard talks over. The keyboard
+#                      driver (lenovo_keyboard.ko) is what reports scancodes 654
+#                      and 655 for folio open/close, which keylayout/
+#                      Vendor_17ef_Product_62b2.kl maps to WAKEUP and SLEEP.
+#   /dev/lenovo_penraw raw stylus channel exposed by the Novatek touch driver.
+type lenovo_keyboard_device, dev_type;
+type lenovo_device, dev_type;

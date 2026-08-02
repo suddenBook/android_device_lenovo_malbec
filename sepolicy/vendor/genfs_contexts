@@ -1,0 +1,6 @@
+# Verified against the running device with `ls -Z`: every file directly under
+# soc:lenovo_kb/ carries sysfs_kb, except wakeup/, which the kernel's own
+# wakeup-source labelling claims as sysfs_wakeup. The order matters — the more
+# specific wakeup entry has to come after the directory entry.
+genfscon sysfs /devices/platform/soc/soc:lenovo_kb/            u:object_r:sysfs_kb:s0
+genfscon sysfs /devices/platform/soc/soc:lenovo_kb/wakeup      u:object_r:sysfs_wakeup:s0

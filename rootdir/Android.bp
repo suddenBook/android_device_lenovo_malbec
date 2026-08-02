@@ -1,0 +1,18 @@
+//
+// SPDX-FileCopyrightText: The LineageOS Project
+// SPDX-License-Identifier: Apache-2.0
+//
+
+// fstab.qcom lives in the device tree rather than being pulled in as a blob:
+// it is the one vendor config file this port actually has to change (the stock
+// copy mounts dataext and vm-bootsys, neither of which this build produces an
+// image for). proprietary-files.txt therefore skips vendor/etc/fstab.qcom, so
+// there is exactly one rule installing it.
+//
+// TARGET_RECOVERY_FSTAB in BoardConfig.mk points at the same source file, which
+// is how recovery gets its copy.
+prebuilt_etc {
+    name: "fstab.qcom",
+    src: "etc/fstab.qcom",
+    vendor: true,
+}

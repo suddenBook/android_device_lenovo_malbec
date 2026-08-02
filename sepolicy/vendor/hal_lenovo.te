@@ -1,0 +1,94 @@
+# Lenovo's ten private AIDL HALs.
+#
+# The service binaries ship in the vendor image and their init rc files start
+# them, so they need domains or init cannot transition them out of its own.
+# Type names are taken from the stock policy (verified against `ps -AZ` on the
+# device), which keeps a stock dump readable next to this tree.
+#
+# Only what is needed to start and register: these HALs have no clients here.
+# Their callers live in Lenovo's system and product apps, which PixelOS
+# replaces, so the services will run idle. Everything past "starts, registers,
+# answers nobody" has to come from real denials on a booted device rather than
+# from guessing, so this file deliberately stops there.
+
+# vendor.lenovo.hardware.battery V5 — IBattery/default
+type hal_lenovobattery_default, domain;
+type hal_lenovobattery_default_exec, exec_type, vendor_file_type, file_type;
+init_daemon_domain(hal_lenovobattery_default)
+binder_use(hal_lenovobattery_default)
+add_service(hal_lenovobattery_default, hal_lenovobattery_service)
+
+# vendor.lenovo.hardware.display — IDisplay/default
+type hal_lenovodisplay_default, domain;
+type hal_lenovodisplay_default_exec, exec_type, vendor_file_type, file_type;
+init_daemon_domain(hal_lenovodisplay_default)
+binder_use(hal_lenovodisplay_default)
+add_service(hal_lenovodisplay_default, hal_lenovodisplay_service)
+
+# vendor.lenovo.hardware.factory V2 — IFactory/default
+type hal_lenovofactory_default, domain;
+type hal_lenovofactory_default_exec, exec_type, vendor_file_type, file_type;
+init_daemon_domain(hal_lenovofactory_default)
+binder_use(hal_lenovofactory_default)
+add_service(hal_lenovofactory_default, hal_lenovofactory_service)
+
+# vendor.lenovo.hardware.hyperschedule V2 — IHyperschedule/default
+type hal_lenovohyperschedule_default, domain;
+type hal_lenovohyperschedule_default_exec, exec_type, vendor_file_type, file_type;
+init_daemon_domain(hal_lenovohyperschedule_default)
+binder_use(hal_lenovohyperschedule_default)
+add_service(hal_lenovohyperschedule_default, hal_lenovohyperschedule_service)
+
+# vendor.lenovo.hardware.keyboard V3 — IKeyboard/default
+# Reads and writes the folio keyboard over /dev/ttyHS1 and exposes
+# keyboard_status / kb_enable_status under the lenovo_kb platform device.
+type hal_lenovokeyboard_default, domain;
+type hal_lenovokeyboard_default_exec, exec_type, vendor_file_type, file_type;
+init_daemon_domain(hal_lenovokeyboard_default)
+binder_use(hal_lenovokeyboard_default)
+add_service(hal_lenovokeyboard_default, hal_lenovokeyboard_service)
+allow hal_lenovokeyboard_default lenovo_keyboard_device:chr_file rw_file_perms;
+r_dir_file(hal_lenovokeyboard_default, sysfs_kb)
+allow hal_lenovokeyboard_default sysfs_kb:file rw_file_perms;
+
+# vendor.lenovo.hardware.misc — IMisc/default
+type hal_lenovomisc_default, domain;
+type hal_lenovomisc_default_exec, exec_type, vendor_file_type, file_type;
+init_daemon_domain(hal_lenovomisc_default)
+binder_use(hal_lenovomisc_default)
+add_service(hal_lenovomisc_default, hal_lenovomisc_service)
+
+# vendor.lenovo.hardware.performance — IPerformance/default
+type hal_lenovoperformance_default, domain;
+type hal_lenovoperformance_default_exec, exec_type, vendor_file_type, file_type;
+init_daemon_domain(hal_lenovoperformance_default)
+binder_use(hal_lenovoperformance_default)
+add_service(hal_lenovoperformance_default, hal_lenovoperformance_service)
+
+# vendor.lenovo.hardware.touchscreen V5 — ITouchscreen/default
+# Owner of the /proc/pen_* and /proc/folio_case_mode knobs. Those nodes carry
+# the plain "proc" label on a stock device — checked with ls -Z — so no genfs
+# entry is needed for them, only the ability to write proc files.
+type hal_lenovotouchscreen_default, domain;
+type hal_lenovotouchscreen_default_exec, exec_type, vendor_file_type, file_type;
+init_daemon_domain(hal_lenovotouchscreen_default)
+binder_use(hal_lenovotouchscreen_default)
+add_service(hal_lenovotouchscreen_default, hal_lenovotouchscreen_service)
+allow hal_lenovotouchscreen_default lenovo_device:chr_file rw_file_perms;
+allow hal_lenovotouchscreen_default proc:file rw_file_perms;
+
+# vendor.lenovo.hardware.usb V2 — IUsb/default
+type hal_lenovousb_default, domain;
+type hal_lenovousb_default_exec, exec_type, vendor_file_type, file_type;
+init_daemon_domain(hal_lenovousb_default)
+binder_use(hal_lenovousb_default)
+add_service(hal_lenovousb_default, hal_lenovousb_service)
+
+# lenovo.hardware.ai — IDevice/default
+# Note the domain name: stock calls it hal_lenovo_ai_proc, not _default, and the
+# binary sits in /vendor/bin rather than /vendor/bin/hw.
+type hal_lenovo_ai_proc, domain;
+type hal_lenovo_ai_proc_exec, exec_type, vendor_file_type, file_type;
+init_daemon_domain(hal_lenovo_ai_proc)
+binder_use(hal_lenovo_ai_proc)
+add_service(hal_lenovo_ai_proc, hal_lenovo_ai_service)

@@ -1,0 +1,5 @@
+# The folio keyboard's platform device exposes its status files under
+# /sys/devices/platform/soc/soc:lenovo_kb/. Stock gives that subtree its own
+# type rather than leaving it as plain sysfs, and the keyboard HAL is the only
+# thing that reads and writes it.
+type sysfs_kb, fs_type, sysfs_type;

@@ -1,0 +1,15 @@
+# Service types for the ten Lenovo private AIDL HALs.
+#
+# protected_service is what device/qcom/sepolicy_vndr uses for its own vendor
+# AIDL services on this platform; it keeps them out of reach of untrusted app
+# domains.
+type hal_lenovo_ai_service, hal_service_type, protected_service, service_manager_type;
+type hal_lenovobattery_service, hal_service_type, protected_service, service_manager_type;
+type hal_lenovodisplay_service, hal_service_type, protected_service, service_manager_type;
+type hal_lenovofactory_service, hal_service_type, protected_service, service_manager_type;
+type hal_lenovohyperschedule_service, hal_service_type, protected_service, service_manager_type;
+type hal_lenovokeyboard_service, hal_service_type, protected_service, service_manager_type;
+type hal_lenovomisc_service, hal_service_type, protected_service, service_manager_type;
+type hal_lenovoperformance_service, hal_service_type, protected_service, service_manager_type;
+type hal_lenovotouchscreen_service, hal_service_type, protected_service, service_manager_type;
+type hal_lenovousb_service, hal_service_type, protected_service, service_manager_type;

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+
+     Device manifest (DEVICE_MANIFEST_FILE).
+
+     Almost everything the vendor image declares arrives as one of the 104
+     fragments under /vendor/etc/vintf/manifest/, which are shipped as blobs.
+     What is left is the per-SoC part: the stock image carries
+     manifest_kera.xml, manifest_sun.xml and manifest_tuna.xml side by side
+     because Lenovo builds one vendor image for several SKUs. This device is
+     TunaP (soc_id 694), so the contents below are manifest_tuna.xml — which
+     declares exactly one HAL that the fragments do not.
+-->
+<manifest version="8.0" type="device" target-level="202404">
+    <hal format="aidl">
+        <name>android.hardware.gatekeeper</name>
+        <fqname>IGatekeeper/default</fqname>
+    </hal>
+</manifest>

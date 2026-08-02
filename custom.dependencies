@@ -1,0 +1,10 @@
+[
+  {
+    "repository": "suddenBook/android_device_lenovo_malbec-kernel",
+    "target_path": "device/lenovo/malbec-kernel"
+  },
+  {
+    "repository": "suddenBook/proprietary_vendor_lenovo_malbec",
+    "target_path": "vendor/lenovo/malbec"
+  }
+]
