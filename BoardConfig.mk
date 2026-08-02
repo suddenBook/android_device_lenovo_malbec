@@ -54,18 +54,21 @@ TARGET_PROVIDES_LIBAR_PAL := true
 TARGET_BOOTLOADER_BOARD_NAME := sun
 
 # Display
-# Panel is 2190x3504. Stock declares ro.sf.lcd_density=360.
+# Panel is 2190x3504 and its physical density is 360, which is what stock puts
+# in ro.sf.lcd_density and what this sets.
 #
-# We ship 306 instead, which is stock's 0.85 "small" display-size step. On a
-# tablet this is the more useful default: a lower density means each dp maps to
-# fewer physical pixels, so more content fits on screen. Users can still scale
-# either way from Settings, this only moves where "Default" sits.
+# Stock additionally ships a 306 "display size" override. That is a
+# Settings.Secure value (display_density_forced), not a board property, and AOSP
+# has no default for it to override — so it is a Settings toggle for the user,
+# not something to bake in by lying about the physical density here.
 #
-# Panel is dual sourced (BOE nt36536e / CSOT nt36536), 144 Hz, selected at boot
-# via ro.boot.lcd_type. Do NOT hardcode panel specific values anywhere here.
-# This unit reports ro.boot.lcd_type=glossy — that is a surface finish
-# descriptor, not a vendor name, so do not key anything off the supplier.
-TARGET_SCREEN_DENSITY := 306
+# Panel is dual sourced (BOE nt36536e / CSOT nt36536), 144 Hz. The bootloader
+# names the panel on the kernel command line
+# (msm_drm.dsi_display0=qcom,mdss_dsi_csot_nt36536_144hz_vid on this unit) and
+# the prebuilt dtbo plus the vendor display HAL resolve it. Do NOT hardcode
+# panel specific values anywhere here, and do not key anything off
+# ro.boot.lcd_type: it reads "glossy", a surface finish, not a vendor.
+TARGET_SCREEN_DENSITY := 360
 
 # Filesystem
 TARGET_FS_CONFIG_GEN := $(DEVICE_PATH)/configs/config.fs
@@ -116,7 +119,10 @@ BOARD_BOOTCONFIG := \
 # The device ships a stock Google GKI image; nothing is built from source.
 PREBUILT_PATH := $(DEVICE_PATH)-kernel
 TARGET_NO_KERNEL_OVERRIDE := true
-TARGET_KERNEL_SOURCE := $(PREBUILT_PATH)/kernel-headers
+# No TARGET_KERNEL_SOURCE: the kernel repo carries images and modules only, and
+# nothing in this tree is compiled against kernel UAPI headers. Pointing the
+# variable at a directory that does not exist is worse than leaving it unset —
+# add a kernel-headers/ to the kernel repo first if a HAL ever needs it.
 BOARD_PREBUILT_DTBIMAGE_DIR := $(PREBUILT_PATH)/images/dtbs/
 BOARD_PREBUILT_DTBOIMAGE := $(PREBUILT_PATH)/images/dtbo.img
 PRODUCT_COPY_FILES += \
@@ -186,8 +192,11 @@ TARGET_COPY_OUT_VENDOR_DLKM := vendor_dlkm
 -include vendor/lineage/config/BoardConfigReservedSize.mk
 
 # Platform
-# SM8735P silicon codename is "Kera" (DTS files are kera-*.dts), but the kernel
-# build target and HAL platform family are both "sun". Both names are correct.
+# The silicon codename is "TunaP" (soc_id 694, DTS sources are tunap.dts /
+# tunap.dtsi with qcom,msm-id = <694 0x10000>), while the kernel build target and
+# the HAL platform family are both "sun". Both names are correct; they are
+# different naming axes. Search device trees for tuna/tunap and kernel/HAL
+# configuration for sun.
 BOARD_USES_QCOM_HARDWARE := true
 TARGET_BOARD_PLATFORM := sun
 
@@ -208,8 +217,17 @@ TARGET_USERIMAGES_USE_F2FS := true
 include device/lineage/sepolicy/libperfmgr/sepolicy.mk
 include device/qcom/sepolicy_vndr/SEPolicy.mk
 BOARD_VENDOR_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/vendor
-SYSTEM_EXT_PUBLIC_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/public
-SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/private
+# No SYSTEM_EXT_{PUBLIC,PRIVATE}_SEPOLICY_DIRS: nothing in this port adds
+# platform-side policy, so sepolicy/public and sepolicy/private do not exist.
+# Git does not track empty directories, which means a fresh clone would have had
+# BoardConfig.mk pointing at two paths that were never there. Add the lines back
+# together with the first file that needs them.
+#
+# The bulk of the vendor policy comes from device/qcom/sepolicy_vndr above:
+# TARGET_BOARD_PLATFORM is sun, which qcom_defs.mk puts in UM_6_6_FAMILY, so
+# SEPolicy.mk selects the sm8750 tree. sepolicy/vendor here only adds what is
+# specific to this device — the ten Lenovo AIDL HALs, /dev/ttyHS1 and the
+# soc:lenovo_kb sysfs subtree.
 
 # Vendor security patch
 VENDOR_SECURITY_PATCH := 2026-05-05
@@ -225,3 +243,50 @@ BOARD_AVB_BOOT_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
 BOARD_AVB_BOOT_ALGORITHM := SHA256_RSA2048
 BOARD_AVB_BOOT_ROLLBACK_INDEX := $(PLATFORM_SECURITY_PATCH_TIMESTAMP)
 BOARD_AVB_BOOT_ROLLBACK_INDEX_LOCATION := 3
+
+BOARD_AVB_RECOVERY_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
+BOARD_AVB_RECOVERY_ALGORITHM := SHA256_RSA2048
+BOARD_AVB_RECOVERY_ROLLBACK_INDEX := $(PLATFORM_SECURITY_PATCH_TIMESTAMP)
+BOARD_AVB_RECOVERY_ROLLBACK_INDEX_LOCATION := 1
+
+# vbmeta_system is listed in AB_OTA_PARTITIONS and fstab.qcom mounts system,
+# system_ext and product with avb=vbmeta_system, so the chained image has to
+# exist — without these four lines no vbmeta_system.img is produced at all and
+# those three partitions have nothing to verify against.
+BOARD_AVB_VBMETA_SYSTEM := system system_dlkm system_ext product
+BOARD_AVB_VBMETA_SYSTEM_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
+BOARD_AVB_VBMETA_SYSTEM_ALGORITHM := SHA256_RSA2048
+BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX := $(PLATFORM_SECURITY_PATCH_TIMESTAMP)
+BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX_LOCATION := 2
+
+BOARD_AVB_VENDOR_ADD_HASHTREE_FOOTER_ARGS += --hash_algorithm sha256
+BOARD_AVB_VENDOR_DLKM_ADD_HASHTREE_FOOTER_ARGS += --hash_algorithm sha256
+BOARD_AVB_SYSTEM_DLKM_ADD_HASHTREE_FOOTER_ARGS += --hash_algorithm sha256
+
+# Vendor
+include vendor/lenovo/malbec/BoardConfigVendor.mk
+
+# WiFi
+# This is a Wi-Fi only tablet, so this section is the single most important one
+# in the file. The chip is wcn7750 — lsmod on the device shows qca_cld3_wcn7750
+# bound, with icnss2 and cnss_* around it.
+#
+# The Wi-Fi stack is built from source rather than carried as blobs, matching
+# onyx: wpa_supplicant, hostapd and android.hardware.wifi-service are AOSP
+# components, and the stock copies were compiled against an Android 15 vendor
+# while the framework here is Android 16. proprietary-files.txt excludes them
+# for that reason; only the per-device tuning files stay as blobs.
+BOARD_WLAN_DEVICE := qcwcn
+BOARD_HOSTAPD_DRIVER := NL80211
+BOARD_HOSTAPD_PRIVATE_LIB := lib_driver_cmd_$(BOARD_WLAN_DEVICE)
+BOARD_WPA_SUPPLICANT_DRIVER := NL80211
+BOARD_WPA_SUPPLICANT_PRIVATE_LIB := lib_driver_cmd_$(BOARD_WLAN_DEVICE)
+# (1 STA + 1 AP) or (1 STA + 1 of (P2P or NAN)) or (2 AP) or (2 STA)
+WIFI_HAL_INTERFACE_COMBINATIONS := {{{STA}, 1}, {{AP}, 1}}, {{{STA}, 1}, {{P2P, NAN}, 1}}, {{{AP}, 2}}, {{{STA}, 2}}
+WIFI_DRIVER_DEFAULT := qca_cld3
+WIFI_DRIVER_STATE_CTRL_PARAM := "/dev/wlan"
+WIFI_DRIVER_STATE_OFF := "OFF"
+WIFI_DRIVER_STATE_ON := "ON"
+WIFI_FEATURE_HOSTAPD_11AX := true
+WIFI_HIDL_UNIFIED_SUPPLICANT_SERVICE_RC_ENTRY := true
+WPA_SUPPLICANT_VERSION := VER_0_8_X
