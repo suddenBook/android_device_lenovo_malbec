@@ -165,7 +165,6 @@ blob_fixups: blob_fixups_user_type = {
         ),
 
     (
-        'vendor/lib64/android.hardware.bluetooth.audio-impl.so',
         'vendor/lib64/btaudio_offload_if.so',
         'vendor/lib64/hw/android.hardware.bluetooth.audio-impl-qti.so',
         'vendor/lib64/hw/audio.bluetooth_qti.default.so',
@@ -274,16 +273,10 @@ blob_fixups: blob_fixups_user_type = {
         ),
 
     (
-        'vendor/lib64/soundfx/libbundleaidl.so',
         'vendor/lib64/soundfx/libdlbvolaidl.so',
-        'vendor/lib64/soundfx/libdownmixaidl.so',
-        'vendor/lib64/soundfx/libdynamicsprocessingaidl.so',
-        'vendor/lib64/soundfx/libloudnessenhanceraidl.so',
         'vendor/lib64/soundfx/libquasar.so',
-        'vendor/lib64/soundfx/libreverbaidl.so',
         'vendor/lib64/soundfx/libswdapaidl.so',
         'vendor/lib64/soundfx/libswgamedapaidl.so',
-        'vendor/lib64/soundfx/libvisualizeraidl.so',
     ): blob_fixup()
         .replace_needed(
             'android.hardware.audio.effect-V2-ndk.so',
