@@ -1,7 +1,10 @@
 # Display
-# The panel is dual sourced (BOE nt36536e / CSOT nt36536, both 144 Hz) and is
-# selected by the bootloader via ro.boot.lcd_type, resolved inside the prebuilt
-# dtbo and the vendor display HAL. Nothing here may be panel specific.
+# The panel is dual sourced (BOE nt36536e / CSOT nt36536, both 144 Hz). The
+# bootloader selects it on the kernel command line —
+# msm_drm.dsi_display0=qcom,mdss_dsi_csot_nt36536_144hz_vid on this unit — and it
+# is resolved inside the prebuilt dtbo and the vendor display HAL. Nothing here
+# may be panel specific. In particular do not key anything off ro.boot.lcd_type:
+# it reads "glossy" here, which is a surface finish, not a panel vendor.
 #
 # primary_display_orientation is ORIENTATION_270: the panel is portrait native
 # and rotated to landscape. Getting this wrong gives a sideways boot animation

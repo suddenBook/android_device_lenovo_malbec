@@ -8,19 +8,30 @@ tablet released in 2026. `malbec` is Lenovo's internal codename for the device;
 
 | Feature | Specification |
 |---|---|
-| SoC | Qualcomm SM8735P (Snapdragon 8s Gen 4), silicon codename **Kera** |
+| SoC | Qualcomm SM8735P (Snapdragon 8s Gen 4), silicon codename **TunaP**, `soc_id` 694 |
 | Platform target | `sun` (`ro.board.platform`, `TARGET_BOOTLOADER_BOARD_NAME`) |
-| CPU | 1× Cortex-X4 + 3× Cortex-A720 + 4× Cortex-A720 |
+| CPU | 1× Cortex-X4 + 7× Cortex-A720 (ARM implementer `0x41`, parts `0xd82`/`0xd81`) |
 | GPU | Adreno 825 |
 | Architecture | `arm64-v8a` (64-bit only) |
 | Kernel | GKI 2.0, `android15-6.6` (KMI generation 8), 4 KB pages |
 | Display | 144 Hz DSI video mode; dual sourced — BOE `nt36536e` / CSOT `nt36536` |
-| Touchscreen | Goodix Berlin (I²C `0x5d` / SPI), supports Qualcomm Trusted Touch |
-| Stylus | Active stylus via the Goodix digitizer |
+| Touchscreen | **Novatek** (`nvt_touch`, SPI), supports Qualcomm Trusted Touch |
+| Stylus | Active stylus on the Novatek digitizer — 4096 pressure levels, ±60° tilt, hover, eraser |
 | Keyboard | Lenovo pogo-pin folio keyboard (`lenovo_kb` platform driver over UART) |
 | Storage | UFS, dynamic partitions, Virtual A/B with compression |
 | Connectivity | Wi-Fi + Bluetooth (no cellular on this model) |
 | Shipped Android | 16 (ZUI 18), vendor frozen at API level 202404 |
+
+The silicon codename and the platform name are two different things and both are
+correct: DTS sources are `tunap.dts`/`tunap.dtsi` (`qcom,msm-id = <694 0x10000>`),
+while the kernel build target and the HAL platform family are `sun`. Search for
+`tuna`/`tunap` in device trees and for `sun` in kernel and HAL configuration.
+
+The stock `vendor_boot` carries a 19-DTB bundle spanning three SoC families
+(Kera, Sun, Tuna) because Lenovo ships one image across several SKUs. Only
+DTB 19 (`TunaP`, msm-id 694) matches this device — reading the first DTB in the
+bundle and stopping there is how an earlier revision of these notes ended up
+claiming the SoC was "Kera".
 
 ## Device tree layout
 
@@ -33,17 +44,40 @@ malbec/
 └── proprietary-files.txt
 ```
 
+## Building
+
+```bash
+source build/envsetup.sh
+lunch custom_malbec-bp4a-userdebug     # or: breakfast malbec
+mka bacon
+```
+
+The release config is **`bp4a`**. `bp1a` also lunches without an error but
+silently produces a different configuration — a 13-month-stale
+`RELEASE_PLATFORM_SECURITY_PATCH` and no `aconfig_value_set-lineage-bp4a`, so
+every LineageOS/PixelOS feature flag falls back to its default. The authority is
+`vendor/lineage/vars/aosp_target_release` and
+`vendor/lineage/release/release_config_map.textproto`.
+
 ## Notes
 
-The device ships an unmodified Google GKI kernel with all hardware support
-provided as loadable modules in `vendor_dlkm`. The stock `boot`, `vendor_boot`,
-`dtbo`, `vendor`, `vendor_dlkm` and `odm` images are retained; this tree builds
-`system`, `system_ext` and `product` only.
+The device ships an unmodified Google GKI kernel; all hardware support arrives as
+loadable modules, so nothing is built from kernel source. The prebuilt kernel
+image, the stock `dtbo` and the three module sets live in
+[`android_device_lenovo_malbec-kernel`](https://github.com/suddenBook/android_device_lenovo_malbec-kernel).
 
-Because panel selection is performed by the bootloader (`ro.boot.lcd_type`) and
-resolved inside the retained `dtbo` and vendor display HAL, both panel suppliers
-are supported without device tree changes. Do not hardcode panel-specific values
-in this tree.
+Every partition in `AB_OTA_PARTITIONS` is rebuilt, `vendor`, `vendor_dlkm` and
+`odm` included — they are reassembled from extracted blobs rather than reused as
+stock images. That is what being a first-class A/B target requires; a build that
+only replaced `system`/`system_ext`/`product` could not ship an OTA.
+
+Panel selection happens entirely below this tree: the bootloader picks it on the
+kernel command line (`msm_drm.dsi_display0=qcom,mdss_dsi_csot_nt36536_144hz_vid`
+on this unit) and it is resolved inside the retained `dtbo` and the vendor
+display HAL. Both suppliers therefore work with no device tree changes. Do not
+hardcode panel-specific values here, and do not key anything off
+`ro.boot.lcd_type` — on this device that property reads `glossy`, which is a
+surface finish, not a panel vendor.
 
 ## Credits
 

@@ -1,2 +1,21 @@
-# TODO: populate after the first build; candidates are staged in
-# work/analysis/properties-candidates/odm.prop
+# The odm partition is rebuilt from scratch — proprietary-files.txt extracts
+# nothing from it. Stock's odm carries three things:
+#
+#   etc/build.prop           partition identity plus an import chain keyed on
+#                            ro.boot.lgsi.channel / countrycode / lcd_type /
+#                            ram_size. The build generates the identity part; the
+#                            imports resolve to Lenovo channel files that do not
+#                            exist outside ZUI.
+#   etc/prop/device_commercial_KRRX.prop
+#                            ro.vendor.config.lgsi.market_name = "Lenovo Tab K13",
+#                            read only by Lenovo apps, none of which ship here.
+#   etc/ueventd.rc           external_firmware_handler entries handing
+#                            trustedvm/oemvm firmware loads to /vendor/bin/vmmgr.
+#                            The factory package contains no vm-bootsys image and
+#                            the partition reads back as zero on this unit, so the
+#                            Gunyah trusted VM is not configured and these never
+#                            fire. fstab.qcom drops /product/vm-system likewise.
+#
+# The one property worth keeping is the QTI vendor-assist flag, which stock sets
+# on odm and which vendor code checks.
+ro.vendor.qti.va_odm.support=1
