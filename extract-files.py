@@ -4,6 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+import os
+
 from extract_utils.fixups_blob import (
     blob_fixup,
     blob_fixups_user_type,
@@ -39,171 +41,59 @@ namespace_imports = [
 ]
 
 
-# Libraries this vendor image ships under a name the PixelOS tree also builds
-# from source. Soong's prebuilt/source replacement would otherwise let the stock
-# copy take over the tree's module wholesale (android/prebuilt.go: usePrebuilt ->
-# ReplacedByPrebuilt), and it aborts outright when the two disagree about which
-# partition they install to:
-#
-#   error: partition is different: system(X) != vendor(prebuilt_X)
-#
-# proprietary-files.txt renames the blob with ;MODULE_SUFFIX= so it installs as
-# X.so from a module called something else, and the fixup below points every
-# vendor-side dependant at that renamed module. The two have to stay in step:
-# extract-utils applies lib_fixups to dependency lists only and never renames a
-# module, so a name here with no matching MODULE_SUFFIX tag is a dangling
-# reference.
-#
-# Mostly the new name is X_vendor. Two libraries take X_vendor_blob because the
-# stock image already ships a real file called X_vendor.so, whose own natural
-# module name is X_vendor.
-#
-# Generated together with proprietary-files.txt by
-# work/scripts/12-gen-proprietary-files.py from
-# work/analysis/blob-vendor-suffixed.txt. Do not hand-edit.
-VENDOR_LIB_RENAMES = {
-    'android.frameworks.sensorservice@1.0': 'android.frameworks.sensorservice@1.0_vendor',
-    'android.hardware.authsecret@1.0': 'android.hardware.authsecret@1.0_vendor',
-    'android.hardware.automotive.vehicle@2.0': 'android.hardware.automotive.vehicle@2.0_vendor',
-    'android.hardware.bluetooth@1.0': 'android.hardware.bluetooth@1.0_vendor',
-    'android.hardware.boot@1.0': 'android.hardware.boot@1.0_vendor',
-    'android.hardware.boot@1.1': 'android.hardware.boot@1.1_vendor',
-    'android.hardware.gatekeeper@1.0': 'android.hardware.gatekeeper@1.0_vendor',
-    'android.hardware.graphics.allocator@2.0': 'android.hardware.graphics.allocator@2.0_vendor',
-    'android.hardware.graphics.allocator@3.0': 'android.hardware.graphics.allocator@3.0_vendor',
-    'android.hardware.graphics.allocator@4.0': 'android.hardware.graphics.allocator@4.0_vendor',
-    'android.hardware.graphics.bufferqueue@1.0': 'android.hardware.graphics.bufferqueue@1.0_vendor',
-    'android.hardware.graphics.bufferqueue@2.0': 'android.hardware.graphics.bufferqueue@2.0_vendor',
-    'android.hardware.graphics.composer@2.1': 'android.hardware.graphics.composer@2.1_vendor',
-    'android.hardware.graphics.composer@2.2': 'android.hardware.graphics.composer@2.2_vendor',
-    'android.hardware.graphics.composer@2.3': 'android.hardware.graphics.composer@2.3_vendor',
-    'android.hardware.health@1.0': 'android.hardware.health@1.0_vendor',
-    'android.hardware.health@2.0': 'android.hardware.health@2.0_vendor',
-    'android.hardware.health@2.1': 'android.hardware.health@2.1_vendor',
-    'android.hardware.keymaster@3.0': 'android.hardware.keymaster@3.0_vendor',
-    'android.hardware.keymaster@4.0': 'android.hardware.keymaster@4.0_vendor',
-    'android.hardware.keymaster@4.1': 'android.hardware.keymaster@4.1_vendor',
-    'android.hardware.media.bufferpool@2.0': 'android.hardware.media.bufferpool@2.0_vendor',
-    'android.hardware.media.c2@1.0': 'android.hardware.media.c2@1.0_vendor',
-    'android.hardware.media.c2@1.1': 'android.hardware.media.c2@1.1_vendor',
-    'android.hardware.media.c2@1.2': 'android.hardware.media.c2@1.2_vendor',
-    'android.hardware.media.omx@1.0': 'android.hardware.media.omx@1.0_vendor',
-    'android.hardware.media@1.0': 'android.hardware.media@1.0_vendor',
-    'android.hardware.power@1.0': 'android.hardware.power@1.0_vendor',
-    'android.hardware.power@1.1': 'android.hardware.power@1.1_vendor',
-    'android.hardware.power@1.2': 'android.hardware.power@1.2_vendor',
-    'android.hardware.renderscript@1.0': 'android.hardware.renderscript@1.0_vendor',
-    'android.hardware.thermal@1.0': 'android.hardware.thermal@1.0_vendor',
-    'android.hardware.thermal@2.0': 'android.hardware.thermal@2.0_vendor',
-    'android.hidl.allocator@1.0': 'android.hidl.allocator@1.0_vendor',
-    'android.hidl.memory.token@1.0': 'android.hidl.memory.token@1.0_vendor',
-    'android.hidl.memory@1.0': 'android.hidl.memory@1.0_vendor',
-    'android.hidl.token@1.0': 'android.hidl.token@1.0_vendor',
-    'android.hidl.token@1.0-utils': 'android.hidl.token@1.0-utils_vendor',
-    'android.system.wifi.keystore@1.0': 'android.system.wifi.keystore@1.0_vendor',
-    'com.dsi.ant@1.0': 'com.dsi.ant@1.0_vendor',
-    'libRSCpuRef': 'libRSCpuRef_vendor',
-    'libRSDriver': 'libRSDriver_vendor',
-    'libRS_internal': 'libRS_internal_vendor',
-    'libalsautils': 'libalsautils_vendor',
-    'libandroid_runtime_lazy': 'libandroid_runtime_lazy_vendor',
-    'libavservices_minijail': 'libavservices_minijail_vendor',
-    'libbcinfo': 'libbcinfo_vendor',
-    'libblas': 'libblas_vendor',
-    'libcap': 'libcap_vendor',
-    'libcodec2': 'libcodec2_vendor',
-    'libcodec2_aidl': 'libcodec2_aidl_vendor',
-    'libcodec2_hal_common': 'libcodec2_hal_common_vendor',
-    'libcodec2_hidl@1.0': 'libcodec2_hidl@1.0_vendor',
-    'libcodec2_hidl@1.1': 'libcodec2_hidl@1.1_vendor',
-    'libcodec2_hidl@1.2': 'libcodec2_hidl@1.2_vendor',
-    'libcodec2_soft_common': 'libcodec2_soft_common_vendor',
-    'libcodec2_vndk': 'libcodec2_vndk_vendor',
-    'libcompiler_rt': 'libcompiler_rt_vendor',
-    'libcurl': 'libcurl_vendor',
-    'libexif': 'libexif_vendor',
-    'libgatekeeper': 'libgatekeeper_vendor',
-    'libhidlmemory': 'libhidlmemory_vendor',
-    'libhidltransport': 'libhidltransport_vendor',
-    'libhwbinder': 'libhwbinder_vendor',
-    'libkeymaster_messages': 'libkeymaster_messages_vendor',
-    'libmemunreachable': 'libmemunreachable_vendor',
-    'libminijail': 'libminijail_vendor',
-    'libpsi': 'libpsi_vendor',
-    'libqti_vndfwk_detect': 'libqti_vndfwk_detect_vendor_blob',
-    'libsfplugin_ccodec_utils': 'libsfplugin_ccodec_utils_vendor',
-    'libsqlite': 'libsqlite_vendor',
-    'libstagefright_aidl_bufferpool2': 'libstagefright_aidl_bufferpool2_vendor',
-    'libstagefright_bufferpool@2.0.1': 'libstagefright_bufferpool@2.0.1_vendor',
-    'libstagefright_bufferqueue_helper': 'libstagefright_bufferqueue_helper_vendor',
-    'libtensorflowlite_c': 'libtensorflowlite_c_vendor',
-    'libui': 'libui_vendor',
-    'libusbhost': 'libusbhost_vendor',
-    'libvndfwk_detect_jni.qti': 'libvndfwk_detect_jni.qti_vendor_blob',
-    'vendor.display.config@1.0': 'vendor.display.config@1.0_vendor',
-    'vendor.display.config@1.1': 'vendor.display.config@1.1_vendor',
-    'vendor.display.config@1.10': 'vendor.display.config@1.10_vendor',
-    'vendor.display.config@1.11': 'vendor.display.config@1.11_vendor',
-    'vendor.display.config@1.2': 'vendor.display.config@1.2_vendor',
-    'vendor.display.config@1.3': 'vendor.display.config@1.3_vendor',
-    'vendor.display.config@1.4': 'vendor.display.config@1.4_vendor',
-    'vendor.display.config@1.5': 'vendor.display.config@1.5_vendor',
-    'vendor.display.config@1.6': 'vendor.display.config@1.6_vendor',
-    'vendor.display.config@1.7': 'vendor.display.config@1.7_vendor',
-    'vendor.display.config@1.8': 'vendor.display.config@1.8_vendor',
-    'vendor.display.config@1.9': 'vendor.display.config@1.9_vendor',
-    'vendor.qti.diaghal@1.0': 'vendor.qti.diaghal@1.0_vendor',
-    'vendor.qti.hardware.bluetooth_audio@2.0': 'vendor.qti.hardware.bluetooth_audio@2.0_vendor',
-    'vendor.qti.hardware.bluetooth_audio@2.1': 'vendor.qti.hardware.bluetooth_audio@2.1_vendor',
-    'vendor.qti.hardware.display.allocator@1.0': 'vendor.qti.hardware.display.allocator@1.0_vendor',
-    'vendor.qti.hardware.display.allocator@3.0': 'vendor.qti.hardware.display.allocator@3.0_vendor',
-    'vendor.qti.hardware.display.allocator@4.0': 'vendor.qti.hardware.display.allocator@4.0_vendor',
-    'vendor.qti.hardware.display.composer@1.0': 'vendor.qti.hardware.display.composer@1.0_vendor',
-    'vendor.qti.hardware.display.composer@2.0': 'vendor.qti.hardware.display.composer@2.0_vendor',
-    'vendor.qti.hardware.display.mapper@1.0': 'vendor.qti.hardware.display.mapper@1.0_vendor',
-    'vendor.qti.hardware.display.mapper@1.1': 'vendor.qti.hardware.display.mapper@1.1_vendor',
-    'vendor.qti.hardware.display.mapper@2.0': 'vendor.qti.hardware.display.mapper@2.0_vendor',
-    'vendor.qti.hardware.perf@2.0': 'vendor.qti.hardware.perf@2.0_vendor',
-    'vendor.qti.hardware.perf@2.1': 'vendor.qti.hardware.perf@2.1_vendor',
-    'vendor.qti.hardware.perf@2.2': 'vendor.qti.hardware.perf@2.2_vendor',
-    'vendor.qti.hardware.servicetracker@1.0': 'vendor.qti.hardware.servicetracker@1.0_vendor',
-    'vendor.qti.hardware.servicetracker@1.1': 'vendor.qti.hardware.servicetracker@1.1_vendor',
-    'vendor.qti.hardware.systemhelper@1.0': 'vendor.qti.hardware.systemhelper@1.0_vendor',
-    'vendor.qti.hardware.wifidisplaysession_aidl-V1-ndk': 'vendor.qti.hardware.wifidisplaysession_aidl-V1-ndk_vendor',
-    'vendor.qti.qccsyshal_aidl-V1-ndk': 'vendor.qti.qccsyshal_aidl-V1-ndk_vendor',
-    'vendor.qti.qccvndhal_aidl-V1-ndk': 'vendor.qti.qccvndhal_aidl-V1-ndk_vendor',
-    'wifi_legacy': 'wifi_legacy_vendor',
-}
+def _renamed_vendor_libs():
+    """Module names that proprietary-files.txt tags ;MODULE_SUFFIX=_vendor.
+
+    Read straight out of the list instead of being restated here. The two have
+    to agree exactly — this fixup rewrites other blobs' dependencies on X to
+    X_vendor, and the tag is what makes X_vendor exist — and keeping one copy
+    means they cannot drift. A hand-maintained second copy is how the previous
+    revision ended up with three dangling references (diaghal-V1-ndk,
+    uceaidlservice, ImsRtpService) that resolved to nothing.
+    """
+    names = set()
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        'proprietary-files.txt')
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            head, _, tags = line.lstrip('-').partition(';')
+            if ';MODULE_SUFFIX=_vendor' not in ';' + tags:
+                continue
+            head = head.split('|')[0].split(':')[0]
+            if not head.startswith('vendor/') or not head.endswith('.so'):
+                continue
+            names.add(os.path.basename(head)[:-len('.so')])
+    return tuple(sorted(names))
 
 
-def lib_fixup_vendor_rename(lib: str, partition: str, *args, **kwargs):
-    return VENDOR_LIB_RENAMES[lib] if partition == 'vendor' else None
+def lib_fixup_vendor_suffix(lib: str, partition: str, *args, **kwargs):
+    return f'{lib}_{partition}' if partition == 'vendor' else None
 
 
+# These are libraries the stock image ships under a name this tree also defines
+# a source module for, but which the tree does not actually install to that
+# path (nothing puts them in PRODUCT_PACKAGES). The blob has to provide the
+# file, so proprietary-files.txt renames its module with ;MODULE_SUFFIX=_vendor
+# and this points vendor-side dependants at the renamed module.
+#
+# Renaming is only correct *because* the tree installs nothing there. Where the
+# tree does install the same path, the blob is dropped instead — see
+# work/analysis/tree-installed-paths.txt. An earlier revision renamed both
+# cases alike, and the 107 entries in the second group spent the whole time
+# fighting the tree for one install path while Make quietly picked a winner.
+#
+# The partition guard matters: run_libs_fixup (extract_utils/makefiles.py:231)
+# passes the *depending* file's partition, so system_ext copies of the same
+# library keep resolving to the bare name.
 lib_fixups: lib_fixups_user_type = {
     **lib_fixups,
-    tuple(VENDOR_LIB_RENAMES): lib_fixup_vendor_rename,
+    _renamed_vendor_libs(): lib_fixup_vendor_suffix,
 }
 
-# These are the prebuilts that do not link against this tree as shipped. Each
-# one is here because the build said so, not because another device tree had it.
-#
-# All of them are the same shape: the stock binary was compiled against an older
-# frozen version of an AIDL interface than the one this tree currently builds,
-# and Soong refuses to put both versions in a single dependency graph:
-#
-#   module "libqdMetaData": depends on multiple versions of the same
-#   aidl_interface: android.hardware.graphics.common-V5-ndk-source,
-#   android.hardware.graphics.common-V7-ndk-source
-#
-# The version to rewrite to is the interface's current one, which is
-# nextVersion() = highest frozen + 1 (system/tools/aidl/build/aidl_interface.go).
-# graphics.common is frozen through 6 with frozen: false, so 7; drm is frozen
-# through 1, so 2.
-#
-# Worth noting how small this list is. The whole stock vendor image links 175
-# AIDL interfaces and only these two are at a version this tree no longer
-# builds — onyx needs several dozen replace_needed entries for the same job.
+
 # These are the prebuilts that do not link against this tree as shipped. Every
 # one is here because the build said so, not because another device tree had it.
 #
@@ -320,25 +210,20 @@ blob_fixups: blob_fixups_user_type = {
             'android.media.audio.common.types-V4-ndk.so',
         ),
 
+    # libgralloctypes / libui / libaudio_aidl_conversion_common_ndk used to be
+    # here too. They are no longer extracted — the tree installs its own vendor
+    # variant at those paths — so a fixup for them would match nothing.
+    # extract_utils does not warn about a blob_fixup that matches no file, so
+    # dead entries accumulate silently and eventually someone reasons from a
+    # fixup for a file that is not shipped. 19-verify-device-tree.py now checks
+    # that every blob_fixups key is still in proprietary-files.txt.
     (
         'vendor/lib64/lenovo.hardware.ai-V1-ndk.so',
-        'vendor/lib64/libgralloctypes.so',
         'vendor/lib64/libqcodec2_core.so',
-        'vendor/lib64/libui.so',
     ): blob_fixup()
         .replace_needed(
             'android.hardware.graphics.common-V5-ndk.so',
             'android.hardware.graphics.common-V7-ndk.so',
-        ),
-
-    'vendor/lib64/libaudio_aidl_conversion_common_ndk.so': blob_fixup()
-        .replace_needed(
-            'android.hardware.audio.common-V3-ndk.so',
-            'android.hardware.audio.common-V4-ndk.so',
-        )
-        .replace_needed(
-            'android.media.audio.common.types-V3-ndk.so',
-            'android.media.audio.common.types-V4-ndk.so',
         ),
 
     'vendor/lib64/libcamximageformatutils.so': blob_fixup()

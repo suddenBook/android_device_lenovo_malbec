@@ -27,11 +27,19 @@
     <integer name="config_defaultRefreshRate">60</integer>
 
     <!-- brightnessMinimum 0.0 / brightnessMaximum 1.0 /
-         brightnessDefault 0.39763778 / brightnessDim 0.05 -->
+         brightnessDefault 0.39763778 -->
     <item name="config_screenBrightnessSettingMinimumFloat" format="float" type="dimen">0.0</item>
     <item name="config_screenBrightnessSettingMaximumFloat" format="float" type="dimen">1.0</item>
     <item name="config_screenBrightnessSettingDefaultFloat" format="float" type="dimen">0.39763778</item>
-    <item name="config_screenBrightnessDozeFloat" format="float" type="dimen">0.05</item>
+
+    <!-- ⚠️ There used to be a config_screenBrightnessDozeFloat of 0.05 here.
+         That was a misread of the dump: 0.05 is the *dim* value, not the doze
+         value. Checked again on the running device:
+             mScreenBrightnessDozeConfig=0.0
+             mScreenBrightnessDimConfig=0.05
+         Both already match AOSP's defaults (frameworks/base/core/res/res/
+         values/config.xml: doze 0.0, dim 0.05), so neither needs an override
+         and writing the dim value into the doze resource only made AOD wrong. -->
 
     <!-- The panel has no cutout; dumpsys reports only rounded corners
          (radius 38 at all four positions). Declaring an empty cutout keeps

@@ -103,9 +103,3 @@ install_symlink {
 
 // CneApp loads this from its own lib directory; stock points it at the copy in
 // /vendor/lib64 rather than shipping it twice.
-install_symlink {
-    name: "malbec_cneapp_vndfwk_detect_symlink",
-    vendor: true,
-    installed_location: "app/CneApp/lib/arm64/libvndfwk_detect_jni.qti_vendor.so",
-    symlink_target: "/vendor/lib64/libvndfwk_detect_jni.qti_vendor.so",
-}

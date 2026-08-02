@@ -54,13 +54,31 @@ TARGET_PROVIDES_LIBAR_PAL := true
 TARGET_BOOTLOADER_BOARD_NAME := sun
 
 # Display
-# Panel is 2190x3504 and its physical density is 360, which is what stock puts
-# in ro.sf.lcd_density and what this sets.
+# 320, not stock's 360. This feeds ro.sf.lcd_density (build/make/core/
+# sysprop_config.mk:136) and it is purely the dp->px factor: the panel always
+# scans out its 2190x3504 real pixels either way, nothing is resampled.
 #
-# Stock additionally ships a 306 "display size" override. That is a
-# Settings.Secure value (display_density_forced), not a board property, and AOSP
-# has no default for it to override — so it is a Settings toggle for the user,
-# not something to bake in by lying about the physical density here.
+# 320 is the measured physical density — dumpsys reports 319.69 x 320.14 dpi —
+# so a dp lands at Android's defined 1/160 inch instead of 12.5% oversized, and
+# it falls exactly on the xhdpi resource bucket, meaning bitmap drawables are
+# used 1:1. Stock's 360 sits between xhdpi and xxhdpi, so Android picks xxhdpi
+# assets and scales them to 0.75. Net effect of 320: ~27% more content on
+# screen, and slightly better bitmap fidelity, not worse.
+#
+# No packaging cost: PRODUCT_AAPT_PREF_CONFIG is unset and PRODUCT_AAPT_CONFIG
+# carries no density qualifiers, so every APK keeps all buckets and the choice
+# is made at runtime. vendor/lineage/config/BoardConfigSoong.mk:44-49 derives
+# the same "xhdpi" bucket name for both 320 and 360, so nothing else shifts.
+# Window size class is unaffected (973dp vs 1095dp, both >= 840dp expanded).
+# Users can still adjust via Settings > Display > Display size.
+#
+# ⚠️ An earlier revision claimed stock ships a 306 "display size" override.
+# It does not — checked on the running device:
+#   settings get secure display_density_forced -> null
+#   settings get system display_density_forced -> null
+#   wm density -> "Physical density: 360" with no Override line
+# 306 is exactly 360 x 0.85, i.e. the first step *below* default that
+# DisplayDensityUtils offers in Settings. It was a menu option read as a value.
 #
 # Panel is dual sourced (BOE nt36536e / CSOT nt36536), 144 Hz. The bootloader
 # names the panel on the kernel command line
@@ -68,7 +86,7 @@ TARGET_BOOTLOADER_BOARD_NAME := sun
 # the prebuilt dtbo plus the vendor display HAL resolve it. Do NOT hardcode
 # panel specific values anywhere here, and do not key anything off
 # ro.boot.lcd_type: it reads "glossy", a surface finish, not a vendor.
-TARGET_SCREEN_DENSITY := 360
+TARGET_SCREEN_DENSITY := 320
 
 # Filesystem
 TARGET_FS_CONFIG_GEN := $(DEVICE_PATH)/configs/config.fs

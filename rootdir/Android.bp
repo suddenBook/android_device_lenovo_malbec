@@ -11,6 +11,18 @@
 //
 // TARGET_RECOVERY_FSTAB in BoardConfig.mk points at the same source file, which
 // is how recovery gets its copy.
+//
+// ⚠️ This module alone is NOT enough to boot. It only produces
+// /vendor/etc/fstab.qcom, and first-stage init cannot read that — /vendor is
+// exactly what it is about to mount. fs_mgr looks in
+//   /odm/etc/fstab.* /vendor/etc/fstab.* /system/etc/fstab.*
+//   /first_stage_ramdisk/system/etc/fstab.* /fstab.* /first_stage_ramdisk/fstab.*
+// (system/core/fs_mgr/libfstab/fstab.cpp, GetFstabPath), and on this device the
+// only one that exists that early is the vendor ramdisk copy — the stock
+// vendor_boot ramdisk carries first_stage_ramdisk/fstab.qcom for that reason.
+// There is no device-tree fallback either: /proc/device-tree/firmware/android/
+// does not exist on this unit (checked on the running device).
+// device.mk has the matching PRODUCT_COPY_FILES; the two go together.
 prebuilt_etc {
     name: "fstab.qcom",
     src: "etc/fstab.qcom",
