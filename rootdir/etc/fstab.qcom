@@ -34,7 +34,7 @@
 # The filesystem that contains the filesystem checker binary (typically /system) cannot
 # specify MF_CHECK, and must come before any filesystems that do specify MF_CHECK
 #
-# Taken from the stock vendor/etc/fstab.qcom with two entries removed:
+# Taken from the stock vendor/etc/fstab.qcom with five entries removed:
 #
 #   dataext      Lenovo extra data partition, mounted read-only with avb=vbmeta.
 #                Both slots read back as entirely zero on this unit, and this
@@ -43,9 +43,23 @@
 #   vm-bootsys   mounted at /product/vm-system for the Gunyah trusted-UI VM.
 #                The factory package ships no image for it, the partition is
 #                zero on device, and PixelOS builds no /product/vm-system.
+#   vm-persist   mounted at /mnt/product/vm-persist, the companion state
+#                partition for that same VM. With vm-bootsys gone it has no
+#                consumer left. It also has no label to mount under: the only
+#                mnt_vendor_vm_file definition in device/qcom/sepolicy_vndr is
+#                under sm8650/, and this device selects the sm8750 tree.
+#   lenovocust   ZUI channel customisation data — preinstall lists, operator
+#                configuration. Nothing in PixelOS reads it.
+#   blackbox     Lenovo crash-log collection. Nothing in PixelOS reads it.
 #
-# Everything else is stock, including the Lenovo-specific lenovocust and
-# blackbox mounts, which are formattable and carry no AVB requirement.
+# The last three are dropped for the same underlying reason: stock labels them
+# from vendor_sepolicy.cil, and this tree rebuilds vendor policy from source
+# instead of shipping that file, so the mount points would be unlabelled and
+# init's mounton would be denied. Keeping them would mean inventing SELinux
+# types for partitions nothing here uses. The partitions themselves are
+# untouched and the lines can come back with a label whenever there is a reason.
+#
+# Everything else is byte-for-byte stock.
 
 #<src>                                                 <mnt_point>            <type>  <mnt_flags and options>                            <fs_mgr_flags>
 system                                                  /system                ext4    ro,barrier=1,discard                                 wait,slotselect,avb=vbmeta_system,logical,first_stage_mount,avb_keys=/avb/q-gsi.avbpubkey:/avb/r-gsi.avbpubkey:/avb/s-gsi.avbpubkey:/avb/t-gsi.avbpubkey:/avb/u-gsi.avbpubkey:/avb/v-gsi.avbpubkey

@@ -6,6 +6,21 @@
 # Inherit from those products. Most specific first.
 $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit_only.mk)
 
+# full_base.mk is the Wi-Fi only sibling of the full_base_telephony.mk that phone
+# device trees (onyx included) inherit. It is not optional decoration: it is the
+# only path to the AOSP base product, via
+#
+#   full_base.mk -> generic_no_telephony.mk -> handheld_vendor.mk
+#                -> media_vendor.mk -> base_vendor.mk
+#
+# and base_vendor.mk is what contributes selinux_policy_nonsystem,
+# passwd_vendor/group_vendor, the fs_config tables, shell_and_utilities_vendor
+# and update_engine. Dropping full_base_telephony.mk without putting full_base.mk
+# in its place — which is what this file used to do — removes the whole base
+# product, not just telephony, and the resulting vendor image has no SELinux
+# policy at all.
+$(call inherit-product, $(SRC_TARGET_DIR)/product/full_base.mk)
+
 # Inherit some common PixelOS stuff.
 # malbec (TB390FU) is a Wi-Fi only tablet, so no telephony is inherited.
 $(call inherit-product, vendor/custom/config/common_full_tablet_wifionly.mk)

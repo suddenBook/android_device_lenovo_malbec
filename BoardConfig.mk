@@ -129,7 +129,16 @@ PRODUCT_COPY_FILES += \
     $(PREBUILT_PATH)/images/kernel:kernel
 
 # Kernel modules
-GKI_VERSION := 6.6.87-android15-8-gc2569c3b141c-ab13768703-4k
+# Deliberately no GKI_VERSION variable. It would only be right for one of the
+# three module sets: system_dlkm's 96 modules carry the vermagic
+# 6.6.87-android15-8-gc2569c3b141c-ab13768703-4k that matches the kernel banner,
+# while vendor_dlkm and vendor_boot were built against 6.6.92-android15-8 and
+# report "6.6.92-android15-8-maybe-dirty-4k". They all load anyway because every
+# module carries modversions, which makes the kernel's same_magic() compare only
+# the part after the version token, and that part is identical across all 718.
+# A single GKI_VERSION here invites someone to build a
+# /lib/modules/$(GKI_VERSION)/ install path out of it, which would be wrong for
+# this device in two different ways at once.
 DLKM_MODULES_PATH := $(PREBUILT_PATH)/modules/vendor_dlkm
 RAMDISK_MODULES_PATH := $(PREBUILT_PATH)/modules/vendor_boot
 SYSTEM_DLKM_MODULES_PATH := $(PREBUILT_PATH)/modules/system_dlkm
@@ -144,6 +153,15 @@ PRODUCT_COPY_FILES += \
 BOARD_VENDOR_KERNEL_MODULES := $(wildcard $(DLKM_MODULES_PATH)/*.ko)
 BOARD_VENDOR_KERNEL_MODULES_LOAD := $(patsubst %,$(DLKM_MODULES_PATH)/%,$(shell cat $(DLKM_MODULES_PATH)/modules.load))
 BOARD_VENDOR_KERNEL_MODULES_BLOCKLIST_FILE := $(DLKM_MODULES_PATH)/modules.blocklist
+
+# Stock's /vendor/bin/system_dlkm_modprobe.sh reads this second blocklist to keep
+# the GKI zram.ko out of the way of Qualcomm's zram_ext. Both modules ship here
+# (system_dlkm/zram.ko and vendor_dlkm/zram_ext.ko), so the file has to come
+# along or the wrong one loads. Neither the *.ko wildcard above nor
+# BOARD_VENDOR_KERNEL_MODULES_BLOCKLIST_FILE, which only installs
+# modules.blocklist, would pick it up.
+PRODUCT_COPY_FILES += \
+    $(DLKM_MODULES_PATH)/system_dlkm.modules.blocklist:$(TARGET_COPY_OUT_VENDOR_DLKM)/lib/modules/system_dlkm.modules.blocklist
 
 BOARD_VENDOR_RAMDISK_KERNEL_MODULES := $(wildcard $(RAMDISK_MODULES_PATH)/*.ko)
 BOARD_VENDOR_RAMDISK_KERNEL_MODULES_LOAD := $(patsubst %,$(RAMDISK_MODULES_PATH)/%,$(shell cat $(RAMDISK_MODULES_PATH)/modules.load))
@@ -214,7 +232,13 @@ TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
 TARGET_USERIMAGES_USE_F2FS := true
 
 # Sepolicy
-include device/lineage/sepolicy/libperfmgr/sepolicy.mk
+# No device/lineage/sepolicy/libperfmgr/sepolicy.mk: that adds policy for the
+# LineageOS libperfmgr power HAL, and this device keeps the stock QTI
+# vendor/bin/hw/android.hardware.power-service instead (it is in
+# proprietary-files.txt, and its VINTF fragment ships with it). onyx does use
+# libperfmgr, which is where the include came from; adopting it here would mean
+# a power/ directory with a powerhint.json and a mode-extension library, none of
+# which exist yet.
 include device/qcom/sepolicy_vndr/SEPolicy.mk
 BOARD_VENDOR_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/vendor
 # No SYSTEM_EXT_{PUBLIC,PRIVATE}_SEPOLICY_DIRS: nothing in this port adds

@@ -59,12 +59,70 @@ $(call inherit-product, packages/modules/Virtualization/apex/product_packages.mk
 $(call soong_config_set,rfs,mpss_firmware_symlink_target,modem_firmware)
 $(call inherit-product, hardware/qcom-caf/common/common.mk)
 
+# QTI HALs built from source rather than carried as blobs, matching onyx.
+# The sources are in this tree (hardware/qcom-caf, vendor/qcom/opensource), so
+# the stock binaries would only shadow them — and being compiled against an
+# older AIDL version, the resulting module ends up depending on two versions of
+# the same interface at once, which Soong rejects:
+#
+#   android.hardware.health-service.qti: depends on multiple versions of the
+#   same aidl_interface: android.hardware.health-V3-ndk-source,
+#   android.hardware.health-V4-ndk-source
+#
+# proprietary-files.txt excludes all of them.
+PRODUCT_PACKAGES += \
+    android.hardware.health-service.qti \
+    android.hardware.usb-service.qti \
+    android.hardware.usb.gadget-service.qti \
+    audiohalservice.qti \
+    vendor.qti.hardware.display.allocator-service \
+    vendor.qti.hardware.display.demura-service \
+    vendor.qti.qspa-service \
+    libsoundtriggerhal.qti
+
+# Sensors
+# The multihal service and its NDK bridge are AOSP's; only the sub-HALs listed
+# in the stock /vendor/etc/sensors/hals.conf are device specific, and those stay
+# as blobs. onyx does the same — it extracts no sensors service blob at all.
+PRODUCT_PACKAGES += \
+    android.hardware.sensors-service.multihal \
+    sensors.dynamic_sensor_hal
+
+# DRM
+# clearkey is AOSP's reference plugin, not a device blob.
+PRODUCT_PACKAGES += \
+    android.hardware.drm-service.clearkey
+
 # Device characteristics
 # Not set anywhere in the inherited tablet config, but stock reports
 # ro.build.characteristics=tablet and resource selection depends on it.
 PRODUCT_CHARACTERISTICS := tablet
 
+# Partitions
+# BoardConfig.mk describes the super partition and its group, but the product
+# side has to opt in as well: PRODUCT_BUILD_SUPER_PARTITION defaults to this, and
+# without it no super.img is assembled.
+PRODUCT_USE_DYNAMIC_PARTITIONS := true
+
+# fstab.qcom mounts /vendor/firmware_mnt, /vendor/dsp and /vendor/bt_firmware.
+# Stock ships those three as empty directories and proprietary-files.txt cannot
+# carry an empty directory, so nothing would create them and all three mounts
+# would fail. These modules exist for exactly that
+# (hardware/qcom-caf/common/Android.bp); onyx pulls in the same set.
+PRODUCT_PACKAGES += \
+    vendor_bt_firmware_mountpoint \
+    vendor_dsp_mountpoint \
+    vendor_firmware_mnt_mountpoint
+
 # A/B
+# AB_OTA_UPDATER is set in BoardConfig.mk, but the updater itself is a product
+# package. Without these three the build still produces an OTA zip and the device
+# has nothing able to apply it.
+PRODUCT_PACKAGES += \
+    update_engine \
+    update_engine_sideload \
+    update_verifier
+
 AB_OTA_POSTINSTALL_CONFIG += \
     RUN_POSTINSTALL_system=true \
     POSTINSTALL_PATH_system=system/bin/otapreopt_script \
@@ -116,6 +174,12 @@ PRODUCT_COPY_FILES += \
 # tree owns it and proprietary-files.txt skips the stock copy.
 PRODUCT_PACKAGES += \
     fstab.qcom
+
+# Overlays
+# Framework RRO. Values are measured from the stock ROM's dumpsys display, not
+# copied from another device — see the comments in its config.xml.
+PRODUCT_PACKAGES += \
+    FrameworkOverlayMalbec
 
 # Screen
 TARGET_SCREEN_HEIGHT := 3504

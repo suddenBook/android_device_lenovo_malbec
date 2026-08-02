@@ -66,16 +66,18 @@ binder_use(hal_lenovoperformance_default)
 add_service(hal_lenovoperformance_default, hal_lenovoperformance_service)
 
 # vendor.lenovo.hardware.touchscreen V5 — ITouchscreen/default
-# Owner of the /proc/pen_* and /proc/folio_case_mode knobs. Those nodes carry
-# the plain "proc" label on a stock device — checked with ls -Z — so no genfs
-# entry is needed for them, only the ability to write proc files.
+# Owner of the /proc/pen_* and /proc/folio_case_mode knobs. Stock leaves those
+# nodes with the plain "proc" label — checked with ls -Z — and grants this
+# domain no proc access at all, which cannot be right if the HAL is to read
+# them. Rather than widen it to all of proc, genfs_contexts gives the four
+# nodes their own type and the grant below names only that.
 type hal_lenovotouchscreen_default, domain;
 type hal_lenovotouchscreen_default_exec, exec_type, vendor_file_type, file_type;
 init_daemon_domain(hal_lenovotouchscreen_default)
 binder_use(hal_lenovotouchscreen_default)
 add_service(hal_lenovotouchscreen_default, hal_lenovotouchscreen_service)
 allow hal_lenovotouchscreen_default lenovo_device:chr_file rw_file_perms;
-allow hal_lenovotouchscreen_default proc:file rw_file_perms;
+allow hal_lenovotouchscreen_default proc_lenovo_pen:file rw_file_perms;
 
 # vendor.lenovo.hardware.usb V2 — IUsb/default
 type hal_lenovousb_default, domain;

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+
+     Every value here was read off the running stock ROM, from
+     work/device_dump/display/dumpsys-display.txt, rather than copied from
+     another device. The relevant line is the DisplayDeviceInfo for
+     "Built-in Screen".
+
+     Nothing panel specific belongs in this file. The panel is dual sourced
+     (BOE nt36536e / CSOT nt36536) and is selected by the bootloader on the
+     kernel command line, resolved inside the prebuilt dtbo. Both suppliers run
+     the same mode list, so these values hold for either one.
+-->
+<resources>
+    <!-- The panel runs 30/60/90/120/144. dumpsys reports defaultModeId 2, and
+         mode 2 is fps=144.00002 — so stock's default peak is 144, not 120 as
+         an earlier revision of PROGRESS.md claimed. There is no file anywhere
+         in the workspace that calls 120 a default.
+
+         config_defaultRefreshRate stays 60: that is the rate the display
+         settles to when nothing is driving it (dumpsys shows renderFrameRate
+         60.000004 at idle), while the peak is what the variable refresh rate
+         path is allowed to climb to. -->
+    <integer name="config_defaultPeakRefreshRate">144</integer>
+    <integer name="config_defaultRefreshRate">60</integer>
+
+    <!-- brightnessMinimum 0.0 / brightnessMaximum 1.0 /
+         brightnessDefault 0.39763778 / brightnessDim 0.05 -->
+    <item name="config_screenBrightnessSettingMinimumFloat" format="float" type="dimen">0.0</item>
+    <item name="config_screenBrightnessSettingMaximumFloat" format="float" type="dimen">1.0</item>
+    <item name="config_screenBrightnessSettingDefaultFloat" format="float" type="dimen">0.39763778</item>
+    <item name="config_screenBrightnessDozeFloat" format="float" type="dimen">0.05</item>
+
+    <!-- The panel has no cutout; dumpsys reports only rounded corners
+         (radius 38 at all four positions). Declaring an empty cutout keeps
+         SystemUI from inheriting a default it would otherwise guess at. -->
+    <string name="config_mainBuiltInDisplayCutout"></string>
+
+    <!-- The device is a tablet with no notification LED and no physical
+         navigation keys; both are AOSP defaults already, so they are not
+         restated here. Add entries only when the stock dump disagrees with
+         AOSP, so this file stays a record of measured differences rather than
+         a copy of framework-res. -->
+</resources>

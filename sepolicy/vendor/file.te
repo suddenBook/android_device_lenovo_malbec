@@ -3,3 +3,16 @@
 # type rather than leaving it as plain sysfs, and the keyboard HAL is the only
 # thing that reads and writes it.
 type sysfs_kb, fs_type, sysfs_type;
+
+# The stylus and folio knobs the Lenovo touchscreen HAL drives:
+#   /proc/pen_type          which stylus generation is attached
+#   /proc/pen_attached      attach/detach state
+#   /proc/pen_wakeup_mode   whether a stylus event may wake the panel
+#   /proc/folio_case_mode   folio open/closed, mirrored from the keyboard
+#
+# Stock leaves these as plain "proc" and simply lets its HAL write any proc
+# file. Giving them a type of their own means the HAL can be granted exactly
+# these four and nothing else, and it also makes them reachable from other
+# domains later (a Settings-side stylus toggle, say) without handing that
+# domain the whole of /proc.
+type proc_lenovo_pen, fs_type, proc_type;

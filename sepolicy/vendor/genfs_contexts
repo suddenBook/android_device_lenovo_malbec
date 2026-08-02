@@ -4,3 +4,11 @@
 # specific wakeup entry has to come after the directory entry.
 genfscon sysfs /devices/platform/soc/soc:lenovo_kb/            u:object_r:sysfs_kb:s0
 genfscon sysfs /devices/platform/soc/soc:lenovo_kb/wakeup      u:object_r:sysfs_wakeup:s0
+
+# The stylus and folio knobs. Stock leaves these as plain "proc" and lets its
+# touchscreen HAL write any proc file; labelling them lets that HAL be granted
+# these four alone (see hal_lenovo.te).
+genfscon proc /pen_type                                        u:object_r:proc_lenovo_pen:s0
+genfscon proc /pen_attached                                    u:object_r:proc_lenovo_pen:s0
+genfscon proc /pen_wakeup_mode                                 u:object_r:proc_lenovo_pen:s0
+genfscon proc /folio_case_mode                                 u:object_r:proc_lenovo_pen:s0
