@@ -131,7 +131,6 @@ VENDOR_LIB_RENAMES = {
     'libaudio_aidl_conversion_common_ndk': 'libaudio_aidl_conversion_common_ndk_vendor',
     'libaudioaidlcommon': 'libaudioaidlcommon_vendor',
     'libaudioroute': 'libaudioroute_vendor',
-    'libaudioutils': 'libaudioutils_vendor',
     'libavservices_minijail': 'libavservices_minijail_vendor',
     'libbcinfo': 'libbcinfo_vendor',
     'libbinderdebug': 'libbinderdebug_vendor',

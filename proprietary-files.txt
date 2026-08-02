@@ -992,7 +992,6 @@ vendor/lib64/libaudio_aidl_conversion_common_ndk.so;MODULE_SUFFIX=_vendor
 vendor/lib64/libaudio_log_utils.so
 vendor/lib64/libaudioaidlcommon.so;MODULE_SUFFIX=_vendor
 vendor/lib64/libaudioroute.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libaudioutils.so;MODULE_SUFFIX=_vendor
 vendor/lib64/libbluetooth_audio_session_aidl_qti.so
 vendor/lib64/libbluetooth_audio_session_qti.so
 vendor/lib64/libbluetooth_audio_session_qti_2_1.so
