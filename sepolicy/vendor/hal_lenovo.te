@@ -78,6 +78,7 @@ binder_use(hal_lenovotouchscreen_default)
 add_service(hal_lenovotouchscreen_default, hal_lenovotouchscreen_service)
 allow hal_lenovotouchscreen_default lenovo_device:chr_file rw_file_perms;
 allow hal_lenovotouchscreen_default proc_lenovo_pen:file rw_file_perms;
+allow hal_lenovotouchscreen_default proc_lenovo_touch:file rw_file_perms;
 
 # vendor.lenovo.hardware.usb V2 — IUsb/default
 type hal_lenovousb_default, domain;

@@ -29,6 +29,13 @@ PRODUCT_PACKAGES += \
     malbec_wlan_mac_qca6750_symlink \
     malbec_wlan_mac_wcn7750_symlink \
 
+# CneApp expects libvndfwk_detect_jni.qti_vendor.so under its own lib/arm64/,
+# where stock puts a symlink to /vendor/lib64. Without this the app hits an
+# UnsatisfiedLinkError. The module also carries required: on the library itself,
+# which is not otherwise installed here.
+PRODUCT_PACKAGES += \
+    CneApp.libvndfwk_detect_jni.qti_vendor_symlink
+
 # Generic ramdisk allow list
 $(call inherit-product, $(SRC_TARGET_DIR)/product/generic_ramdisk.mk)
 

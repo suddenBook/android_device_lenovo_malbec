@@ -12,3 +12,13 @@ genfscon proc /pen_type                                        u:object_r:proc_l
 genfscon proc /pen_attached                                    u:object_r:proc_lenovo_pen:s0
 genfscon proc /pen_wakeup_mode                                 u:object_r:proc_lenovo_pen:s0
 genfscon proc /folio_case_mode                                 u:object_r:proc_lenovo_pen:s0
+
+# The other eight /proc nodes the touchscreen HAL's .rc chowns. See file.te.
+genfscon proc /panel_direction                                 u:object_r:proc_lenovo_touch:s0
+genfscon proc /game_mode                                       u:object_r:proc_lenovo_touch:s0
+genfscon proc /game_edge                                       u:object_r:proc_lenovo_touch:s0
+genfscon proc /edge_grid_zone                                  u:object_r:proc_lenovo_touch:s0
+genfscon proc /report_threshold                                u:object_r:proc_lenovo_touch:s0
+genfscon proc /HighReportRate                                  u:object_r:proc_lenovo_touch:s0
+genfscon proc /haptics                                         u:object_r:proc_lenovo_touch:s0
+genfscon proc /gesture_control                                 u:object_r:proc_lenovo_touch:s0

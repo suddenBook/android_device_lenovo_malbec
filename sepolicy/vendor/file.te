@@ -16,3 +16,29 @@ type sysfs_kb, fs_type, sysfs_type;
 # domains later (a Settings-side stylus toggle, say) without handing that
 # domain the whole of /proc.
 type proc_lenovo_pen, fs_type, proc_type;
+
+# The touch-tuning knobs the same HAL drives. Split from proc_lenovo_pen only
+# because they are a different feature area, not a different privilege level:
+#
+#   /proc/panel_direction   panel rotation the touch driver maps coordinates to
+#   /proc/game_mode         low-latency touch mode
+#   /proc/game_edge         per-edge rejection while in game mode
+#   /proc/edge_grid_zone    grip/edge rejection zones
+#   /proc/report_threshold  touch report threshold
+#   /proc/HighReportRate    high touch report rate
+#   /proc/haptics           touch-driven haptics passthrough
+#   /proc/gesture_control   gesture wake
+#
+# All eight come from vendor/etc/init/vendor.lenovo.hardware.touchscreen-service.rc,
+# which chowns twelve /proc nodes to system:system -- these eight plus the four
+# pen/folio ones above. Only the pen four were labelled here before, so the
+# other eight stayed u:object_r:proc:s0 and every access was denied: no stylus
+# tuning, no game mode, no edge rejection, no report-rate control, and no panel
+# rotation for touch. Stock gets away with plain "proc" because its policy
+# grants hal_lenovotouchscreen_default proc:file outright.
+#
+# Checked on the running device: eleven of the twelve exist and all eleven are
+# labelled u:object_r:proc:s0. /proc/gesture_control is not created on this unit
+# -- the .rc chowns it for another SKU. Its genfscon entry below is harmless
+# (genfscon on an absent path is inert) and keeps the set matching the .rc.
+type proc_lenovo_touch, fs_type, proc_type;

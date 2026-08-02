@@ -12,6 +12,28 @@
 ro.surface_flinger.has_HDR_display=true
 ro.surface_flinger.has_wide_color_display=true
 ro.surface_flinger.primary_display_orientation=ORIENTATION_270
+# These two go together and stock has them on adjacent lines
+# (vendor/build.prop:173,174). Without the second one the first is dead code
+# and the device boots sideways:
+#
+#   SurfaceFlinger.cpp:3538-3552 -- unless mIgnoreHwcPhysicalDisplayOrientation
+#   is set, SF takes the composer's value and returns before it ever reaches the
+#   primary_display_orientation branch at :3554.
+#   AidlComposerHal.cpp:294-303 -- isSupported(PhysicalDisplayOrientation) is
+#   unconditionally true.
+#   hardware/qcom-caf/sm8750/display/hal/composer/AidlComposerClient.cpp:585-596
+#   -- QTI's getDisplayPhysicalOrientation() is a stub that returns Error::None
+#   *without writing the out parameter*, so SF's switch falls to
+#   default: return ui::ROTATION_0.
+#
+# And this tree builds that composer from source, so the stub is what runs.
+debug.sf.ignore_hwc_physical_display_orientation=true
+
+# Buffer latching. Both read off the running stock ROM rather than off
+# system/build.prop, which carries a stale latch_unsignaled=1 that the vendor
+# copy overrides. See the note in system.prop.
+debug.sf.auto_latch_unsignaled=1
+debug.sf.latch_unsignaled=0
 
 ro.vendor.display.cabl=2
 ro.vendor.display.idle_time=0

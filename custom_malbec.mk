@@ -25,10 +25,14 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base.mk)
 # malbec (TB390FU) is a Wi-Fi only tablet, so no telephony is inherited.
 $(call inherit-product, vendor/custom/config/common_full_tablet_wifionly.mk)
 
-# Panel is 2190x3504 (confirmed by `wm size`; the Novatek digitizer reports a
-# coordinate space of exactly 10x that, 21900x35040). Stock physical density is
-# 360 with an override density of 306.
-TARGET_SCREEN_WIDTH := 2190
+# TARGET_SCREEN_WIDTH/HEIGHT live in device.mk, which sets both. This file used
+# to set WIDTH again, with a comment claiming stock ships "an override density
+# of 306". It does not: 306 appears in work/device_dump/display/wm.txt only
+# because a Settings > Display size override happened to be active when that
+# dump was taken. On the device now, `wm density` prints no Override line and
+# both display_density_forced settings read null. 306 is exactly 360 x 0.85,
+# the first step below default that DisplayDensityUtils offers. See the density
+# discussion in BoardConfig.mk.
 
 # Inherit from malbec device
 $(call inherit-product, device/lenovo/malbec/device.mk)
@@ -39,13 +43,22 @@ PRODUCT_MANUFACTURER := Lenovo
 PRODUCT_BRAND := Lenovo
 PRODUCT_MODEL := TB390FU
 
-PRODUCT_SYSTEM_NAME := TB390FU_EEA
-PRODUCT_SYSTEM_DEVICE := TB390FU
-
-PRODUCT_BUILD_PROP_OVERRIDES += \
-    BuildDesc="TB390FU-user 16 BQ2A.250610.001-BP2A.250605.031.A3 18.0.10.335_260618 release-keys" \
-    BuildFingerprint=Lenovo/TB390FU_EEA/TB390FU:16/BQ2A.250610.001-BP2A.250605.031.A3/ZUI_18.0.10.335_260618_ROW:user/release-keys \
-    DeviceName=$(PRODUCT_SYSTEM_DEVICE) \
-    DeviceProduct=$(PRODUCT_SYSTEM_NAME)
-
+# No PRODUCT_SYSTEM_NAME / PRODUCT_SYSTEM_DEVICE / PRODUCT_BUILD_PROP_OVERRIDES.
+#
+# Those four lines used to restate the stock ZUI fingerprint
+# (Lenovo/TB390FU_EEA/TB390FU:16/.../ZUI_18.0.10.335_260618_ROW:user/release-keys)
+# so the build would report itself as the factory ROM. Removed deliberately:
+#
+#   - It buys nothing for Widevine. L1 depends on the keybox provisioned in
+#     TrustZone and on the widevine blob, neither of which reads
+#     ro.build.fingerprint.
+#   - It buys nothing for Play Integrity beyond the BASIC verdict, and
+#     DEVICE/STRONG cannot pass on an unlocked bootloader regardless.
+#   - The build system otherwise derives a consistent fingerprint from
+#     PRODUCT_NAME/PRODUCT_DEVICE for every partition, which is what a port
+#     should report.
+#
+# Note that this is a deliberate divergence from onyx, which does carry the
+# equivalent block. Reinstating it is four lines if a concrete, measured reason
+# turns up -- record the measurement in the commit message if so.
 PRODUCT_GMS_CLIENTID_BASE := android-lenovo

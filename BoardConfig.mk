@@ -5,8 +5,13 @@
 
 DEVICE_PATH := device/lenovo/malbec
 
-BUILD_BROKEN_DUP_RULES := true
-BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES := true
+# ⚠️ Do not add BUILD_BROKEN_* here without proving the build needs it.
+# BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES was set for the system_dlkm .ko
+# copy, which is now BOARD_SYSTEM_KERNEL_MODULES instead; nothing else in
+# PRODUCT_COPY_FILES is an ELF.
+# BUILD_BROKEN_DUP_RULES downgrades a duplicate-rule error to a warning, and
+# `m nothing` currently reports zero "overriding commands" -- keeping it would
+# only hide the next regression.
 
 # A/B
 AB_OTA_UPDATER := true
@@ -137,10 +142,29 @@ BOARD_BOOTCONFIG := \
 # The device ships a stock Google GKI image; nothing is built from source.
 PREBUILT_PATH := $(DEVICE_PATH)-kernel
 TARGET_NO_KERNEL_OVERRIDE := true
-# No TARGET_KERNEL_SOURCE: the kernel repo carries images and modules only, and
-# nothing in this tree is compiled against kernel UAPI headers. Pointing the
-# variable at a directory that does not exist is worse than leaving it unset —
-# add a kernel-headers/ to the kernel repo first if a HAL ever needs it.
+# ⚠️ This used to say "no TARGET_KERNEL_SOURCE, because nothing in this tree is
+# compiled against kernel UAPI headers". The second half was wrong, and it cost
+# a build: vendor/lineage/build/soong's generated_kernel_includes is declared
+# unconditionally (Android.bp:21) and 69 modules in this product depend on it —
+# the entire QTI display stack (libsdmcore, libsdedrm, libdrmutils, libsdmclient,
+# the composer service, gralloc), plus libar-pal, audio.primary.sun,
+# hwcomposer.qcom and ipacm. libdrmutils literally does
+# #include <display/drm/sde_drm.h>, and that header exists nowhere else in the
+# tree. The genrule runs `make -C $(TARGET_KERNEL_SOURCE) headers_install`, which
+# with the variable unset defaults to kernel/lenovo/malbec and fails.
+#
+# m nothing cannot catch this class: it generates the build graph but does not
+# execute genrules. To pre-flight it, check that every `-C <dir>` in
+# out/soong/.intermediates/**/*.sbox.textproto points at a directory that exists.
+#
+# A prebuilt-kernel device does not skip this variable, it points it at a
+# pre-extracted UAPI header set with a stub Makefile. See the provenance and the
+# KMI-generation reasoning in kernel-headers/Makefile.
+#
+# Do not switch to TARGET_PREBUILT_KERNEL_HEADERS instead: build/soong/cc/cc.go
+# reads that one from the process environment, not from a Make variable, so it
+# would silently fall back to the broken path on a clean checkout.
+TARGET_KERNEL_SOURCE := $(PREBUILT_PATH)/kernel-headers
 BOARD_PREBUILT_DTBIMAGE_DIR := $(PREBUILT_PATH)/images/dtbs/
 BOARD_PREBUILT_DTBOIMAGE := $(PREBUILT_PATH)/images/dtbo.img
 PRODUCT_COPY_FILES += \
@@ -165,8 +189,34 @@ SYSTEM_DLKM_MODULES_PATH := $(PREBUILT_PATH)/modules/system_dlkm
 # modules flat under /lib/modules, not under /lib/modules/$(GKI_VERSION).
 # Verified against the factory image; keep this layout or modprobe will not find
 # them at first stage.
-PRODUCT_COPY_FILES += \
-    $(call find-copy-subdir-files,*,$(SYSTEM_DLKM_MODULES_PATH)/,$(TARGET_COPY_OUT_SYSTEM_DLKM)/lib/modules/)
+#
+# ⚠️ This used to be a PRODUCT_COPY_FILES of the whole directory, which looked
+# equivalent and was not. BOARD_SYSTEM_KERNEL_MODULES is also what
+# build/make/core/Makefile:725 hands to the *vendor_dlkm* depmod run as its
+# extra-modules argument, so with it unset depmod only sees the 300 vendor
+# modules and the regenerated vendor_dlkm/lib/modules/modules.dep loses every
+# cross-partition dependency. Stock's has 107 of them, covering 11 vendor
+# modules that genuinely depend on GKI modules -- including
+# qca_cld3_wcn7750 (the Wi-Fi driver on this Wi-Fi-only tablet),
+# cfg80211 -> rfkill, btpower, btfm_slim_codec and zram_ext -> zsmalloc.
+# It is masked at boot today because init.qti.kernel.rc:54 runs
+# `exec_start gki.modprobe` first, which loads all of system_dlkm blindly, but
+# it is not masked in recovery or for any on-demand/modalias load.
+#
+# The AOSP SYSTEM path matches stock on all three counts that matter here:
+# BOARD_KERNEL_MODULE_DIRS is "top", so _kver is empty and the modules install
+# flat (Makefile:570-599); the strip staging dir argument is empty, so the
+# modules are not stripped and their signatures survive; and
+# BOARD_SYSTEM_KERNEL_MODULES_LOAD defaults to false (Makefile:708-710), which
+# produces an empty modules.load -- exactly what stock ships, and irrelevant
+# either way because /vendor/bin/system_dlkm_modprobe.sh globs *.ko rather than
+# reading modules.load.
+#
+# Dropping the PRODUCT_COPY_FILES form also removes the only ELF prebuilt in
+# PRODUCT_COPY_FILES, hence BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES is gone
+# from the top of this file. (The prebuilt kernel is a raw ARM64 boot Image, not
+# an ELF.)
+BOARD_SYSTEM_KERNEL_MODULES := $(wildcard $(SYSTEM_DLKM_MODULES_PATH)/*.ko)
 
 BOARD_VENDOR_KERNEL_MODULES := $(wildcard $(DLKM_MODULES_PATH)/*.ko)
 BOARD_VENDOR_KERNEL_MODULES_LOAD := $(patsubst %,$(DLKM_MODULES_PATH)/%,$(shell cat $(DLKM_MODULES_PATH)/modules.load))
@@ -295,7 +345,17 @@ BOARD_AVB_RECOVERY_ROLLBACK_INDEX_LOCATION := 1
 # system_ext and product with avb=vbmeta_system, so the chained image has to
 # exist — without these four lines no vbmeta_system.img is produced at all and
 # those three partitions have nothing to verify against.
-BOARD_AVB_VBMETA_SYSTEM := system system_dlkm system_ext product
+# ⚠️ system_dlkm was in this list and does not belong. Checked against the
+# factory images with avbtool info_image:
+#   vbmeta.img        chains boot/recovery/vbmeta_system, and carries top-level
+#                     hashtree descriptors for odm, system_dlkm, vendor,
+#                     vendor_dlkm
+#   vbmeta_system.img carries pvmfw, product, system, system_ext -- no system_dlkm
+# and rootdir/etc/fstab.qcom:70 mounts system_dlkm with avb=vbmeta, i.e. against
+# the top-level image. Listing it here moves its descriptor into the chained
+# image (Makefile:4973-4984 excludes chained members from vbmeta.img), which
+# disagrees with both stock and our own fstab.
+BOARD_AVB_VBMETA_SYSTEM := system system_ext product
 BOARD_AVB_VBMETA_SYSTEM_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
 BOARD_AVB_VBMETA_SYSTEM_ALGORITHM := SHA256_RSA2048
 BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX := $(PLATFORM_SECURITY_PATCH_TIMESTAMP)

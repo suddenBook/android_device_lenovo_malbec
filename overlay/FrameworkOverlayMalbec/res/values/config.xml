@@ -14,17 +14,34 @@
      the same mode list, so these values hold for either one.
 -->
 <resources>
-    <!-- The panel runs 30/60/90/120/144. dumpsys reports defaultModeId 2, and
-         mode 2 is fps=144.00002 — so stock's default peak is 144, not 120 as
-         an earlier revision of PROGRESS.md claimed. There is no file anywhere
-         in the workspace that calls 120 a default.
+    <!-- The panel runs 30/60/90/120/144.
 
-         config_defaultRefreshRate stays 60: that is the rate the display
-         settles to when nothing is driving it (dumpsys shows renderFrameRate
-         60.000004 at idle), while the peak is what the variable refresh rate
-         path is allowed to climb to. -->
+         ⚠️ config_defaultRefreshRate was 60 here, on the reasoning that 60 is
+         "the rate the display settles to when nothing is driving it". That
+         reasoning was inferred from an idle renderFrameRate reading rather than
+         read off the resource, and it is wrong. DisplayModeDirector on the
+         running stock ROM reports
+
+             mDefaultRefreshRate: 144.0
+             mDefaultPeakRefreshRate: 240.0
+
+         mDefaultRefreshRate is R.integer.config_defaultRefreshRate, so stock
+         sets it to 144 (via FrameworksResTarget_Vendor.apk, the vendor RRO this
+         port replaces). At 60 it posts a PRIORITY_DEFAULT_RENDER_FRAME_RATE
+         vote (DisplayModeDirector.java:1225-1227) that caps the render frame
+         rate globally at 60 — on a 144 Hz panel.
+
+         config_defaultPeakRefreshRate stays 144: it is a ceiling, and the panel
+         cannot exceed it anyway, so 144 and stock's 240 are equivalent here. -->
     <integer name="config_defaultPeakRefreshRate">144</integer>
-    <integer name="config_defaultRefreshRate">60</integer>
+    <integer name="config_defaultRefreshRate">144</integer>
+
+    <!-- Rounded display corners, 45 px at all four positions, measured with
+         dumpsys display on the running stock ROM. Stock gets this from the same
+         vendor RRO as config_defaultRefreshRate above; ro.sf.rounded_corner_radius
+         is unset on this device, so without an override here SystemUI would not
+         mask the corners at all. -->
+    <dimen name="rounded_corner_radius">45px</dimen>
 
     <!-- brightnessMinimum 0.0 / brightnessMaximum 1.0 /
          brightnessDefault 0.39763778 -->
@@ -41,10 +58,11 @@
          values/config.xml: doze 0.0, dim 0.05), so neither needs an override
          and writing the dim value into the doze resource only made AOD wrong. -->
 
-    <!-- The panel has no cutout; dumpsys reports only rounded corners
-         (radius 38 at all four positions). Declaring an empty cutout keeps
-         SystemUI from inheriting a default it would otherwise guess at. -->
-    <string name="config_mainBuiltInDisplayCutout"></string>
+    <!-- No config_mainBuiltInDisplayCutout override: the panel has no cutout and
+         AOSP's default for that resource is already the empty string
+         (frameworks/base/core/res/res/values/config.xml). Restating it added
+         nothing, and this file's stated policy is to record measured
+         differences, not to copy framework-res. -->
 
     <!-- The device is a tablet with no notification LED and no physical
          navigation keys; both are AOSP defaults already, so they are not

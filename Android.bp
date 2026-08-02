@@ -101,5 +101,9 @@ install_symlink {
     symlink_target: "/mnt/vendor/persist/wcn7750/wlan_mac.bin",
 }
 
-// CneApp loads this from its own lib directory; stock points it at the copy in
-// /vendor/lib64 rather than shipping it twice.
+// CneApp loads libvndfwk_detect_jni.qti_vendor.so from its own lib directory,
+// and stock points that at the copy in /vendor/lib64 rather than shipping it
+// twice. No module for it here: upstream already has one that does exactly
+// this, and it also pulls in the library itself --
+// vendor/qcom/opensource/core-utils-vendor/fwk-detect/Android.bp:56-62,
+// CneApp.libvndfwk_detect_jni.qti_vendor_symlink. device.mk lists it.
