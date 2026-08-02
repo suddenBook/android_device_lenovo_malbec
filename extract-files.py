@@ -46,14 +46,20 @@ lib_fixups: lib_fixups_user_type = {
         'liblx-osal',
         'libvui_intf',
     ): lib_fixup_remove,
-    # These ship on both partitions; the vendor copy needs the suffix so the
-    # two do not collide.
+    # These four ship on both vendor and system_ext, so the vendor copy takes a
+    # suffixed module name and dependants on vendor get pointed at it.
+    #
+    # This only rewrites *dependency* names — extract_utils applies lib_fixups to
+    # the dependency list and nothing else (makefiles.py, run_libs_fixup on deps).
+    # The matching module has to be created by tagging the vendor entry with
+    # ;MODULE_SUFFIX=_vendor in proprietary-files.txt, which
+    # work/scripts/12-gen-proprietary-files.py does automatically for exactly the
+    # libraries that appear on two partitions. Listing a library here that only
+    # exists on vendor produces a dependency on a module nobody defines, which is
+    # what happened with diaghal-V1-ndk, uceaidlservice and ImsRtpService before.
     (
-        'vendor.qti.diaghal-V1-ndk',
         'vendor.qti.diaghal@1.0',
         'vendor.qti.hardware.wifidisplaysession_aidl-V1-ndk',
-        'vendor.qti.ims.uceaidlservice-V1-ndk',
-        'vendor.qti.ImsRtpService-V1-ndk',
         'vendor.qti.qccsyshal_aidl-V1-ndk',
         'vendor.qti.qccvndhal_aidl-V1-ndk',
     ): lib_fixup_vendor_suffix,
