@@ -78,8 +78,8 @@
          SystemUI creates a NavigationBar at all. false means no Home/Back/
          Recents AND no edge-back gesture handler.
 
-         The device really does have no navigation keys -- `getevent -pl` finds
-         only gpio-keys VOLUMEUP, pmic_resin VOLUMEDOWN and pmic_pwrkey POWER --
+         The device really does have no navigation keys — `getevent -pl` finds
+         only gpio-keys VOLUMEUP, pmic_resin VOLUMEDOWN and pmic_pwrkey POWER —
          which is precisely why the bar has to be turned ON.
 
          Stock sets it true from product/overlay/LgsiFrameworksOverlay.apk, and
