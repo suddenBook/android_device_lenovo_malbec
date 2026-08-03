@@ -193,27 +193,44 @@ BOARD_BOOTCONFIG := \
     androidboot.hypervisor.protected_vm.supported=true \
     androidboot.vendor.qspa=true
 
-# ⚠️ BRING-UP ONLY — remove before the second flash, and definitely before
-# anything is proposed upstream. work/scripts/35-upstream-readiness.py fails on
-# this line.
+# ⚠️ BRING-UP ONLY. Gated on MALBEC_BRINGUP, which work/scripts/40-build.sh
+# exports and 35-upstream-readiness.py checks.
 #
-# Why it is here for the first boot and not "cheating": an audit of the built
-# image found 17 vendor service binaries that land on the catch-all
-# u:object_r:vendor_file:s0 with no matching *_exec type, because their
-# file_contexts entries were never written. Under enforcing, init cannot make
-# the domain transition and those services simply never start — silently, with
-# one avc denial each buried in a log we may not even be able to reach. Under
-# permissive they all start and every denial is logged, so a single boot yields
-# the complete list instead of one entry per flash cycle.
+# Note the default is ON (?= true), i.e. opt-OUT. That is deliberate: as an
+# opt-in switch, a bare `m` would silently produce an enforcing build with no
+# adb — which is exactly how you lose the one flash attempt you get with the
+# device on the other side of the country. Flip the default to false only after
+# a boot has actually succeeded.
 #
-# This is honest about what it does and does not prove: booting permissive does
-# NOT demonstrate the device boots enforcing. They are two separate milestones.
-# Flash 1 = permissive, collect denials, write policy. Flash 2 = enforcing, and
-# that is the one that counts.
+# ⚠️ The rationale that used to be here was WRONG, and it is worth writing down
+# because it would have wasted the whole first flash:
+#
+#   "17 vendor services land on the catch-all vendor_file with no *_exec type;
+#    under enforcing init cannot transition so they never start; under permissive
+#    they all start and every denial is logged, so one boot yields the full list."
+#
+# The first two clauses are right. The third is not. system/core/init/service.cpp
+# :102-113 — when the computed context equals init's own, init returns an error
+# ONLY if enforcing; in permissive it just LOG(ERROR)s and carries on. So those
+# services do start, but as u:r:init:s0. init's domain is broad enough that most
+# of what they do is simply *allowed*, so the denials do not merely get
+# misattributed — for the most part they never happen at all. A permissive boot
+# in that state produces no per-domain rule information for precisely the
+# services it was set up to diagnose.
+#
+# The order therefore has to be: label first (sepolicy/vendor/, done), then boot.
+# Permissive is still worth keeping for flash 1, but as a safety net for whatever
+# we missed — not as the discovery mechanism.
+#
+# What it does and does not prove is unchanged: booting permissive does NOT
+# demonstrate the device boots enforcing. Two separate milestones.
 #
 # selinux.cpp:102-118 reads androidboot.selinux from bootconfig, and honours it
 # only when ALLOW_PERMISSIVE_SELINUX is compiled in, which it is on userdebug.
+MALBEC_BRINGUP ?= true
+ifeq ($(MALBEC_BRINGUP),true)
 BOARD_BOOTCONFIG += androidboot.selinux=permissive
+endif
 
 # Kernel (prebuilt)
 # The device ships a stock Google GKI image; nothing is built from source.
@@ -374,6 +391,19 @@ TARGET_VENDOR_PROP += $(DEVICE_PATH)/properties/vendor.prop
 BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := true
 TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/rootdir/etc/fstab.qcom
 TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
+
+# Flashing
+# Ship our own fastboot-info.txt instead of the one the build synthesises at
+# build/make/core/Makefile:5929-5933. The generated one flashes recovery three
+# lines before `reboot fastboot`, i.e. it overwrites fastbootd and then requires
+# fastbootd. That is what bricked this device on the first flash attempt.
+# See the file itself for the full reasoning and for why `flashall` is not the
+# recommended path on this device at all (work/scripts/42-flash.sh is).
+TARGET_BOARD_FASTBOOT_INFO_FILE := $(DEVICE_PATH)/fastboot-info.txt
+
+# Filesystems
+# Not a recovery setting despite where it used to sit: /data and /metadata are
+# both f2fs in rootdir/etc/fstab.qcom, matching stock.
 TARGET_USERIMAGES_USE_F2FS := true
 
 # Sepolicy
@@ -403,10 +433,32 @@ VENDOR_SECURITY_PATCH := 2026-05-05
 
 # Verified Boot
 BOARD_AVB_ENABLE := true
+# --flags 3 = HASHTREE_DISABLED | VERIFICATION_DISABLED.
+#
+# ⚠️ This is an INTENTIONAL, PERMANENT divergence for this fork, not a bring-up
+# leftover — do not "fix" it. It is baked into vbmeta.img, and vbmeta is in
+# AB_OTA_PARTITIONS, so every OTA built from this tree also disables verified
+# boot on the target. That is the owner's explicit decision: the bootloader stays
+# unlocked, and if the device is ever relocked it will be reflashed wholesale via
+# 9008 rather than relying on rollback state.
+#
+# 35-upstream-readiness.py reports it under "intentional fork divergence", kept
+# separate from the bring-up switches that genuinely must be removed. If this
+# tree is ever proposed to PixelOS upstream, this line has to go — an official
+# device may not ship OTAs that turn off verified boot for its users.
 BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --flags 3
 BOARD_AVB_ALGORITHM := SHA256_RSA2048
 BOARD_AVB_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
-BOARD_MOVE_GSI_AVB_KEYS_TO_VENDOR_BOOT := true
+# No BOARD_MOVE_GSI_AVB_KEYS_TO_VENDOR_BOOT. It only redirects the
+# {q,r,s}-developer-gsi.avbpubkey modules defined at
+# system/core/rootdir/avb/Android.bp:15-70, and none of them is in this product's
+# PRODUCT_PACKAGES (nothing here inherits developer_gsi_keys.mk), so the flag had
+# no modules to move. Verified: `grep avbpubkey installed-files*.txt` is empty and
+# out/.../vendor_ramdisk/ has no avb/ directory.
+# (rootdir/etc/fstab.qcom still carries avb_keys= on the /system line, which is
+# therefore also dead. Left alone on purpose: it is the only item in this section
+# that sits on the first-stage /system mount path, it is currently a working
+# configuration, and we get exactly one flash attempt. Revisit after first boot.)
 
 BOARD_AVB_BOOT_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
 BOARD_AVB_BOOT_ALGORITHM := SHA256_RSA2048
@@ -415,7 +467,16 @@ BOARD_AVB_BOOT_ROLLBACK_INDEX_LOCATION := 3
 
 BOARD_AVB_RECOVERY_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
 BOARD_AVB_RECOVERY_ALGORITHM := SHA256_RSA2048
-BOARD_AVB_RECOVERY_ROLLBACK_INDEX := $(PLATFORM_SECURITY_PATCH_TIMESTAMP)
+# ⚠️ Stock uses a literal 1 at this same rollback index location (verified with
+# avbtool info_image on Factory/image/recovery.img). This used to be
+# PLATFORM_SECURITY_PATCH_TIMESTAMP = 1780272000.
+#
+# Harmless while the bootloader is unlocked — libavb/ABL only commit rollback
+# indexes to RPMB on a locked, verified boot. But it is a one-way door: relock
+# once with the old value and index location 1 is burned to 1780272000, after
+# which stock recovery (index 1) can never boot again. Matching stock costs
+# nothing and removes the trap.
+BOARD_AVB_RECOVERY_ROLLBACK_INDEX := 1
 BOARD_AVB_RECOVERY_ROLLBACK_INDEX_LOCATION := 1
 
 # vbmeta_system is listed in AB_OTA_PARTITIONS and fstab.qcom mounts system,
@@ -435,12 +496,17 @@ BOARD_AVB_RECOVERY_ROLLBACK_INDEX_LOCATION := 1
 BOARD_AVB_VBMETA_SYSTEM := system system_ext product
 BOARD_AVB_VBMETA_SYSTEM_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
 BOARD_AVB_VBMETA_SYSTEM_ALGORITHM := SHA256_RSA2048
-BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX := $(PLATFORM_SECURITY_PATCH_TIMESTAMP)
+# Same one-way-door reasoning as BOARD_AVB_RECOVERY_ROLLBACK_INDEX above: inert
+# today because the top-level vbmeta carries flags=3 and libavb returns before it
+# ever walks the chain descriptor, but zero cost to keep at 0.
+BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX := 0
 BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX_LOCATION := 2
 
-BOARD_AVB_VENDOR_ADD_HASHTREE_FOOTER_ARGS += --hash_algorithm sha256
-BOARD_AVB_VENDOR_DLKM_ADD_HASHTREE_FOOTER_ARGS += --hash_algorithm sha256
-BOARD_AVB_SYSTEM_DLKM_ADD_HASHTREE_FOOTER_ARGS += --hash_algorithm sha256
+# No --hash_algorithm sha256 lines here. hardware/qcom-caf/common/BoardConfigQcom.mk
+# :452-460 already appends exactly that for all nine partitions; adding it again
+# produced "--hash_algorithm sha256 --hash_algorithm sha256" in misc_info.txt for
+# vendor, vendor_dlkm and system_dlkm. avbtool takes the last one so it was
+# harmless, but it invited someone to "fix" the wrong copy.
 
 # Vendor
 include vendor/lenovo/malbec/BoardConfigVendor.mk

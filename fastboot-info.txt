@@ -1,0 +1,48 @@
+# fastboot-info for malbec (TB390FU)
+#
+# Selected by TARGET_BOARD_FASTBOOT_INFO_FILE in BoardConfig.mk. Without it the
+# build synthesises a default (build/make/core/Makefile:5929-5933) whose line 6
+# is `flash recovery` -- three lines before `reboot fastboot`. That ordering is
+# what bricked this device on the first flash attempt: it overwrites the recovery
+# ramdisk and then immediately requires fastbootd, which lives in that ramdisk.
+#
+# The rule this file exists to enforce:
+#
+#   Never write the partition that implements the next step of your own procedure.
+#
+# recovery is not on the boot path at all -- boot.img carries no ramdisk,
+# init_boot supplies the generic ramdisk and vendor_boot the vendor ramdisk.
+# recovery serves only fastbootd and `adb sideload`, which makes it the single
+# in-band way back if our ROM does not boot. So it is not flashed here. Flash it
+# by hand, once, after the device has proven it can boot.
+#
+# NOTE: `fastboot flashall` on this device's artifacts will always take the
+# reboot-into-fastbootd path, no matter what this file says. AOSP's fast path
+# (OptimizedFlashSuperTask, system/core/fastboot/task.cpp:165-243) needs every
+# partition in super_empty.img to carry LP_PARTITION_ATTR_READONLY
+# (fs_mgr/liblp/super_layout_builder.cpp:53-56), and
+# build/make/tools/releasetools/build_super_image.py emits ":none:" instead.
+# So this file is damage limitation, not the recommended path.
+#
+#   Recommended:  bash work/scripts/42-flash.sh
+#                 -- stays in bootloader fastboot, one `flash super`, never
+#                    enters fastbootd, never touches recovery.
+#
+version 1
+flash boot
+flash init_boot
+flash dtbo
+flash vendor_boot
+flash --apply-vbmeta vbmeta
+flash vbmeta_system
+reboot fastboot
+update-super
+flash odm
+flash product
+flash system
+flash system_dlkm
+flash system_ext
+flash vendor
+flash vendor_dlkm
+if-wipe erase userdata
+if-wipe erase metadata
