@@ -1,2 +1,38 @@
-# TODO: populate after the first build; candidates are staged in
-# work/analysis/properties-candidates/system_ext.prop
+# SPDX-FileCopyrightText: The LineageOS Project
+# SPDX-License-Identifier: Apache-2.0
+#
+# Values are taken from this device's factory system_ext/etc/build.prop.
+# See properties/product.prop for the load-order note — system_ext is loaded
+# early, so vendor.prop and product.prop both override anything set here.
+
+# Audio
+# ⚠️ This one is not cosmetic. frameworks/av/media/libaudiohal/impl/
+# DevicesFactoryHalAidl.cpp:126 does
+#     property_get_bool("ro.audio.ihaladaptervendorextension_enabled", false)
+# and only then constructs the vendor-extension adapter. This device ships the
+# QTI AIDL audio HAL (vendor.prop sets vendor.audio.hal.aidl.enabled=true), so
+# without this line every vendor-specific audio parameter get/set silently does
+# nothing — the HAL loads, plays audio, and quietly ignores the vendor keys.
+ro.audio.ihaladaptervendorextension_enabled=true
+
+# Bluetooth
+#
+# Class of Device advertised to remote devices, as "service,major,minor".
+# Verbatim from stock. (Stock reports the phone major class even though this is
+# a tablet; that is what the device shipped with and what remote devices have
+# been paired against, so keep parity rather than "fixing" it.)
+bluetooth.device.class_of_device=90,2,12
+
+# aptX Voice / super-wideband HFP. This device carries the QTI Bluetooth HAL
+# blobs that implement it, so the stock values apply unchanged.
+bluetooth.hfp.codec_aptx_voice.enabled=true
+bluetooth.hfp.swb.aptx.power_management.enabled=true
+bluetooth.leaudio.dual_bidirection_swb.supported=true
+
+# PBAP can expose SIM contacts; stock leaves it on. Harmless on a Wi-Fi-only
+# tablet with no SIM — there is simply no SIM phonebook to expose.
+bluetooth.profile.pbap.sim.enabled=true
+
+# SAP (SIM Access Profile) — stock disables it, and on a device with no modem
+# there is nothing for it to do.
+bluetooth.profile.sap.server.enabled=false

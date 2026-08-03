@@ -1,2 +1,61 @@
-# TODO: populate after the first build; candidates are staged in
-# work/analysis/properties-candidates/product.prop
+# SPDX-FileCopyrightText: The LineageOS Project
+# SPDX-License-Identifier: Apache-2.0
+#
+# Loaded LAST of all the build.prop files
+# (system -> system_ext -> system_dlkm -> vendor -> vendor_dlkm -> odm_dlkm ->
+#  odm -> product, property_service.cpp:1176-1192), and a later file OVERRIDES
+# an earlier one (LoadProperties assigns over an existing key and logs
+# "Overriding previous property"). So anything put here beats vendor.prop.
+#
+# ⚠️ That is a real trap when copying from another device tree. onyx's
+# product.prop sets bluetooth.profile.{bap.*,csip,mcp,ccp,hap,vcp}.enabled=false
+# because onyx has no LE audio. Copying that list wholesale would silently
+# override the `=true` values this device's vendor.prop sets and kill LE audio.
+# Every value below is taken from THIS device's factory product/etc/build.prop,
+# not from onyx.
+
+# Bluetooth — classic profiles
+#
+# These have no built-in default: BluetoothProperties.sysprop declares them with
+# no default value, and every service reads them as
+# `BluetoothProperties.isProfileXxxEnabled().orElse(false)` (e.g.
+# A2dpService.java, HeadsetService.java, HidHostService.java). Stock keeps them
+# on the *product* partition, which PixelOS replaces wholesale — so with this
+# file empty the device would come up with A2DP, AVRCP, HFP, HID host, OPP, PAN,
+# PBAP and MAP all switched off. Only GATT would survive, because GattService is
+# the one that uses `.orElse(true)`.
+#
+# The LE-audio profiles are deliberately NOT repeated here; they are set in
+# vendor.prop and would only be at risk of being overridden from this file.
+bluetooth.profile.a2dp.source.enabled=true
+bluetooth.profile.avrcp.controller.enabled=true
+bluetooth.profile.avrcp.target.enabled=true
+bluetooth.profile.bas.client.enabled=true
+bluetooth.profile.gatt.enabled=true
+bluetooth.profile.hfp.ag.enabled=true
+bluetooth.profile.hid.host.enabled=true
+bluetooth.profile.map.server.enabled=true
+bluetooth.profile.opp.enabled=true
+bluetooth.profile.pan.nap.enabled=true
+bluetooth.profile.pan.panu.enabled=true
+bluetooth.profile.pbap.server.enabled=true
+
+# Stock explicitly disables the HID *device* role (acting as a keyboard or mouse
+# for another host). Keep parity rather than letting it default on.
+bluetooth.profile.hid.device.enabled=false
+
+# SIG vendor ID reported in the Device ID record. Verbatim from stock.
+bluetooth.device_id.vendor_id=0x001D
+
+# Storage
+# FuseDaemon.cpp:2707 reads this with a default of false; stock enables it.
+# Passthrough lets reads and writes on /sdcard bypass the FUSE round trip for
+# files the daemon has already vetted, which is a straight I/O win with no
+# behavioural change.
+persist.sys.fuse.passthrough.enable=true
+
+# Audio
+# AudioFlinger's per-client shared-memory heap. Stock raises it from the AOSP
+# default; keeping parity avoids client-side allocation failures with the buffer
+# sizes the QTI audio HAL hands out.
+ro.af.client_heap_size_kbyte=7168

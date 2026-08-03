@@ -304,3 +304,85 @@ ro.hardware.keystore_desede=true
 ro.soc.manufacturer=QTI
 ro.soc.model=SM8735P
 wifi.aware.interface=wifi-aware0
+
+# ── Display / gralloc tunables the diff missed ────────────────────────────────
+#
+# The 22 vendor.display.* keys above were carried over; these were not, because
+# the upstream source of the whole group is
+# hardware/qcom-caf/sm8750/display/hal/config/display-product.mk:59-100, and
+# device.mk does not inherit that file. Picked one by one rather than inheriting
+# it wholesale — that mk also sets things this device does not want.
+#
+# Each one below was kept only after confirming a consumer is actually installed
+# in our vendor image (binary-safe grep over vendor/lib64 and vendor/bin):
+#   enable_rounded_corner   -> libsdmclient.so, libsdmcore.so
+#   use_smooth_motion       -> init.qti.display_boot.sh
+#   svi.config{,_path}      -> libdpps.so   (we already ship the referenced
+#                              vendor/etc/display/SVIConfig.xml and already set
+#                              ro.vendor.display.svi=1, so the HAL was being told
+#                              the feature exists while never being told where
+#                              its config lives)
+#   gralloc.disable_ubwc    -> libsdmclient.so, libsdmutils.so
+#   gralloc.enable_logs     -> libgrallocutils.so, libgralloccore.so
+#
+# Deliberately NOT carried, having checked:
+#   vendor.display.vds_allow_hwc   — no installed binary reads it
+#   vendor.display.svi_threshold_nits — likewise
+#   vendor.gralloc.enable_snapalloc — init.qti.display_boot.sh:93 sets it at
+#                                     runtime for soc_id 694; a static value
+#                                     here would be redundant at best
+vendor.display.enable_rounded_corner=1
+vendor.display.use_smooth_motion=1
+vendor.display.svi.config=1
+vendor.display.svi.config_path=/vendor/etc/display/SVIConfig.xml
+vendor.gralloc.disable_ubwc=0
+vendor.gralloc.enable_logs=0
+
+# Updatable GPU driver package. We install the APK
+# (vendor/app/com.qualcomm.qti.gpudrivers.sun.api35, confirmed in the build),
+# but without this property libEGL_adreno.so / vulkan.adreno.so never look for
+# it and the prebuilt-driver path goes unused. Both binaries reference the
+# property name directly.
+ro.gfx.driver.1=com.qualcomm.qti.gpudrivers.sun.api35
+
+# KeyMint retry backoff, read by libkeymasterdeviceutils.so (installed).
+vendor.keymint.retry_timer=5
+
+# Widevine OEMCrypto tuning, read by liboemcrypto.so (installed). Stock values.
+vendor.wv.oemcrypto.debug.enable_external_display_check=false
+vendor.wv.oemcrypto.debug.enable_hlos_data_path=true
+vendor.wv.oemcrypto.debug.enable_prov40=true
+
+# ★ Without this line the device has no gatekeeper and no lockscreen credential.
+#
+# vendor/etc/init/android.hardware.gatekeeper-service-qti.rc (a blob) declares
+# vendor.gatekeeper_default as `disabled` and enables it from exactly one place:
+#
+#     on property:vendor.gatekeeper.is_security_level_spu=0
+#         enable vendor.gatekeeper_default
+#
+# On stock that property is set by /vendor/bin/init.qti.keymaster.sh, which is
+# exec'd from android.hardware.gatekeeper-service-spu-qti.rc. We deliberately do
+# NOT extract that .rc -- it declares a second service whose binary
+# (android.hardware.gatekeeper-service-spu-qti) we do not ship, so init would
+# restart-loop it forever. So nothing sets the property and the HAL never starts.
+#
+# That alone would be a missing HAL. What makes it worse is that
+# configs/hidl/manifest.xml DOES declare android.hardware.gatekeeper, so
+# gatekeeperd takes the isDeclared branch:
+#
+#     system/core/gatekeeperd/gatekeeperd.cpp:116-117
+#         if (AServiceManager_isDeclared(gatekeeperServiceName))
+#             ndk::SpAIBinder ks2Binder(AServiceManager_waitForService(...));
+#
+# waitForService blocks forever, and main.cpp:36-38 runs that constructor BEFORE
+# addService -- so android.service.gatekeeper.IGateKeeperService is never
+# registered at all and LockSettingsService gets null.
+#
+# The value is not a guess: init.qti.keymaster.sh branches on
+# /sys/devices/soc0/soc_id and sets 1 only for {618, 639, 705, 706} (SM8750).
+# This device is soc_id 694, so it takes the else branch -> 0. Stock confirms
+# `[vendor.gatekeeper.is_security_level_spu]: [0]` with the HAL running.
+#
+# KeyMint is NOT affected: its .rc starts unconditionally from `on init`.
+vendor.gatekeeper.is_security_level_spu=0
