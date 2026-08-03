@@ -17,3 +17,58 @@
 # Device nodes
 /dev/ttyHS1                                                                 u:object_r:lenovo_keyboard_device:s0
 /dev/lenovo_penraw                                                          u:object_r:lenovo_device:s0
+
+# ── Vendor executables init service-starts that had no label ────────────────
+# Found by work/scripts/36-sepolicy-labels.py, which recomputes labels against
+# the built file_contexts rather than trusting that we wrote them. Every entry
+# below is verbatim from the stock vendor_file_contexts unless noted.
+#
+# Without these, init cannot make the domain transition and the service runs as
+# u:r:init:s0 (permissive) or not at all (enforcing). init's domain is broad
+# enough that most of what they do is simply allowed, so a permissive boot
+# produces no denials for them either — which is why these had to be written
+# before the first flash rather than discovered from it.
+
+# Third-party HALs — domains in hal_third_party.te
+/(system/vendor|vendor)/bin/hw/vendor\.microtrust\.hardware\.afw-service     u:object_r:hal_afw_exec:s0
+/(vendor|system/vendor)/bin/hw/vendor\.dolby\.dms\.service                   u:object_r:hal_aidl_dms_default_exec:s0
+/(vendor|system/vendor)/bin/hw/dvs-aidl-service                              u:object_r:dvs_aidl_default_exec:s0
+/(vendor|system/vendor)/bin/hw/android\.hardware\.biometrics\.face@4\.0-service\.face u:object_r:hal_faceunlock_default_exec:s0
+# The Dolby DAX Codec2 store reuses AOSP's mediacodec domain rather than getting
+# one of its own — same as stock.
+/(vendor|system/vendor)/bin/hw/vendor\.dolby\.media\.c2-default-service-dax  u:object_r:mediacodec_exec:s0
+
+# Lenovo daemons — domains in daemons.te
+/(vendor|system/vendor)/bin/prop_init                                        u:object_r:prop_init_exec:s0
+/(vendor|system/vendor)/bin/tndiag                                           u:object_r:tndiag_exec:s0
+
+# Adaptive backlight (CABL) and smart video intelligence (SVI) helper scripts.
+# All seven just exec /vendor/bin/ppd with a different argument. The domain
+# vendor_qti_init_shell already exists in device/qcom/sepolicy_vndr, so these
+# need no .te at all — only the label.
+# ⚠️ Stock labels the five cabl scripts but NOT the two svi ones, which then fall
+# to vendor_file on stock too. Labelling them the same way here is a deliberate
+# (small) deviation: they are the same program with a different argument, and
+# leaving two of seven unlabelled looks like an oversight in stock rather than
+# intent.
+/(vendor|system/vendor)/bin/init\.qcom\.cabl\.sh                             u:object_r:vendor_qti_init_shell_exec:s0
+/(vendor|system/vendor)/bin/init\.qcom\.cabl\.low\.sh                        u:object_r:vendor_qti_init_shell_exec:s0
+/(vendor|system/vendor)/bin/init\.qcom\.cabl\.medium\.sh                     u:object_r:vendor_qti_init_shell_exec:s0
+/(vendor|system/vendor)/bin/init\.qcom\.cabl\.high\.sh                       u:object_r:vendor_qti_init_shell_exec:s0
+/(vendor|system/vendor)/bin/init\.qcom\.cabl\.off\.sh                        u:object_r:vendor_qti_init_shell_exec:s0
+/(vendor|system/vendor)/bin/init\.qcom\.svi\.sh                              u:object_r:vendor_qti_init_shell_exec:s0
+/(vendor|system/vendor)/bin/init\.qcom\.svi\.off\.sh                         u:object_r:vendor_qti_init_shell_exec:s0
+
+# Wi-Fi SAR / RF exposure limiting. vendor_wcnss_service already exists in the
+# QTI vendor policy, so again label-only.
+/(vendor|system/vendor)/bin/wifisar\.sh                                      u:object_r:vendor_wcnss_service_exec:s0
+
+# ── Runtime paths ──────────────────────────────────────────────────────────
+# /data/vendor/afw is created from init by
+# vendor.microtrust.hardware.afw-service.rc with no restorecon, so this label has
+# to exist before first boot or the directory is created as vendor_data_file and
+# stays that way.
+/data/vendor/afw(/.*)?                                                       u:object_r:hal_afw_file:s0
+/data/vendor/arcsoft(/.*)?                                                   u:object_r:arcsoft_face_dump_file:s0
+/dev/afw                                                                     u:object_r:afw_device:s0
+/dev/block/platform/soc/1d84000\.ufshc/by-name/proinfo                       u:object_r:vendor_proinfo_block_device:s0

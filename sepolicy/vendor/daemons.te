@@ -1,0 +1,81 @@
+# Two Lenovo vendor daemons that init service-starts with no domain to
+# transition into, plus one type declared purely so a seclabel resolves.
+#
+# Types and rules from the stock vendor_sepolicy.cil, _202404 suffixes stripped.
+
+#####################################
+# /vendor/bin/prop_init — class core, root, oneshot, started `on boot`.
+#
+# Reads the device identity out of the proinfo partition and publishes it as
+# ro.odm.lenovo.* / ro.vendor.config.lgsi.*. init.target.rc:279-294 then uses
+# ro.odm.fingerprint.update and ro.odm.product.name.update to rewrite the build
+# fingerprint and product names — see property_contexts for why that is harmless
+# here rather than something to defend against.
+type prop_init, domain;
+type prop_init_exec, exec_type, vendor_file_type, file_type;
+
+init_daemon_domain(prop_init)
+
+set_prop(prop_init, vendor_lenovotb_init_prop)
+
+allow prop_init self:capability net_admin;
+allow prop_init self:netlink_generic_socket { read write create getattr bind setopt };
+
+# Reads the raw proinfo block device for the serials / MAC addresses.
+allow prop_init block_device:dir search;
+allow prop_init vendor_proinfo_block_device:blk_file rw_file_perms;
+allow prop_init vendor_proinfo_block_device:lnk_file r_file_perms;
+
+allow prop_init mnt_vendor_file:dir rw_dir_perms;
+allow prop_init mnt_vendor_file:file create_file_perms;
+allow prop_init vendor_persist_bluetooth_file:dir search;
+allow prop_init vendor_persist_bluetooth_file:file r_file_perms;
+
+allow prop_init kmsg_device:chr_file w_file_perms;
+allow prop_init proc_bootconfig:file r_file_perms;
+allow prop_init proc_cmdline:file r_file_perms;
+allow prop_init sysfs_dt_firmware_android:dir r_dir_perms;
+allow prop_init sysfs_dt_firmware_android:file r_file_perms;
+
+#####################################
+# /vendor/bin/tndiag — class core, root, started by
+# persist.vendor.diag.tndiag.enabled. tndiag.rc carries an explicit
+# `seclabel u:r:tndiag:s0`, so the domain name here is load-bearing: without the
+# type, init cannot resolve the context and the service never starts.
+type tndiag, domain;
+type tndiag_exec, exec_type, vendor_file_type, file_type;
+
+init_daemon_domain(tndiag)
+
+allow tndiag self:capability { chown fowner };
+allow tndiag block_device:dir search;
+allow tndiag vendor_proinfo_block_device:blk_file rw_file_perms;
+allow tndiag vendor_proinfo_block_device:lnk_file r_file_perms;
+allow tndiag mnt_vendor_file:dir rw_dir_perms;
+allow tndiag mnt_vendor_file:file create_file_perms;
+allow tndiag vendor_persist_bluetooth_file:dir rw_dir_perms;
+allow tndiag vendor_persist_bluetooth_file:file create_file_perms;
+allow tndiag vendor_sysfs_battery_supply:dir search;
+allow tndiag vendor_sysfs_battery_supply:file r_file_perms;
+allow tndiag vendor_diag_device:chr_file rw_file_perms;
+
+#####################################
+# check_keymaster — type only, no rules, no exec label.
+#
+# init.target.rc:296-302 declares a service with an explicit
+# `seclabel u:r:check_keymaster:s0`, and without the type init logs a context
+# lookup failure. But /vendor/bin/check_keymaster does not exist in our build
+# *or in the factory vendor image* — Lenovo ships the rc without the binary — so
+# the service can never actually run and porting stock's 27 rules for it would be
+# writing policy for a program that is not there.
+#
+# Declaring the bare type is the honest minimum: the label resolves, nothing is
+# granted, and if the binary ever does show up the missing rules will be obvious.
+type check_keymaster, domain;
+
+# Not declared: qti-testscripts, referenced by
+# `seclabel u:r:qti-testscripts:s0` at init.qcom.rc:832. A '-' is not legal in an
+# SELinux type name, and the stock policy does not define it either (0 hits in
+# the factory vendor_sepolicy.cil and precompiled_sepolicy). It is an upstream
+# QTI defect that stock carries too; that one service fails to start on stock as
+# well. Nothing to fix here — recorded so the next person does not go looking.

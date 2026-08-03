@@ -1,0 +1,119 @@
+# Domains for four vendor HALs that ship a binary and a VINTF fragment but had
+# no policy at all in this tree.
+#
+# Why this is not cosmetic, and why permissive does not paper over it:
+#
+#   frameworks/native/cmds/servicemanager/Access.cpp:165-170 — actionAllowedFromLookup
+#   returns false when selabel_lookup(..., SELABEL_CTX_ANDROID_SERVICE) *fails*,
+#   and that happens BEFORE any enforcing check. So a HAL whose service name has
+#   no service_contexts entry cannot register even in permissive mode.
+#
+# Combined with the VINTF fragments we install, that gives the worst shape:
+# declared in the device manifest, impossible to register. Any client doing
+# waitForService() on it blocks forever.
+#
+# All type names, attributes and rules below are taken from the stock
+# vendor_sepolicy.cil / vendor_file_contexts / vendor_service_contexts, with the
+# _202404 suffix stripped (that is the platform-side versioning applied through
+# system/etc/selinux/mapping/, not part of the name).
+
+#####################################
+# vendor.microtrust.hardware.afw-service — vendor.microtrust.hardware.afw.IAFWDevice/default
+# Microtrust TEE "advanced feature" bridge. Runs as root:root, class hal,
+# permanent (no `disabled`, no `interface aidl` line so it is not lazy).
+type hal_afw, domain;
+type hal_afw_exec, exec_type, vendor_file_type, file_type;
+type hal_afw_file, file_type, data_file_type, mlstrustedobject;
+
+init_daemon_domain(hal_afw)
+binder_use(hal_afw)
+add_service(hal_afw, hal_afw_service)
+
+allow hal_afw afw_device:chr_file { ioctl read write open };
+# vendor.microtrust.hardware.afw-service.rc creates /data/vendor/afw from init
+# with no restorecon, so the label has to exist before first boot or the
+# directory lands as vendor_data_file and stays that way.
+allow hal_afw hal_afw_file:dir { read write add_name search };
+allow hal_afw hal_afw_file:file { read write create getattr append open };
+
+# Stock also declares afw_vendor_data_file and grants hal_afw access to it, but
+# no file_contexts entry anywhere points at that type — it is a dead label in
+# stock. Not carried over.
+
+#####################################
+# vendor.dolby.dms.service — vendor.dolby.dms.IDms/default
+# Dolby Media Settings. class hal, user media, group audio media.
+type hal_aidl_dms_default, domain;
+type hal_aidl_dms_default_exec, exec_type, vendor_file_type, file_type;
+
+init_daemon_domain(hal_aidl_dms_default)
+binder_use(hal_aidl_dms_default)
+add_service(hal_aidl_dms_default, hal_aidl_dms_service)
+
+# dms-service.rc creates /data/vendor/dolby 0770 media media. Stock gives it no
+# dedicated label, so it stays vendor_data_file — which is exactly what stock's
+# two rules for this domain grant.
+allow hal_aidl_dms_default vendor_data_file:dir rw_dir_perms;
+allow hal_aidl_dms_default vendor_data_file:file create_file_perms;
+
+# The Dolby DAX Codec2 store is the only client. Stock expresses this with a
+# hal_aidl_dms_client attribute whose sole member is mediacodec; written out
+# directly here rather than introducing an attribute for one member.
+binder_call(mediacodec, hal_aidl_dms_default)
+allow mediacodec hal_aidl_dms_service:service_manager find;
+
+#####################################
+# dvs-aidl-service — vendor.dolby.dvs.IDvs/default
+# Dolby Vision service. class hal, user mediacodec, group camera mediadrm drmrpc.
+# This one does declare `interface aidl`, so it is lazy-HAL eligible.
+type dvs_aidl_default, domain;
+type dvs_aidl_default_exec, exec_type, vendor_file_type, file_type;
+
+init_daemon_domain(dvs_aidl_default)
+binder_use(dvs_aidl_default)
+add_service(dvs_aidl_default, dvs_aidl_service)
+
+binder_call(dvs_aidl_default, system_server)
+allow dvs_aidl_default fwk_sensor_service:service_manager find;
+allow dvs_aidl_default vendor_sysfs_graphics:dir r_dir_perms;
+allow dvs_aidl_default vendor_sysfs_graphics:file r_file_perms;
+# ★ Needs to *write* vendor.dolbyv.* — under vendor_default_prop this is blocked
+# by a neverallow that no rule can override. See property.te.
+set_prop(dvs_aidl_default, vendor_dolbyv_prop)
+
+#####################################
+# android.hardware.biometrics.face@4.0-service.face — ArcSoft face unlock
+#
+# Found by work/scripts/36-sepolicy-labels.py, not by the earlier audit: the
+# binary is installed and init service-starts it, but it had no exec label.
+#
+# Unlike the three above it needs no service_contexts entry — it registers
+# android.hardware.biometrics.face.IFace/default, which is the *platform*
+# hal_face_service. hal_server_domain() gives it the hal_face_server attribute
+# that already carries the add_service rule.
+type hal_faceunlock_default, domain;
+type hal_faceunlock_default_exec, exec_type, vendor_file_type, file_type;
+type arcsoft_face_dump_file, file_type, data_file_type;
+
+init_daemon_domain(hal_faceunlock_default)
+hal_server_domain(hal_faceunlock_default, hal_face)
+
+binder_call(hal_faceunlock_default, cameraserver)
+allow hal_faceunlock_default fwk_camera_service:service_manager find;
+# ⚠️ NOT `allow ... hal_graphics_allocator_service:service_manager find`.
+# system/sepolicy/private/hal_graphics_allocator.te:22 neverallows that for any
+# domain outside the client attribute, and `m selinux_policy` rejects it. The
+# supported spelling is the macro, which grants the find plus the binder call and
+# fd use that actually make the client work. (Stock's CIL shows the expanded
+# rules, which is why copying it literally looked correct and was not.)
+hal_client_domain(hal_faceunlock_default, hal_graphics_allocator)
+allow hal_faceunlock_default hal_graphics_mapper_service:service_manager find;
+allow hal_faceunlock_default tee_device:chr_file { ioctl read write open };
+get_prop(hal_faceunlock_default, vendor_arcsoft_faceunlock)
+get_prop(hal_faceunlock_default, vendor_lenovotb_init_prop)
+
+# Stock also grants dmabuf/qseecom heap access and a few more property reads.
+# Left out on purpose: those are the rules that only a real denial can justify,
+# and getting them wrong in either direction is invisible until the camera path
+# is exercised. Flash 1 is permissive precisely so this class gets measured
+# rather than guessed.

@@ -10,3 +10,11 @@ vendor.lenovo.hardware.misc.IMisc/default                       u:object_r:hal_l
 vendor.lenovo.hardware.performance.IPerformance/default         u:object_r:hal_lenovoperformance_service:s0
 vendor.lenovo.hardware.touchscreen.ITouchscreen/default         u:object_r:hal_lenovotouchscreen_service:s0
 vendor.lenovo.hardware.usb.IUsb/default                         u:object_r:hal_lenovousb_service:s0
+
+# Third-party vendor HALs. Without these entries servicemanager rejects the
+# registration outright — Access.cpp:165-170 fails the selabel lookup before it
+# ever consults enforcing mode, so permissive does not help.
+afw_service                                                     u:object_r:qcom_afw_service:s0
+vendor.microtrust.hardware.afw.IAFWDevice/default               u:object_r:hal_afw_service:s0
+vendor.dolby.dms.IDms/default                                   u:object_r:hal_aidl_dms_service:s0
+vendor.dolby.dvs.IDvs/default                                   u:object_r:dvs_aidl_service:s0

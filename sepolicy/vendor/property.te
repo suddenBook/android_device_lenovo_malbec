@@ -1,0 +1,38 @@
+# Vendor property types.
+#
+# Why this file exists: a diff of the built vendor_property_contexts against the
+# stock one showed 34 prefixes that stock labels specifically and this tree did
+# not, so every one of them fell through to vendor_default_prop.
+#
+# That is not merely untidy. system/sepolicy/private/property.te carries
+#
+#     neverallow { domain -init -vendor_init } vendor_default_prop:property_service set;
+#
+# so any domain other than init/vendor_init that needs to *write* one of those
+# properties is permanently denied, and no rule anywhere can grant it. Three of
+# the seven groups below are exactly that case:
+#
+#   vendor_cam_prop     hal_camera_default writes the camera OTP serial numbers
+#   vendor_dolbyv_prop  dvs-aidl-service writes its own state
+#   vendor_hw_ai_prop   hal_lenovo_ai_proc writes its own state
+#
+# The other four are read-mostly and matter less, but they cost one line each
+# and collapsing unrelated subsystems into a single bucket is a real, if soft,
+# privilege-separation regression: "read the camera serial number" would also
+# imply "read the AI HAL's and Dolby's state".
+#
+# Types and prefixes are taken verbatim from the stock vendor_property_contexts
+# and vendor_sepolicy.cil.
+#
+# Deliberately NOT carried over: vendor_pcsys_prop (3 prefixes,
+# vendor.zuxos.pcengine.*). PC Engine is dropped from this port — its container
+# launcher /vendor/bin/lrootfs.sh and lrootfs.rc are no longer extracted, and the
+# app that drove it lived on ZUI's product partition, which PixelOS replaces.
+# Labelling properties for a subsystem that cannot run would be noise.
+
+vendor_internal_prop(vendor_lenovotb_init_prop)
+vendor_internal_prop(vendor_cam_prop)
+vendor_internal_prop(vendor_dolbyv_prop)
+vendor_internal_prop(vendor_hw_ai_prop)
+vendor_internal_prop(vendor_check_keymaster_prop)
+vendor_internal_prop(vendor_arcsoft_faceunlock)

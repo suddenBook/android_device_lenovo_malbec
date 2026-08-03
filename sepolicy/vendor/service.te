@@ -13,3 +13,15 @@ type hal_lenovomisc_service, hal_service_type, protected_service, service_manage
 type hal_lenovoperformance_service, hal_service_type, protected_service, service_manager_type;
 type hal_lenovotouchscreen_service, hal_service_type, protected_service, service_manager_type;
 type hal_lenovousb_service, hal_service_type, protected_service, service_manager_type;
+
+# Service types for the three third-party vendor HALs added in hal_third_party.te.
+# Names and attributes copied from the stock policy.
+#
+# Note dvs_aidl_service is NOT protected_service in stock, unlike the other two —
+# kept as-is rather than "tightened", because a protected_service that stock left
+# open is exactly the kind of well-meant deviation that shows up later as a
+# service nobody can reach.
+type hal_afw_service, hal_service_type, protected_service, service_manager_type;
+type qcom_afw_service, service_manager_type;
+type hal_aidl_dms_service, hal_service_type, protected_service, service_manager_type;
+type dvs_aidl_service, hal_service_type, service_manager_type;

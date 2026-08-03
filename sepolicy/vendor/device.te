@@ -10,3 +10,13 @@
 #   /dev/lenovo_penraw raw stylus channel exposed by the Novatek touch driver.
 type lenovo_keyboard_device, dev_type;
 type lenovo_device, dev_type;
+
+# /dev/afw — Microtrust TEE bridge character device, opened by hal_afw.
+type afw_device, dev_type;
+
+# proinfo holds this unit's serials and MAC addresses; prop_init and tndiag read
+# the raw block device.
+# ⚠️ Stock declares this with only the file_type attribute, which makes its own
+# blk_file rules unusable. dev_type added here deliberately — that is a stock bug,
+# not a convention worth copying.
+type vendor_proinfo_block_device, dev_type;

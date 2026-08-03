@@ -1,0 +1,69 @@
+# Property labels, verbatim from the stock vendor_property_contexts.
+#
+# These are the 34 prefixes stock labels specifically and this tree did not, so
+# they were all falling through to vendor_default_prop. See property.te for why
+# that is not merely untidy for three of the groups.
+#
+# Longest-prefix wins (external/selinux/libselinux/src/label_backends_android.c),
+# so the bare `ro.odm.lenovo.` prefix and the exact keys under it coexist exactly
+# as they do in stock.
+#
+# vendor_pcsys_prop (persist.vendor.zuxos.pcengine. / ro.vendor.zuxos.pcengine. /
+# vendor.zuxos.pcengine.) is deliberately omitted — PC Engine is not part of this
+# port. See property.te.
+
+# Lenovo device identity, written by /vendor/bin/prop_init.
+# ⚠️ ro.odm.fingerprint.update and ro.odm.product.name.update are read by
+# init.target.rc:279-294, which uses them to rewrite the *.build.fingerprint and
+# ro.product.*.name properties. That is harmless here: this tree deliberately
+# spoofs the stock ZUI fingerprint anyway (custom_malbec.mk:71-76, for Play
+# certification), and `ro.` properties are set-once in init
+# (PROP_ERROR_READ_ONLY_PROPERTY) while build.prop is loaded long before any
+# property trigger runs. Expect a few "Read-only property was already set" lines
+# on first boot; they are not a bug.
+persist.odm.lenovo.                                 u:object_r:vendor_lenovotb_init_prop:s0
+persist.vendor.lgsi.                                u:object_r:vendor_lenovotb_init_prop:s0
+ro.odm.fingerprint.update                           u:object_r:vendor_lenovotb_init_prop:s0
+ro.odm.lenovo.                                      u:object_r:vendor_lenovotb_init_prop:s0
+ro.odm.lenovo.btaddr                                u:object_r:vendor_lenovotb_init_prop:s0
+ro.odm.lenovo.carrier.code                          u:object_r:vendor_lenovotb_init_prop:s0
+ro.odm.lenovo.gsn                                   u:object_r:vendor_lenovotb_init_prop:s0
+ro.odm.lenovo.pro_cradle                            u:object_r:vendor_lenovotb_init_prop:s0
+ro.odm.lenovo.pro_dock                              u:object_r:vendor_lenovotb_init_prop:s0
+ro.odm.lenovo.pro_eea                               u:object_r:vendor_lenovotb_init_prop:s0
+ro.odm.lenovo.pro_netflix                           u:object_r:vendor_lenovotb_init_prop:s0
+ro.odm.lenovo.psn                                   u:object_r:vendor_lenovotb_init_prop:s0
+ro.odm.lenovo.series                                u:object_r:vendor_lenovotb_init_prop:s0
+ro.odm.lenovo.wifiaddr                              u:object_r:vendor_lenovotb_init_prop:s0
+ro.odm.product.name.update                          u:object_r:vendor_lenovotb_init_prop:s0
+ro.vendor.config.lgsi.                              u:object_r:vendor_lenovotb_init_prop:s0
+ro.vendor.config.lgsi.lowconfig                     u:object_r:vendor_lenovotb_init_prop:s0
+ro.vendor.lgsi.fp.incremental                       u:object_r:vendor_lenovotb_init_prop:s0
+
+# Camera OTP / serial numbers. ★ hal_camera_default has to *set* these, which is
+# what makes this group the highest-value one in the file: under
+# vendor_default_prop the neverallow in system/sepolicy/private/property.te
+# blocks it outright and no rule can grant it.
+vendor.camera.fac_mod.front                         u:object_r:vendor_cam_prop:s0
+vendor.camera.fac_mod.main                          u:object_r:vendor_cam_prop:s0
+vendor.camera.sn.front                              u:object_r:vendor_cam_prop:s0
+vendor.camera.sn.main                               u:object_r:vendor_cam_prop:s0
+vendor.main_back.otp_check                          u:object_r:vendor_cam_prop:s0
+vendor.main_front.otp_check                         u:object_r:vendor_cam_prop:s0
+
+# Dolby Vision service state — written by /vendor/bin/hw/dvs-aidl-service.
+persist.vendor.dolbyv.                              u:object_r:vendor_dolbyv_prop:s0
+vendor.dolbyv.                                      u:object_r:vendor_dolbyv_prop:s0
+
+# Lenovo AI HAL state — written by /vendor/bin/lenovo.hardware.ai-service.
+persist.vendor.hw.ai.                               u:object_r:vendor_hw_ai_prop:s0
+vendor.hw.ai.                                       u:object_r:vendor_hw_ai_prop:s0
+
+# Keymaster readiness handshake. /vendor/bin/check_keymaster is not extracted
+# (it is absent from the factory vendor image too), so nothing writes these here;
+# init.target.rc:304 still reads them, so the labels are carried for parity.
+persist.vendor.keymaster.ready                      u:object_r:vendor_check_keymaster_prop:s0
+ro.odm.lenovo.attestationkey                        u:object_r:vendor_check_keymaster_prop:s0
+
+# ArcSoft face unlock — read-only from hal_faceunlock_default.
+persist.vendor.arcsoft.                             u:object_r:vendor_arcsoft_faceunlock:s0
