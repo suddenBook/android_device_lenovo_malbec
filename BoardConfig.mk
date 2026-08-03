@@ -193,6 +193,28 @@ BOARD_BOOTCONFIG := \
     androidboot.hypervisor.protected_vm.supported=true \
     androidboot.vendor.qspa=true
 
+# ⚠️ BRING-UP ONLY — remove before the second flash, and definitely before
+# anything is proposed upstream. work/scripts/35-upstream-readiness.py fails on
+# this line.
+#
+# Why it is here for the first boot and not "cheating": an audit of the built
+# image found 17 vendor service binaries that land on the catch-all
+# u:object_r:vendor_file:s0 with no matching *_exec type, because their
+# file_contexts entries were never written. Under enforcing, init cannot make
+# the domain transition and those services simply never start — silently, with
+# one avc denial each buried in a log we may not even be able to reach. Under
+# permissive they all start and every denial is logged, so a single boot yields
+# the complete list instead of one entry per flash cycle.
+#
+# This is honest about what it does and does not prove: booting permissive does
+# NOT demonstrate the device boots enforcing. They are two separate milestones.
+# Flash 1 = permissive, collect denials, write policy. Flash 2 = enforcing, and
+# that is the one that counts.
+#
+# selinux.cpp:102-118 reads androidboot.selinux from bootconfig, and honours it
+# only when ALLOW_PERMISSIVE_SELINUX is compiled in, which it is on userdebug.
+BOARD_BOOTCONFIG += androidboot.selinux=permissive
+
 # Kernel (prebuilt)
 # The device ships a stock Google GKI image; nothing is built from source.
 PREBUILT_PATH := $(DEVICE_PATH)-kernel
