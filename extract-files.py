@@ -156,6 +156,32 @@ lib_fixups: lib_fixups_user_type = {
 # and the alternative would mean co-installing a long tail of display.config and
 # graphics.allocator versions for no benefit.
 blob_fixups: blob_fixups_user_type = {
+    # 出厂 libaudioserviceexampleimpl.so 要 android::audio_utils::mutex_get_enable_flag()，
+    # 那是 Android 15 的 libaudioutils 导出的符号，Android 16 把它删了（出厂 364 个
+    # 导出符号里有，我们树构建的 403 个里没有）。
+    #
+    # 这条不是「少个库」而是「少个符号」，而且**致命**：该 blob 带 BIND_NOW /
+    # FLAGS_1: NOW，动态链接器在加载期就要解析全部符号，解析不了就 dlopen 失败。
+    # 它的消费者 libaudiocorehal.default.so 在 vendor_audio_interfaces.xml 里是
+    # mandatory="true"，而 Service.cpp:53-77 对 mandatory 的库重试 10 次后
+    # LOG_ALWAYS_FATAL —— audiohalservice.qti 会被 init 无限重启。
+    #
+    # 不能改用树的 libaudioserviceexampleimpl：它的 vendor 变体在本树编不过
+    # （StreamAlsa/ModulePrimary/DevicePortProxy 等 5 个 .o 报错），而且三个消费者
+    # 从它取用的 104 个符号全是 aidl::...::StreamCommonImpl 的 C++ 内部方法，
+    # 不是稳定接口，换一个大版本的实现风险很高。
+    #
+    # 也不能把出厂 libaudioutils.so 一起提取：vendor 侧的 libaudioutils 有约 30 个
+    # 消费者（24 个是 blob，6 个是树构建），而树的 libaudioutils.vendor 由
+    # libalsautilsv2.vendor 等传递拉入，两者会在同一路径上撞车 —— 实测报
+    # "partition is different: system(libaudioutils) != vendor(prebuilt_libaudioutils)"。
+    #
+    # 正解是上游早就备好的一行 shim：hardware/lineage/compat/libaudioutils/mutex.cpp
+    # 就是 `bool mutex_get_enable_flag() { return mutex::kDefaultPriorityInheritance; }`。
+    # 这是 Android 16 移植带 Android 15 音频 blob 的通用问题，不是本机特有的。
+    ('vendor/lib64/libaudioserviceexampleimpl.so',): blob_fixup()
+        .add_needed('libaudioutils_shim.so'),
+
     (
         'system_ext/lib64/libwfddisplayconfig.so',
         'vendor/bin/qguard',

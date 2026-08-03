@@ -13,10 +13,23 @@
 #   vendor/etc/selinux/** (comes from BOARD_VENDOR_SEPOLICY_DIRS),
 #   vendor/etc/vintf/compatibility_matrix.xml (DEVICE_MATRIX_FILE) and
 #   vendor/etc/vintf/manifest_{kera,sun,tuna}.xml (DEVICE_MANIFEST_FILE ships
-#   the tuna one, which is the SoC this device actually is).
+#   the tuna one).
 #
-# Not listed either: vendor/overlay/** (extract-utils has no packaging rule
-# for it) and vendor/etc/assets/** (the 670 MB PC Engine container images).
+#   ⚠️ This used to say "the tuna one, which is the SoC this device actually
+#   is". That reason was wrong, even though the choice is right. The SoC name
+#   here is `sun` (ro.board.platform=sun, ro.soc.model=SM8735P). What actually
+#   selects the file is the *vendor SKU*: libvintf picks
+#   manifest_<ro.boot.product.vendor.sku>.xml (system/libvintf/VintfObject.cpp,
+#   getDeviceHalManifest -> manifest_{sku}.xml, falling back to manifest.xml
+#   only on NAME_NOT_FOUND), and this unit reports
+#   ro.boot.product.vendor.sku=tuna (checked on the running device). That is
+#   also why the 17 StrongBox/SPU entries only present in manifest_sun.xml are
+#   correctly absent: they are never loaded on this SKU.
+#
+# Not listed either: vendor/overlay/** and vendor/etc/assets/** (the 670 MB
+# PC Engine container images). The overlays are deliberate, not a tooling
+# limitation: RROs belong in the device tree as source (overlay/*Malbec), which
+# is what an upstreamable tree does and what onyx does.
 #
 # system_ext and product carry only the QTI system-side extensions that onyx
 # also ships, minus everything cellular — this is a Wi-Fi-only tablet with no
@@ -344,6 +357,7 @@ vendor/etc/vintf/manifest/android.hardware.drm-service.xml
 vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml
 vendor/etc/vintf/manifest/bcs-ranging.xml
 vendor/etc/vintf/manifest/bluetooth-finder.xml
+vendor/etc/vintf/manifest/bluetooth_audio.xml
 vendor/etc/vintf/manifest/bluetooth_hci.xml
 vendor/etc/vintf/manifest/bluetooth_sar.xml
 vendor/etc/vintf/manifest/bt_lmp_event-saidl.xml
@@ -355,17 +369,22 @@ vendor/etc/vintf/manifest/datafactoryservice-saidl.xml
 vendor/etc/vintf/manifest/deviceinfo-saidl.xml
 vendor/etc/vintf/manifest/dms-service.xml
 vendor/etc/vintf/manifest/dvs-aidl-service.xml
+vendor/etc/vintf/manifest/face-default.xml
 vendor/etc/vintf/manifest/lenovo.hardware.ai-service.xml
 vendor/etc/vintf/manifest/manifest_afw.xml
+vendor/etc/vintf/manifest/manifest_audio_qti_services.xml
 vendor/etc/vintf/manifest/manifest_btaudiocoreservices_qti.xml
 vendor/etc/vintf/manifest/manifest_identity_credential.xml
+vendor/etc/vintf/manifest/memtrack_qti.xml
 vendor/etc/vintf/manifest/mwqem-saidl.xml
+vendor/etc/vintf/manifest/power.xml
 vendor/etc/vintf/manifest/qasr_vintf.xml
 vendor/etc/vintf/manifest/qesdk-manager.xml
 vendor/etc/vintf/manifest/qms-saidl.xml
 vendor/etc/vintf/manifest/qspa/qspa-modem.xml
 vendor/etc/vintf/manifest/qspa/qspa-nav.xml
 vendor/etc/vintf/manifest/snapdragon_services.xml
+vendor/etc/vintf/manifest/soundtrigger.qti.xml
 vendor/etc/vintf/manifest/vendor.dolby.media.c2-default-service-dax.xml
 vendor/etc/vintf/manifest/vendor.lenovo.hardware.battery-service.xml
 vendor/etc/vintf/manifest/vendor.lenovo.hardware.display-service.xml
@@ -399,6 +418,7 @@ vendor/etc/vintf/manifest/vendor.qti.hardware.sensorscalibrate.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.servicetrackeraidl-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.soter-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.trustedui-aidl-service.xml
+vendor/etc/vintf/manifest/vendor.qti.hardware.vibrator.service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.vpp-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.wifi.wifilearner-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.wifidisplaysession-service.xml
@@ -971,6 +991,8 @@ vendor/lib64/libar-gpr.so
 vendor/lib64/libar-gsl.so
 vendor/lib64/libar-pal.so
 vendor/lib64/libaudio_log_utils.so
+vendor/lib64/libaudioplatformconverter.qti.so;DISABLE_DEPS
+vendor/lib64/libaudioserviceexampleimpl.so;DISABLE_DEPS
 vendor/lib64/libbluetooth_audio_session_aidl_qti.so;DISABLE_DEPS
 vendor/lib64/libbluetooth_audio_session_qti.so
 vendor/lib64/libbluetooth_audio_session_qti_2_1.so
@@ -984,6 +1006,7 @@ vendor/lib64/liblistensoundmodel2vendor.so
 vendor/lib64/liblistensoundmodelaidl.so
 vendor/lib64/liblx-ar_util.so
 vendor/lib64/libmcs.so;DISABLE_DEPS
+vendor/lib64/libnbaio_mono.so
 vendor/lib64/libpal_net_if.so
 vendor/lib64/libpalclient.so
 vendor/lib64/libpaleventnotifier.so;DISABLE_DEPS
@@ -1012,19 +1035,29 @@ vendor/lib64/libqcodec2_v4l2codec.so
 vendor/lib64/libssc_default_listener.so
 vendor/lib64/rfs/dsp/libevadsp.so
 vendor/lib64/rfs/dsp/libfastcvadsp.so
+vendor/lib64/soundfx/libbundleaidl.so;DISABLE_DEPS
 vendor/lib64/soundfx/libdlbvolaidl.so;DISABLE_DEPS
+vendor/lib64/soundfx/libdownmixaidl.so;DISABLE_DEPS
+vendor/lib64/soundfx/libdynamicsprocessingaidl.so;DISABLE_DEPS
+vendor/lib64/soundfx/libloudnessenhanceraidl.so;DISABLE_DEPS
 vendor/lib64/soundfx/libqcompostprocbundle.so;DISABLE_DEPS
 vendor/lib64/soundfx/libqcomvisualizer.so;DISABLE_DEPS
 vendor/lib64/soundfx/libqcomvoiceprocessing.so;DISABLE_DEPS
 vendor/lib64/soundfx/libquasar.so;DISABLE_DEPS
+vendor/lib64/soundfx/libreverbaidl.so;DISABLE_DEPS
 vendor/lib64/soundfx/libswdapaidl.so;DISABLE_DEPS
 vendor/lib64/soundfx/libswgamedapaidl.so;DISABLE_DEPS
+vendor/lib64/soundfx/libvisualizeraidl.so;DISABLE_DEPS
 vendor/lib64/soundfx/libvolumelistener.so;DISABLE_DEPS
 vendor/lib64/vendor.qti.hardware.ListenSoundModelAidl-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.bluetooth_sar-V1-ndk.so
 
 # Bluetooth
 vendor/bin/hw/android.hardware.bluetooth@aidl-service-qti
+vendor/etc/aidl/hfp/hfp_codec_capabilities.xml
+vendor/etc/aidl/le_audio/aidl_audio_set_configurations.bfbs
+vendor/etc/aidl/le_audio/aidl_audio_set_scenarios.bfbs
+vendor/lib64/android.hardware.bluetooth.audio-impl.so;DISABLE_DEPS
 vendor/lib64/hw/android.hardware.bluetooth.lmp_event-impl-qti.so
 vendor/lib64/hw/android.hardware.bluetooth.ranging@aidl-impl-qti.so
 vendor/lib64/hw/android.hardware.bluetooth@1.0-impl-qti.so;DISABLE_DEPS
@@ -1035,6 +1068,7 @@ vendor/lib64/hw/vendor.qti.hardware.bluetooth_sar@aidl-impl.so
 vendor/lib64/lib_bt_aptx.so
 vendor/lib64/lib_bt_ble.so
 vendor/lib64/lib_bt_bundle.so
+vendor/lib64/libbluetooth_audio_session_aidl.so;DISABLE_DEPS
 vendor/lib64/libxpan_wifi_hal.so
 vendor/lib64/vendor.qti.hardware.bluetooth.xpanprovider-V1-ndk.so
 
@@ -1888,6 +1922,13 @@ vendor/lib64/vendor.qti.hardware.data.iwlandata-V2-ndk.so
 vendor/lib64/vendor.qti.hardware.wifi.wifilearner-V1-ndk.so
 
 # System-side QTI
+#
+# 不提取 system_ext/lib64/libdiag_system.so：它需要 vendor.qti.diaghal-V1-ndk.so，
+# 而那个库只存在于 /vendor/lib64，system_ext 的链接器命名空间够不着（Android 16
+# 没有 VNDK，system 段只看 /system/lib64 和 /system_ext/lib64）。
+# 出厂上它的消费者是 diag_mdlog_system / dpmd / mmi / lib-imsvt.so 那一批，
+# 全部是我们刻意不提取的诊断与 IMS 组件；本镜像里 binary-safe 全盘搜索 0 引用。
+# 装进去就是一个必然解析失败的死库。
 system_ext/app/FrameworksUtilsSysService/FrameworksUtilsSysService.apk
 system_ext/app/QCC/QCC.apk
 system_ext/bin/qccsyshal_aidl-service
@@ -1903,7 +1944,6 @@ system_ext/etc/vintf/manifest/vendor.qti.qccsyshal_aidl-service.xml
 system_ext/etc/vintf/manifest/vendor.qti.qesdsys.service.xml
 system_ext/etc/wfdconfigsink.xml
 system_ext/framework/vendor.qti.hardware.alarm-V1.0-java.jar
-system_ext/lib64/libdiag_system.so
 system_ext/lib64/libmmosal.so
 system_ext/lib64/libmmparser_lite.so
 system_ext/lib64/libmmrtpdecoder.so
@@ -2361,7 +2401,6 @@ vendor/lib64/libScenescape.so
 vendor/lib64/libStereoRectifyWrapper.so
 vendor/lib64/libTxPwrJni.so
 vendor/lib64/libVoiceSdk.so
-vendor/lib64/libtensorflowlite_c.so:vendor/lib64/libtensorflowlite_c_vendor.so;FIX_SONAME
 vendor/lib64/libadm.so
 vendor/lib64/libaipriv.so
 vendor/lib64/libaodoptfeature.so
@@ -2675,6 +2714,7 @@ vendor/lib64/libsys_info_cache.so
 vendor/lib64/libsysmon_cdsp_skel.so
 vendor/lib64/libsystem_health_mon2.so
 vendor/lib64/libtaautoload.so
+vendor/lib64/libtensorflowlite_c.so:vendor/lib64/libtensorflowlite_c_vendor.so;FIX_SONAME
 vendor/lib64/libtestutils.so
 vendor/lib64/libtfestriping.so
 vendor/lib64/libthreadutils.so
