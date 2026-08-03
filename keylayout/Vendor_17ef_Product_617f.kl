@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: The LineageOS Project
+# SPDX-License-Identifier: Apache-2.0
+#
+# Lenovo Tab Pen Plus — the stylus's *Bluetooth* side. Not to be confused with
+# the drawing digitizer, which is a separate SPI device (`NVTCapacitivePen`,
+# VID/PID 0000:0000, INPUT_PROP_DIRECT) that needs no configuration at all.
+#
+# 17ef:617f enumerates over BT HID as two nodes (measured with `getevent -i`
+# on the running stock ROM):
+#
+#   "Lenovo Tab Pen Plus Consumer Control"  EV=13  KEY=1<<48 (KEY_UNKNOWN=240)
+#                                                  MSC=MSC_SCAN
+#   "Lenovo Tab Pen Plus Mouse"             EV=17  KEY=BTN_LEFT/RIGHT/MIDDLE
+#                                                  REL=X,Y,WHEEL,HWHEEL
+#
+# The side-button gestures live on the Consumer Control node. Their HID usages
+# (consumer page 0x0c, 0x600-0x605) are Lenovo-private, so the kernel HID map
+# has no keycode for them and emits KEY_UNKNOWN plus the raw usage in MSC_SCAN.
+# That is exactly what the `key usage <code>` form is for — KeyboardInputMapper
+# falls back to the usage code when the scan code maps to nothing.
+#
+# ⚠️ The stock file cannot be copied verbatim. It maps all six usages to Lenovo
+# labels — PEN_ONE_CLICK, PEN_TWO_CLICK, PEN_THREE_CLICK, PEN_LONG_CLICK,
+# PEN_PRESS_CLICK, PEN_BT_DISCONNECT — none of which exist in AOSP, and
+# KeyLayoutMap::load() returns BAD_VALUE and discards the ENTIRE file on the
+# first unknown label. One bad label would kill every mapping below it.
+#
+# Only three of the six have an honest AOSP equivalent. The remaining three are
+# deliberately left unmapped rather than forced onto a keycode that means
+# something else: an unmapped usage is simply ignored, which is the correct
+# behaviour for a gesture Android has no concept of.
+#   PEN_THREE_CLICK   — no AOSP equivalent; STYLUS_BUTTON_TAIL means the eraser
+#                       end of the pen, not a third click.
+#   PEN_PRESS_CLICK   — press-and-hold; belongs in a gesture layer, not a keycode.
+#   PEN_BT_DISCONNECT — a pairing-state signal, not an input event at all.
+#
+# The stock `.idc` for this device is deliberately NOT carried over. It sets
+# `touch.orientationAware` and `touch.deviceType = touchScreen`, and both keys
+# are read only by TouchInputMapper (TouchInputMapper.cpp:362 and its
+# configureParameters). Neither 617f node has any absolute axis, so
+# TouchInputMapper is never instantiated for them — the Mouse node is a relative
+# pointer and goes to CursorInputMapper, which reads `cursor.orientationAware`
+# instead. The stock file is inert on this hardware; carrying it would only add
+# a config whose keys nothing reads.
+
+key usage 0x0c0600    STYLUS_BUTTON_PRIMARY
+key usage 0x0c0601    STYLUS_BUTTON_SECONDARY
+key usage 0x0c0603    STYLUS_BUTTON_TERTIARY
