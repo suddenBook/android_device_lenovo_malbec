@@ -64,9 +64,43 @@
          nothing, and this file's stated policy is to record measured
          differences, not to copy framework-res. -->
 
-    <!-- The device is a tablet with no notification LED and no physical
-         navigation keys; both are AOSP defaults already, so they are not
-         restated here. Add entries only when the stock dump disagrees with
-         AOSP, so this file stays a record of measured differences rather than
-         a copy of framework-res. -->
+    <!-- The device has no notification LED; that is the AOSP default already,
+         so it is not restated here. Add entries only when the stock dump
+         disagrees with AOSP, so this file stays a record of measured
+         differences rather than a copy of framework-res. -->
+
+    <!-- ⚠️ This block used to also claim that "no physical navigation keys" was
+         an AOSP default needing no entry. That reasoning was backwards and
+         would have shipped an unnavigable device.
+
+         AOSP's default is false (frameworks/base/core/res/res/values/config.xml
+         :2771), and DisplayPolicy.java:677-688 reads it to decide whether
+         SystemUI creates a NavigationBar at all. false means no Home/Back/
+         Recents AND no edge-back gesture handler.
+
+         The device really does have no navigation keys -- `getevent -pl` finds
+         only gpio-keys VOLUMEUP, pmic_resin VOLUMEDOWN and pmic_pwrkey POWER --
+         which is precisely why the bar has to be turned ON.
+
+         Stock sets it true from product/overlay/LgsiFrameworksOverlay.apk, and
+         PixelOS replaces the whole product partition, so that RRO is gone.
+         Without this the device boots to Launcher and cannot be operated
+         without the folio keyboard. onyx's overlay sets it too. -->
+    <bool name="config_showNavigationBar">true</bool>
+
+    <!-- Wired headset detect goes through input events, not the audio HAL.
+         AOSP default is false (config.xml:3464); stock sets true in
+         vendor/overlay/FrameworksResTarget_Vendor.apk, which we also drop.
+         Confirmed on the device: event5 "tuna-qrd-snd-card Headset Jack"
+         reports SW_HEADPHONE_INSERT / SW_MICROPHONE_INSERT / SW_LINEOUT_INSERT
+         and event6 "Button Jack" reports KEY_MEDIA / KEY_VOLUME{UP,DOWN}.
+         Without this, plug/unplug and inline buttons do nothing. -->
+    <bool name="config_useDevInputEventForAudioJack">true</bool>
+
+    <!-- The QTI power stack expects auto-suspend to be decoupled from the
+         display. AOSP default is false (config.xml:3027); stock sets true, and
+         the running device confirms it: `dumpsys power` shows
+         mDecoupleHalAutoSuspendModeFromDisplayConfig=true and
+         mHalAutoSuspendModeEnabled=true. onyx sets it as well. -->
+    <bool name="config_powerDecoupleAutoSuspendModeFromDisplay">true</bool>
 </resources>

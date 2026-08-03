@@ -28,3 +28,21 @@ prebuilt_etc {
     src: "etc/fstab.qcom",
     vendor: true,
 }
+
+// Recovery does not mount /vendor, so nothing under vendor/etc/init/ is read
+// there -- in particular init.target.rc, which is what creates
+// /dev/block/bootdevice during a normal boot. Without this file recovery has no
+// bootdevice symlink (so most of fstab.qcom fails) and no USB (so no
+// `adb sideload` and no fastbootd).
+//
+// `recovery: true` + `sub_dir: "init"` puts it at
+// /system/etc/init/init.recovery.qcom.rc inside the recovery ramdisk, which
+// init picks up via parser.ParseConfig("/system/etc/init")
+// (system/core/init/init.cpp:347). The whole directory is parsed, so the
+// filename is conventional rather than load-bearing.
+prebuilt_etc {
+    name: "init.recovery.qcom.rc",
+    src: "etc/init.recovery.qcom.rc",
+    sub_dir: "init",
+    recovery: true,
+}

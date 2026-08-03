@@ -13,7 +13,25 @@ genfscon proc /pen_attached                                    u:object_r:proc_l
 genfscon proc /pen_wakeup_mode                                 u:object_r:proc_lenovo_pen:s0
 genfscon proc /folio_case_mode                                 u:object_r:proc_lenovo_pen:s0
 
-# The other eight /proc nodes the touchscreen HAL's .rc chowns. See file.te.
+# The other /proc nodes the touchscreen HAL opens. See file.te.
+#
+# ⚠️ The authority for this list is the HAL BINARY, not the stock .rc:
+#
+#   strings vendor/bin/hw/vendor.lenovo.hardware.touchscreen-service \
+#     | grep '^/proc/'          -> 13 paths
+#
+# The stock .rc is written for a whole SKU line and chowns paths that do not
+# exist on this unit. Taking the list from it put /proc/gesture_control here --
+# a node that does not exist (verified on the device: `ls -Z` says MISSING) --
+# while leaving /proc/gesture_mode and /proc/support_pen, which the HAL really
+# does open, at plain u:object_r:proc:s0 and therefore denied under enforcing.
+#
+# file.te already recorded that gesture_control "is not created on this unit";
+# what was missed is that the real node is gesture_mode, under a different name.
+#
+# gesture_mode and support_pen are root:root 0666 on stock rather than
+# system:system like the other eleven, because the stock .rc never chowns them.
+# Mode 0666 means DAC is not the gate here -- SELinux is.
 genfscon proc /panel_direction                                 u:object_r:proc_lenovo_touch:s0
 genfscon proc /game_mode                                       u:object_r:proc_lenovo_touch:s0
 genfscon proc /game_edge                                       u:object_r:proc_lenovo_touch:s0
@@ -21,4 +39,5 @@ genfscon proc /edge_grid_zone                                  u:object_r:proc_l
 genfscon proc /report_threshold                                u:object_r:proc_lenovo_touch:s0
 genfscon proc /HighReportRate                                  u:object_r:proc_lenovo_touch:s0
 genfscon proc /haptics                                         u:object_r:proc_lenovo_touch:s0
-genfscon proc /gesture_control                                 u:object_r:proc_lenovo_touch:s0
+genfscon proc /gesture_mode                                    u:object_r:proc_lenovo_touch:s0
+genfscon proc /support_pen                                     u:object_r:proc_lenovo_pen:s0

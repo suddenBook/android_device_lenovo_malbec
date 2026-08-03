@@ -5,13 +5,49 @@
 
 DEVICE_PATH := device/lenovo/malbec
 
-# ⚠️ Do not add BUILD_BROKEN_* here without proving the build needs it.
-# BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES was set for the system_dlkm .ko
-# copy, which is now BOARD_SYSTEM_KERNEL_MODULES instead; nothing else in
-# PRODUCT_COPY_FILES is an ELF.
-# BUILD_BROKEN_DUP_RULES downgrades a duplicate-rule error to a warning, and
-# `m nothing` currently reports zero "overriding commands" -- keeping it would
-# only hide the next regression.
+# ⚠️ Still do not add BUILD_BROKEN_* here without proving the build needs it.
+#
+# BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES stays OFF. It was once set for
+# the system_dlkm .ko copy, which is BOARD_SYSTEM_KERNEL_MODULES now; nothing
+# left in PRODUCT_COPY_FILES is an ELF. (onyx sets it because it uses
+# ;MAKE_COPY_RULE_ONLY on .so blobs. We do not need that -- see below.)
+#
+# BUILD_BROKEN_DUP_RULES is ON, and here is the proof it is needed.
+#
+# Seven factory files are installed by the blob repo through PRODUCT_COPY_FILES
+# while the tree also has a Soong install rule for the same path:
+#
+#   etc/init/{memtrack_qti, qspa_vendor, vendor.qti.audio-adsprpc-service,
+#             vendor.qti.hardware.vibrator.service, vndservicemanager}.rc
+#   etc/permissions/android.hardware.hardware_keystore.xml
+#   etc/usb_compositions.conf
+#
+# In every one of the seven the FACTORY file is the correct one:
+#   - the five .rc files start binaries we ship as blobs (verified: each .rc's
+#     `service` line names a binary whose only install rule comes from
+#     vendor/lenovo/malbec),
+#   - hardware_keystore.xml declares feature version 300 to match the blob
+#     KeyMint service; the tree's copy claims 400,
+#   - usb_compositions.conf carries Lenovo's USB VID 0x17EF and the Lenovo-only
+#     `readyfor` compositions; the tree's generic QTI copy uses 0x05C6.
+#
+# kati materialises PRODUCT_COPY_FILES from build/make/core/Makefile:148, i.e.
+# after installs-$(TARGET_PRODUCT).mk, and Make keeps the LAST recipe -- so the
+# blob wins all seven, which is what we want. Without this flag
+# build/soong/ui/build/kati.go:253-256 adds --werror_overriding_commands and the
+# build simply stops.
+#
+# What replaces the lost error: work/scripts/30-dup-installs.py lists every
+# duplicate target with both sources AND which side kati keeps, and
+# `--check work/analysis/blob-ownership.txt` fails if any winner stops matching
+# the recorded decision. That is strictly stronger than the kati error, which
+# only said "there is a tie" and never said who won.
+#
+# Note this is NOT the 58-duplicate problem that blocked sessions 3-5. Those
+# were blob-vs-tree Soong rules caused by 70 misused ;MODULE_SUFFIX= tags
+# dragging the tree's source audio stack into the build; removing the tags took
+# 58 -> 0 and needed no BUILD_BROKEN_* at all.
+BUILD_BROKEN_DUP_RULES := true
 
 # A/B
 AB_OTA_UPDATER := true
@@ -57,6 +93,25 @@ TARGET_PROVIDES_LIBAR_PAL := true
 
 # Bootloader
 TARGET_BOOTLOADER_BOARD_NAME := sun
+
+# Graphics
+#
+# This has to be set here rather than as a property, because
+# build/make/core/sysprop_config.mk:128-132 emits
+#
+#     ADDITIONAL_VENDOR_PROPERTIES += ro.hwui.use_vulkan=$(TARGET_USES_VULKAN)
+#
+# unconditionally. Leaving TARGET_USES_VULKAN unset does not omit the line --
+# it emits `ro.hwui.use_vulkan=` with an empty value. properties/vendor.prop
+# used to also carry `ro.hwui.use_vulkan=true`, and two non-optional
+# assignments with different values make post_process_props.py:87-113 print
+# "found duplicate sysprop assignments" and exit 1, failing the build.
+# (--allow-dup only comes with BUILD_BROKEN_DUP_SYSPROP, which we do not want.)
+#
+# Same hazard the ro.bionic.cpu_variant comment in vendor.prop already
+# documents; it just was not applied to this one. onyx sets it at device.mk:163.
+# Stock value confirmed `true` in work/unpacked/parts/vendor/build.prop.
+TARGET_USES_VULKAN := true
 
 # Display
 # 320, not stock's 360. This feeds ro.sf.lcd_density (build/make/core/

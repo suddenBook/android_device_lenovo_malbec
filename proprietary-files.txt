@@ -8,6 +8,8 @@
 # race the generated one for the same install path:
 #   vendor/build.prop, vendor/rfs/**, vendor/etc/{passwd,group},
 #   vendor/etc/fs_config_*, vendor/etc/NOTICE.xml.gz,
+#   vendor/etc/aconfig_flags.pb (build/make/core/packaging/flags.mk:80),
+#   vendor/etc/linker.config.pb (build/make/core/Makefile:4074),
 #   vendor/etc/selinux/** (comes from BOARD_VENDOR_SEPOLICY_DIRS),
 #   vendor/etc/vintf/compatibility_matrix.xml (DEVICE_MATRIX_FILE) and
 #   vendor/etc/vintf/manifest_{kera,sun,tuna}.xml (DEVICE_MANIFEST_FILE ships
@@ -353,22 +355,17 @@ vendor/etc/vintf/manifest/datafactoryservice-saidl.xml
 vendor/etc/vintf/manifest/deviceinfo-saidl.xml
 vendor/etc/vintf/manifest/dms-service.xml
 vendor/etc/vintf/manifest/dvs-aidl-service.xml
-vendor/etc/vintf/manifest/face-default.xml
 vendor/etc/vintf/manifest/lenovo.hardware.ai-service.xml
 vendor/etc/vintf/manifest/manifest_afw.xml
-vendor/etc/vintf/manifest/manifest_audio_qti_services.xml
 vendor/etc/vintf/manifest/manifest_btaudiocoreservices_qti.xml
 vendor/etc/vintf/manifest/manifest_identity_credential.xml
-vendor/etc/vintf/manifest/memtrack_qti.xml
 vendor/etc/vintf/manifest/mwqem-saidl.xml
-vendor/etc/vintf/manifest/power.xml
 vendor/etc/vintf/manifest/qasr_vintf.xml
 vendor/etc/vintf/manifest/qesdk-manager.xml
 vendor/etc/vintf/manifest/qms-saidl.xml
 vendor/etc/vintf/manifest/qspa/qspa-modem.xml
 vendor/etc/vintf/manifest/qspa/qspa-nav.xml
 vendor/etc/vintf/manifest/snapdragon_services.xml
-vendor/etc/vintf/manifest/soundtrigger.qti.xml
 vendor/etc/vintf/manifest/vendor.dolby.media.c2-default-service-dax.xml
 vendor/etc/vintf/manifest/vendor.lenovo.hardware.battery-service.xml
 vendor/etc/vintf/manifest/vendor.lenovo.hardware.display-service.xml
@@ -402,7 +399,6 @@ vendor/etc/vintf/manifest/vendor.qti.hardware.sensorscalibrate.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.servicetrackeraidl-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.soter-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.trustedui-aidl-service.xml
-vendor/etc/vintf/manifest/vendor.qti.hardware.vibrator.service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.vpp-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.wifi.wifilearner-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.wifidisplaysession-service.xml
@@ -746,8 +742,8 @@ vendor/lib64/bm5a79v08s13n73.bin
 vendor/lib64/bm5a79v08s13n74.bin
 vendor/lib64/bm5a79v08s13n75.bin
 vendor/lib64/bm5a79v08s13n76.bin
-vendor/lib64/libaudiochargerlistener.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libbatterylistener.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
+vendor/lib64/libaudiochargerlistener.so
+vendor/lib64/libbatterylistener.so;DISABLE_DEPS
 vendor/lib64/libembmsservice.so
 vendor/lib64/vendor.lenovo.hardware.battery-V5-ndk.so
 vendor/lib64/vendor.qti.hardware.embmsslaidl-V2-ndk.so
@@ -872,9 +868,7 @@ vendor/etc/acdbdata/tuna_qrd_2418hs/QRD_tuna3_acdb_cal.acdb
 vendor/etc/acdbdata/tuna_qrd_2418hs/QRD_tuna3_workspaceFileXml.qwsp
 vendor/etc/acdbdata/tuna_qrd_2418yc/QRD_tuna4_acdb_cal.acdb
 vendor/etc/acdbdata/tuna_qrd_2418yc/QRD_tuna4_workspaceFileXml.qwsp
-vendor/etc/aidl/le_audio/aidl_audio_set_configurations.bfbs
 vendor/etc/aidl/le_audio/aidl_audio_set_configurations.json
-vendor/etc/aidl/le_audio/aidl_audio_set_scenarios.bfbs
 vendor/etc/aidl/le_audio/aidl_audio_set_scenarios.json
 vendor/etc/audio/audio_module_config_primary.xml
 vendor/etc/audio/sku_kera/audio_effects.conf
@@ -957,29 +951,26 @@ vendor/lib64/btaudio_offload_if.so;DISABLE_DEPS
 vendor/lib64/hw/android.hardware.bluetooth.audio-impl-qti.so;DISABLE_DEPS
 vendor/lib64/hw/android.hardware.bluetooth.audio_sw.so;DISABLE_DEPS
 vendor/lib64/hw/audio.bluetooth_qti.default.so;DISABLE_DEPS
-vendor/lib64/hw/audio.r_submix.default.so;MODULE_SUFFIX=_vendor
-vendor/lib64/hw/audio.usb.default.so;MODULE_SUFFIX=_vendor
 vendor/lib64/hw/audio/libQnnHtp.so;MODULE_SUFFIX=_audio
-vendor/lib64/hw/libaudiocorehal.default.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
-vendor/lib64/hw/libaudiocorehal.qti.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
-vendor/lib64/hw/libaudioeffecthal.qti.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
+vendor/lib64/hw/libaudiocorehal.default.so;DISABLE_DEPS
+vendor/lib64/hw/libaudiocorehal.qti.so;DISABLE_DEPS
+vendor/lib64/hw/libaudioeffecthal.qti.so;DISABLE_DEPS
 vendor/lib64/hw/vendor.qti.hardware.bluetooth_audio@2.0-impl.so
 vendor/lib64/hw/vendor.qti.hardware.bluetooth_audio@2.1-impl.so
 vendor/lib64/libadsp_default_listener.so
 vendor/lib64/libadsprpc.so
-vendor/lib64/libagm.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libagm_compress_plugin.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libagm_mixer_plugin.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libagm_pcm_plugin.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libagmclient.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libagmipcservice.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libagm.so
+vendor/lib64/libagm_compress_plugin.so
+vendor/lib64/libagm_mixer_plugin.so
+vendor/lib64/libagm_pcm_plugin.so
+vendor/lib64/libagmclient.so
+vendor/lib64/libagmipcservice.so
 vendor/lib64/libagmmixer.so
-vendor/lib64/libar-acdb.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libar-gpr.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libar-gsl.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libar-pal.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libar-acdb.so
+vendor/lib64/libar-gpr.so
+vendor/lib64/libar-gsl.so
+vendor/lib64/libar-pal.so
 vendor/lib64/libaudio_log_utils.so
-vendor/lib64/libaudioroute.so;MODULE_SUFFIX=_vendor
 vendor/lib64/libbluetooth_audio_session_aidl_qti.so;DISABLE_DEPS
 vendor/lib64/libbluetooth_audio_session_qti.so
 vendor/lib64/libbluetooth_audio_session_qti_2_1.so
@@ -987,16 +978,16 @@ vendor/lib64/libcdsp_default_listener.so
 vendor/lib64/libcodec2_soft_ac4dec.so
 vendor/lib64/libcodec2_soft_ddpdec.so
 vendor/lib64/libcodec2_store_dolby.so
-vendor/lib64/libfmpal.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libhfp_pal.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libfmpal.so
+vendor/lib64/libhfp_pal.so
 vendor/lib64/liblistensoundmodel2vendor.so
 vendor/lib64/liblistensoundmodelaidl.so
-vendor/lib64/liblx-ar_util.so;MODULE_SUFFIX=_vendor
+vendor/lib64/liblx-ar_util.so
 vendor/lib64/libmcs.so;DISABLE_DEPS
 vendor/lib64/libpal_net_if.so
-vendor/lib64/libpalclient.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libpaleventnotifier.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
-vendor/lib64/libpalipcservice.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libpalclient.so
+vendor/lib64/libpaleventnotifier.so;DISABLE_DEPS
+vendor/lib64/libpalipcservice.so
 vendor/lib64/libqc2audio_base.so
 vendor/lib64/libqc2audio_basecodec.so
 vendor/lib64/libqc2audio_core.so
@@ -1021,20 +1012,14 @@ vendor/lib64/libqcodec2_v4l2codec.so
 vendor/lib64/libssc_default_listener.so
 vendor/lib64/rfs/dsp/libevadsp.so
 vendor/lib64/rfs/dsp/libfastcvadsp.so
-vendor/lib64/soundfx/libbundleaidl.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
 vendor/lib64/soundfx/libdlbvolaidl.so;DISABLE_DEPS
-vendor/lib64/soundfx/libdownmixaidl.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
-vendor/lib64/soundfx/libdynamicsprocessingaidl.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
-vendor/lib64/soundfx/libloudnessenhanceraidl.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
-vendor/lib64/soundfx/libqcompostprocbundle.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
-vendor/lib64/soundfx/libqcomvisualizer.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
-vendor/lib64/soundfx/libqcomvoiceprocessing.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
+vendor/lib64/soundfx/libqcompostprocbundle.so;DISABLE_DEPS
+vendor/lib64/soundfx/libqcomvisualizer.so;DISABLE_DEPS
+vendor/lib64/soundfx/libqcomvoiceprocessing.so;DISABLE_DEPS
 vendor/lib64/soundfx/libquasar.so;DISABLE_DEPS
-vendor/lib64/soundfx/libreverbaidl.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
 vendor/lib64/soundfx/libswdapaidl.so;DISABLE_DEPS
 vendor/lib64/soundfx/libswgamedapaidl.so;DISABLE_DEPS
-vendor/lib64/soundfx/libvisualizeraidl.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
-vendor/lib64/soundfx/libvolumelistener.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
+vendor/lib64/soundfx/libvolumelistener.so;DISABLE_DEPS
 vendor/lib64/vendor.qti.hardware.ListenSoundModelAidl-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.bluetooth_sar-V1-ndk.so
 
@@ -1047,9 +1032,9 @@ vendor/lib64/hw/android.hardware.bluetooth@aidl-impl-qti.so
 vendor/lib64/hw/vendor.qti.hardware.bluetooth.finder-impl-qti.so
 vendor/lib64/hw/vendor.qti.hardware.bluetooth.xpanprovider-impl-qti.so
 vendor/lib64/hw/vendor.qti.hardware.bluetooth_sar@aidl-impl.so
-vendor/lib64/lib_bt_aptx.so;MODULE_SUFFIX=_vendor
-vendor/lib64/lib_bt_ble.so;MODULE_SUFFIX=_vendor
-vendor/lib64/lib_bt_bundle.so;MODULE_SUFFIX=_vendor
+vendor/lib64/lib_bt_aptx.so
+vendor/lib64/lib_bt_ble.so
+vendor/lib64/lib_bt_bundle.so
 vendor/lib64/libxpan_wifi_hal.so
 vendor/lib64/vendor.qti.hardware.bluetooth.xpanprovider-V1-ndk.so
 
@@ -1364,21 +1349,20 @@ vendor/lib64/vendor.qti.hardware.qteeconnector@1.0.so
 # GPS
 vendor/bin/edgnss-daemon
 vendor/bin/loc_launcher
-vendor/bin/rkp_factory_extraction_tool64
 vendor/bin/xtra-daemon
 vendor/etc/gnss_antenna_info.conf
 vendor/etc/gps.conf
 vendor/etc/gps_diag.cfg
 vendor/etc/izat.conf
-vendor/lib64/libgnss.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libgnss.so
 vendor/lib64/libgnsspps.so
-vendor/lib64/libgps.utils.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libgps.utils.so
 vendor/lib64/libizat_client_api.so
 vendor/lib64/libizat_core.so
 vendor/lib64/libloc_api_v02.so
 vendor/lib64/libloc_api_wds.so
 vendor/lib64/libloc_base_util.so
-vendor/lib64/libloc_core.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libloc_core.so
 vendor/lib64/libloc_eng_hub.so
 vendor/lib64/libloc_mq_client.so
 vendor/lib64/libloc_qwes_iface.so
@@ -1396,7 +1380,7 @@ vendor/lib64/egl/libVkLayer_ADRENO_qprofiler.so
 vendor/lib64/egl/libq3dtools_adreno.so;SYMLINK=vendor/lib64/libq3dtools_adreno.so
 vendor/lib64/egl/libq3dtools_esx.so
 vendor/lib64/hw/vulkan.adreno.so
-vendor/lib64/libOpenCL.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libOpenCL.so
 vendor/lib64/libOpenCL_adreno.so
 vendor/lib64/libadreno_app_profiles.so
 vendor/lib64/libadreno_compiler_cl.so
@@ -1407,8 +1391,8 @@ vendor/lib64/libhalide_hexagon_host.so
 
 # Media
 vendor/etc/media_codecs_google_c2.xml
-vendor/lib64/libOmxCore.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libmm-omxcore.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libOmxCore.so
+vendor/lib64/libmm-omxcore.so
 vendor/lib64/libqc2vppfilter.so
 
 # Perf
@@ -1469,7 +1453,7 @@ vendor/lib64/libperfioctl.so
 vendor/lib64/libpowercallback.so
 vendor/lib64/libpowercore.so
 vendor/lib64/libq-perflog.so
-vendor/lib64/libqti-perfd-client.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libqti-perfd-client.so
 vendor/lib64/libqti-perfd.so
 vendor/lib64/libqti-perfextn-intf.so
 vendor/lib64/libthermalclient.so
@@ -2186,8 +2170,6 @@ vendor/etc/Record_playback.cfg
 vendor/etc/ZUI_Full.cfg
 vendor/etc/ZUI_Simplified.cfg
 vendor/etc/ZUI_TPUT.cfg
-vendor/etc/aconfig_flags.pb
-vendor/etc/aidl/hfp/hfp_codec_capabilities.xml
 vendor/etc/apdr.conf
 vendor/etc/bpf/qmsUidStats.o
 vendor/etc/cablconfig.xml
@@ -2220,7 +2202,6 @@ vendor/etc/gpfspath_oem_config.xml
 vendor/etc/init.qti.fm.sh
 vendor/etc/lenovocust.rc
 vendor/etc/lenovoraw.rc
-vendor/etc/linker.config.pb
 vendor/etc/lm/AppClassifierFeature.xml
 vendor/etc/lm/LightningLaunchesFeature.xml
 vendor/etc/lm/PreKillFeature.xml
@@ -2343,7 +2324,7 @@ vendor/lib64/com.qualcomm.qti.uceservice@2.1.so
 vendor/lib64/com.qualcomm.qti.uceservice@2.2.so
 vendor/lib64/com.qualcomm.qti.uceservice@2.3.so
 vendor/lib64/ftm_fm_lib.so;DISABLE_DEPS
-vendor/lib64/hw/libsoundtriggerhal.qti.so;MODULE_SUFFIX=_vendor;DISABLE_DEPS
+vendor/lib64/hw/libsoundtriggerhal.qti.so;DISABLE_DEPS
 vendor/lib64/hw/mbedtls_qti.so
 vendor/lib64/hw/qc_bcs_lib.so
 vendor/lib64/hw/vendor.qti.hardware.alarm-impl.so
@@ -2373,7 +2354,7 @@ vendor/lib64/libGPreqcancel.so
 vendor/lib64/libGPreqcancel_svc.so
 vendor/lib64/libLenovoNvram.so
 vendor/lib64/libMapService.so
-vendor/lib64/libPeripheralStateUtils.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libPeripheralStateUtils.so
 vendor/lib64/libQcelp13SwCodec.so
 vendor/lib64/libQnnHtp.so
 vendor/lib64/libQnnHtpNetRunExtensions.so
@@ -2381,16 +2362,12 @@ vendor/lib64/libQnnHtpPrepare.so
 vendor/lib64/libQnnHtpProfilingReader.so
 vendor/lib64/libQnnHtpV73Stub.so
 vendor/lib64/libQtiSocket.so
-vendor/lib64/libRSCpuRef.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libRSDriver.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libRS_internal.so;MODULE_SUFFIX=_vendor
 vendor/lib64/libScenescape.so
 vendor/lib64/libStereoRectifyWrapper.so
 vendor/lib64/libTxPwrJni.so
 vendor/lib64/libVoiceSdk.so
 vendor/lib64/libadm.so
 vendor/lib64/libaipriv.so
-vendor/lib64/libalsautils.so;MODULE_SUFFIX=_vendor
 vendor/lib64/libaodoptfeature.so
 vendor/lib64/libapengine.so
 vendor/lib64/libappclassifier.so
@@ -2398,15 +2375,13 @@ vendor/lib64/libarcsoft_face_biometric.so
 vendor/lib64/libarcsoft_face_mink.so
 vendor/lib64/libarcsoft_faceid.so
 vendor/lib64/libarmemlog.so;DISABLE_DEPS
-vendor/lib64/libats.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libats.so
 vendor/lib64/libbacklight-calib.so
 vendor/lib64/libbase64.so
-vendor/lib64/libbatching.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libbcinfo.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libbatching.so
 vendor/lib64/libbiometricsface_ca.arcsoft.so
 vendor/lib64/libbitmlengine.so
 vendor/lib64/libbitmlenginev2.so
-vendor/lib64/libblas.so;MODULE_SUFFIX=_vendor
 vendor/lib64/libboot_control_qti.so
 vendor/lib64/libbt-hidlclient.so;DISABLE_DEPS
 vendor/lib64/libbtnv.so
@@ -2427,11 +2402,10 @@ vendor/lib64/libclstc_gcp_adapter.so
 vendor/lib64/libclstc_tm.so
 vendor/lib64/libcom.qti.chinodeutils.so
 vendor/lib64/libcommonchiutils.so
-vendor/lib64/libcompiler_rt.so;MODULE_SUFFIX=_vendor
 vendor/lib64/libconfigdb.so
 vendor/lib64/libcpion.so
 vendor/lib64/libcrypto_data.so
-vendor/lib64/libcustomva_intf.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libcustomva_intf.so
 vendor/lib64/libcv_common.so
 vendor/lib64/libdapparamstorage.so
 vendor/lib64/libdataitems.so
@@ -2466,7 +2440,7 @@ vendor/lib64/libfastcvopt.so
 vendor/lib64/libfeutils.so
 vendor/lib64/libgame_enhance.so
 vendor/lib64/libgdtap.so
-vendor/lib64/libgeofencing.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libgeofencing.so
 vendor/lib64/libgpt.so
 vendor/lib64/libgsl.so
 vendor/lib64/libhdcp1prov.so
@@ -2477,7 +2451,7 @@ vendor/lib64/libhdr_backlight_adapter.so
 vendor/lib64/libhdr_stub.so
 vendor/lib64/libhdr_tm.so
 vendor/lib64/libhme.so
-vendor/lib64/libhotword_intf.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libhotword_intf.so
 vendor/lib64/libhwfenceclient.so
 vendor/lib64/libhwliqinterface2.so
 vendor/lib64/libhwlispcffdump.so
@@ -2504,7 +2478,7 @@ vendor/lib64/libllvm-qcom.so
 vendor/lib64/libllvm-qgl.so
 vendor/lib64/liblmutils-ns.so
 vendor/lib64/libloadalgo_stub.so
-vendor/lib64/liblocation_api.so;MODULE_SUFFIX=_vendor
+vendor/lib64/liblocation_api.so
 vendor/lib64/liblocation_api_msg.so
 vendor/lib64/liblocation_client_api.so
 vendor/lib64/liblocation_integration_api.so
@@ -2515,12 +2489,12 @@ vendor/lib64/liblocdiagiface.so
 vendor/lib64/liblowi_client.so
 vendor/lib64/liblowi_common.so
 vendor/lib64/liblqe.so
-vendor/lib64/liblx-osal.so;MODULE_SUFFIX=_vendor
+vendor/lib64/liblx-osal.so
 vendor/lib64/libmapdata_api.so
 vendor/lib64/libmctfengine_stub.so
 vendor/lib64/libmdmdetect.so
 vendor/lib64/libmdsprpc.so
-vendor/lib64/libmemutils.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libmemutils.so
 vendor/lib64/libmeters-ns.so
 vendor/lib64/libmeters.so
 vendor/lib64/libmfGhostDetection.so
@@ -2537,7 +2511,6 @@ vendor/lib64/libmmrtpdecoder_vendor.so
 vendor/lib64/libmmrtpencoder_vendor.so
 vendor/lib64/libmpbase.so
 vendor/lib64/libnative-api.so
-vendor/lib64/libnbaio_mono.so;MODULE_SUFFIX=_vendor
 vendor/lib64/libnicm.so
 vendor/lib64/libnicm_dsi.so
 vendor/lib64/libnicm_interface.so
@@ -2576,7 +2549,7 @@ vendor/lib64/libpat_uint8.so
 vendor/lib64/libpdmapper.so
 vendor/lib64/libpdnotifier.so
 vendor/lib64/libperipheral_client.so
-vendor/lib64/libplatformconfig.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libplatformconfig.so
 vendor/lib64/libpolygon.so
 vendor/lib64/libprefapps.so
 vendor/lib64/libprekill.so
@@ -2622,7 +2595,7 @@ vendor/lib64/libqms_client.so
 vendor/lib64/libqms_optimized_route_mgr_sdk.so
 vendor/lib64/libqms_packetstats_sdk.so
 vendor/lib64/libqms_sdf_sdk.so
-vendor/lib64/libqrtr.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libqrtr.so
 vendor/lib64/libqrtrclient.so
 vendor/lib64/libqseed3.so
 vendor/lib64/libqsegnet.so
@@ -2675,7 +2648,7 @@ vendor/lib64/libskewknob.so
 vendor/lib64/libslimclient.so
 vendor/lib64/libsmemlog.so
 vendor/lib64/libsnapdragoncolor-manager.so
-vendor/lib64/libsndcardparser.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libsndcardparser.so
 vendor/lib64/libsns_device_mode_stub.so
 vendor/lib64/libsns_direct_channel_stub.so
 vendor/lib64/libsns_dynamic_loader_stub.so
@@ -2692,8 +2665,7 @@ vendor/lib64/libspectre.so
 vendor/lib64/libspl.so
 vendor/lib64/libsrc_jni_getPasrService.so
 vendor/lib64/libssd.so
-vendor/lib64/libstagefright_bufferqueue_helper.so;MODULE_SUFFIX=_vendor
-vendor/lib64/libstagefrighthw.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libstagefrighthw.so
 vendor/lib64/libstandbyfeature.so
 vendor/lib64/libstcMotoColor.so
 vendor/lib64/libstreamparser.so
@@ -2726,7 +2698,6 @@ vendor/lib64/libvideooptfeature.so
 vendor/lib64/libvideotxr.so
 vendor/lib64/libvideoutils.so
 vendor/lib64/libvmfilexfer.so
-vendor/lib64/libvndfwk_detect_jni.qti.so;MODULE_SUFFIX=_vendor
 vendor/lib64/libvppclient.so
 vendor/lib64/libvppcommon.so
 vendor/lib64/libvpphcp.so
@@ -2736,7 +2707,7 @@ vendor/lib64/libvpplibrary.so
 vendor/lib64/libvpptestutils.so
 vendor/lib64/libvui_dmgr.so
 vendor/lib64/libvui_dmgr_client.so
-vendor/lib64/libvui_intf.so;MODULE_SUFFIX=_vendor
+vendor/lib64/libvui_intf.so
 vendor/lib64/libwfdcodecv4l2_proprietary.so
 vendor/lib64/libwfdcommonutils_proprietary.so
 vendor/lib64/libwfdconfigutils_proprietary.so
@@ -2876,7 +2847,6 @@ vendor/lib64/vendor.qti.hardware.secureprocessor.config-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.secureprocessor.device-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.sigma_miracast_aidl-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.soter-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.vibratorCL.impl.so;MODULE_SUFFIX=_vendor
 vendor/lib64/vendor.qti.hardware.vpp-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.vpp@1.1.so
 vendor/lib64/vendor.qti.hardware.vpp@1.2.so

@@ -116,7 +116,10 @@ vendor.display.enable_async_vds_creation=1
 ro.hardware.egl=adreno
 ro.hardware.vulkan=adreno
 ro.opengles.version=196610
-ro.hwui.use_vulkan=true
+# ro.hwui.use_vulkan is NOT set here. sysprop_config.mk:128-132 emits it
+# unconditionally from $(TARGET_USES_VULKAN), so setting it here too is a
+# duplicate assignment and post_process_props.py fails the build. The value
+# now comes from TARGET_USES_VULKAN := true in BoardConfig.mk.
 graphics.gpu.profiler.support=true
 
 # SurfaceFlinger
@@ -246,6 +249,56 @@ external_storage.projid.enabled=1
 external_storage.sdcardfs.enabled=0
 ro.usb.uvc.enabled=true
 sys.usb.mtp.batchcancel=1
+
+# USB gadget. Without these there is no ADB, no MTP and no tethering on first
+# boot -- i.e. no way to debug anything else.
+#
+# vendor/etc/init/hw/init.qcom.usb.rc (a blob) only ever READS these:
+#
+#     setprop sys.usb.controller ${vendor.usb.controller}
+#     wait /sys/class/udc/${sys.usb.controller}
+#
+# Nothing in any .rc on the vendor partition ever setprop's them -- on the
+# factory image they come solely from vendor/build.prop.
+#
+# Upstream normally gets them from vendor/qcom/opensource/usb/vendor_product.mk,
+# which this tree does NOT inherit. Do not simply inherit it either: its
+# vendor.usb.diag.func.name branches on TARGET_HAS_DIAG_ROUTER, which is unset
+# here, so it would emit `diag` where the factory uses `ffs`.
+#
+# Values are the factory vendor/build.prop verbatim. Note that on a running
+# device `getprop` shows rmnet/rndis for the two *.func.name entries rather than
+# gsi -- init rewrites those per USB composition at runtime. gsi is the correct
+# boot-time default; do not "fix" them to match a live getprop.
+vendor.usb.controller=a600000.dwc3
+vendor.usb.use_gadget_hal=1
+vendor.usb.use_ffs_mtp=1
+vendor.usb.diag.func.name=ffs
+vendor.usb.dpl.inst.name=dpl
+vendor.usb.qdss.inst.name=qdss_sw
+vendor.usb.rmnet.func.name=gsi
+vendor.usb.rmnet.inst.name=rmnet
+vendor.usb.rndis.func.name=gsi
+
+# Pin the vendor API level to what the vendor blobs actually are (Android 15).
+#
+# board_config.mk:1033-1038 defaults BOARD_API_LEVEL to RELEASE_BOARD_API_LEVEL,
+# which is 202504 on bp2a, and sysprop_config.mk:104-106 emits
+# `ro.board.api_level?=202504`. init then computes
+# ro.vendor.api_level = min(vendorApiLevelOf(first_api_level), board_api_level)
+# = 202504 (property_service.cpp:1075-1101).
+#
+# At >202404, service_parser.cpp:679-693 turns "service block with no user" into
+# a hard parse error. 19 of the 270 service blocks in the extracted vendor .rc
+# files declare no user (vendor.qms, vendor.dpmd, vendor.ssr_setup,
+# vendor.power_off_alarm, qlogd, dhcpcd_wlan0, ...), so all 19 would silently
+# fail to be defined.
+#
+# The property is emitted with ?=, so a plain assignment here wins.
+# validate_grf_props only requires board_api_level >= board_first_api_level
+# (202404 >= 202404). The live device reports 202404.
+ro.board.api_level=202404
+
 sys.vendor.shutdown.waittime=500
 ro.hardware.keystore_desede=true
 ro.soc.manufacturer=QTI

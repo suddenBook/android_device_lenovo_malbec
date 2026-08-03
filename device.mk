@@ -297,8 +297,16 @@ PRODUCT_COPY_FILES += \
 # Rootdir
 # fstab.qcom is the one vendor config this port has to change, so the device
 # tree owns it and proprietary-files.txt skips the stock copy.
+#
+# init.recovery.qcom.rc is the recovery-side counterpart. Recovery never mounts
+# /vendor, so the stock init.target.rc -- which is what creates
+# /dev/block/bootdevice on a normal boot -- is not read there. Without this
+# module recovery has no bootdevice symlink (most of fstab.qcom then fails) and
+# no USB, i.e. no `adb sideload` and no fastbootd, which is exactly the tooling
+# needed to recover from a bad flash. See rootdir/Android.bp.
 PRODUCT_PACKAGES += \
-    fstab.qcom
+    fstab.qcom \
+    init.recovery.qcom.rc
 
 # ⚠️ 上面那个 prebuilt_etc 只产出 /vendor/etc/fstab.qcom，**开不了机**。
 # 第一阶段挂载的时候 /vendor 正是还没挂上的那个分区，fs_mgr 的 GetFstabPath()

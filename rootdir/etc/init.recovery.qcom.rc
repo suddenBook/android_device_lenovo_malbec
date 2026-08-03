@@ -1,0 +1,54 @@
+# Copyright (c) 2017-2018,2020-2021 The Linux Foundation. All rights reserved.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+#
+# Derived from the stock recovery ramdisk's /init.recovery.qcom.rc, trimmed to
+# the parts an AOSP recovery actually needs. Recovery does NOT mount /vendor, so
+# nothing in vendor/etc/init/ is read here -- this file is the only place these
+# things can be set up.
+#
+# Without it:
+#   - /dev/block/bootdevice never exists, so every fstab.qcom line that uses
+#     /dev/block/bootdevice/by-name/... fails. That is userdata, persist and
+#     four more.
+#   - sys.usb.controller is never set, so there is no USB: no `adb sideload`
+#     and no fastbootd, even though the fastbootd binary is built into the
+#     recovery image.
+#   - the backlight stays wherever the bootloader left it.
+#
+# Values verified on the running device:
+#   ro.boot.bootdevice   = 1d84000.ufshc   (/dev/block/platform/soc/1d84000.ufshc exists)
+#   ro.boot.usbcontroller = a600000.dwc3
+#   ro.boot.usb.dwc3_msm is unset, so the :-a600000.ssusb default applies and
+#   /sys/bus/platform/devices/a600000.ssusb does exist.
+
+on init
+    write /sys/class/backlight/panel0-backlight/brightness 200
+    setprop sys.usb.configfs 1
+
+on property:ro.boot.usbcontroller=*
+    setprop sys.usb.controller ${ro.boot.usbcontroller}
+    wait /sys/bus/platform/devices/${ro.boot.usb.dwc3_msm:-a600000.ssusb}/mode
+    write /sys/bus/platform/devices/${ro.boot.usb.dwc3_msm:-a600000.ssusb}/mode peripheral
+    wait /sys/class/udc/${ro.boot.usbcontroller} 1
+
+on fs
+    wait /dev/block/platform/soc/${ro.boot.bootdevice}
+    symlink /dev/block/platform/soc/${ro.boot.bootdevice} /dev/block/bootdevice
+
+# Deliberately NOT carried over from stock (onyx keeps them; we do not):
+#
+#   on early-init
+#       insmod /vendor/lib/modules/{q6_pdr,q6_notifier,snd_event,gpr,
+#                                   spf_core,adsp_loader}_dlkm.ko
+#   on fs
+#       mount_all /vendor/etc/charger_fw_fstab.qti --early
+#       write /sys/class/remoteproc/remoteproc1/state start
+#       write /sys/kernel/boot_adsp/boot 1
+#       wait /sys/class/power_supply/battery
+#
+# Those exist to bring up the ADSP so stock recovery can play the charging
+# animation. This build ships AOSP recovery, which has no such animation, and
+# BOARD_RECOVERY_KERNEL_MODULES is intentionally unset (the stock recovery
+# ramdisk carries no lib/ either), so every one of those insmods would fail on
+# a path that is not there. Leaving them in would only add boot noise to the
+# one log we most need to be readable when something goes wrong.

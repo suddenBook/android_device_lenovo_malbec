@@ -27,18 +27,29 @@ type proc_lenovo_pen, fs_type, proc_type;
 #   /proc/report_threshold  touch report threshold
 #   /proc/HighReportRate    high touch report rate
 #   /proc/haptics           touch-driven haptics passthrough
-#   /proc/gesture_control   gesture wake
+#   /proc/gesture_mode      gesture wake
 #
-# All eight come from vendor/etc/init/vendor.lenovo.hardware.touchscreen-service.rc,
-# which chowns twelve /proc nodes to system:system -- these eight plus the four
-# pen/folio ones above. Only the pen four were labelled here before, so the
-# other eight stayed u:object_r:proc:s0 and every access was denied: no stylus
-# tuning, no game mode, no edge rejection, no report-rate control, and no panel
-# rotation for touch. Stock gets away with plain "proc" because its policy
-# grants hal_lenovotouchscreen_default proc:file outright.
+# Only the pen four were labelled here originally, so the rest stayed
+# u:object_r:proc:s0 and every access was denied: no stylus tuning, no game
+# mode, no edge rejection, no report-rate control, no panel rotation for touch.
+# Stock gets away with plain "proc" because its policy grants
+# hal_lenovotouchscreen_default proc:file outright.
 #
-# Checked on the running device: eleven of the twelve exist and all eleven are
-# labelled u:object_r:proc:s0. /proc/gesture_control is not created on this unit
-# -- the .rc chowns it for another SKU. Its genfscon entry below is harmless
-# (genfscon on an absent path is inert) and keeps the set matching the .rc.
+# ⚠️ The set used to be taken from the stock
+# vendor/etc/init/vendor.lenovo.hardware.touchscreen-service.rc, which chowns
+# twelve paths. That was the wrong source: the .rc is written for a whole SKU
+# line, so it chowns /proc/gesture_control -- a node this unit does not have
+# (verified: `ls -Z /proc/gesture_control` -> No such file) -- and it never
+# chowns /proc/gesture_mode or /proc/support_pen, which the HAL really does use.
+# The old note here even recorded that gesture_control is absent and called its
+# genfscon entry "harmless"; what it missed is that the real node exists under a
+# different name and was left unlabelled, so the denial remained.
+#
+# The authority is the HAL binary:
+#   strings vendor/bin/hw/vendor.lenovo.hardware.touchscreen-service \
+#     | grep '^/proc/'      -> 13 paths, all of them real on this unit
+#
+# /proc/support_pen is grouped with the pen nodes (proc_lenovo_pen) since that
+# is its feature area. Both it and gesture_mode are root:root 0666 on stock --
+# the .rc never chowns them -- so DAC is not the gate; SELinux is.
 type proc_lenovo_touch, fs_type, proc_type;
