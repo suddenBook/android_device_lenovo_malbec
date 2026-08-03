@@ -251,18 +251,46 @@ blob_fixups: blob_fixups_user_type = {
     # ro.vendor.api_level). The host verifier never sees it, so both are needed.
     #
     # Behaviour is unchanged: these services ran as root before and still do.
+    # ⚠️ The `(?:[^\n]*\\\n)*` is load-bearing: a service command can be split
+    # across lines with a trailing backslash. vendor.wigig_supplicant is:
+    #
+    #   service vendor.wigig_supplicant /vendor/bin/hw/wpa_supplicant \
+    #       -iwigig0 -Dnl80211 -c/data/vendor/wifi/wigig_supplicant.conf \
+    #       ... -S wigigsvc
+    #
+    # A regex that stops at the first newline inserts `user root` in the middle
+    # of the continued command, and init then reports
+    # `Invalid keyword '-iwigig0'`. Consume the continuations first.
     ('vendor/etc/init/hw/init.qcom.rc',): blob_fixup()
         .regex_replace(
             r'(?m)^(service (?:vendor\.ssr_setup|vendor\.wigig_supplicant'
             r'|dhcpcd_wlan0|dhcpcd_bond0|dhcpcd_p2p|dhcpcd_wigig0|dhcpcd_bt-pan'
             r'|iprenew_wlan0|iprenew_bond0|iprenew_p2p|iprenew_wigig0|iprenew_bt-pan'
-            r'|wifi-sdio-on|qlogd|vendor\.power_off_alarm|bugreport)\s[^\n]*\n)',
+            r'|wifi-sdio-on|qlogd|vendor\.power_off_alarm|bugreport)\s'
+            r'(?:[^\n]*\\\n)*[^\n]*\n)',
             r'\1    user root\n',
         ),
 
     ('vendor/etc/init/hw/init.target.rc',): blob_fixup()
         .regex_replace(
-            r'(?m)^(service vendor\.mdm_launcher\s[^\n]*\n)',
+            r'(?m)^(service vendor\.mdm_launcher\s(?:[^\n]*\\\n)*[^\n]*\n)',
+            r'\1    user root\n',
+        ),
+
+    # Same class, found by running host_init_verifier over all 134 shipped .rc
+    # files instead of waiting for the build to surface them one per cycle.
+    # Only files under etc/init/ are verified by the build -- vendor/etc/ueventd.rc
+    # and vendor/etc/qspa/*.rc also fail a standalone run, but they use different
+    # syntax and are never fed to the verifier, so they are left alone.
+    ('vendor/etc/init/qms.rc',): blob_fixup()
+        .regex_replace(
+            r'(?m)^(service vendor\.qms\s(?:[^\n]*\\\n)*[^\n]*\n)',
+            r'\1    user root\n',
+        ),
+
+    ('vendor/etc/init/vendor.dpmd.rc',): blob_fixup()
+        .regex_replace(
+            r'(?m)^(service vendor\.dpmd\s(?:[^\n]*\\\n)*[^\n]*\n)',
             r'\1    user root\n',
         ),
 
