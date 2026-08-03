@@ -36,16 +36,37 @@
     <integer name="config_defaultPeakRefreshRate">144</integer>
     <integer name="config_defaultRefreshRate">144</integer>
 
-    <!-- Rounded display corners, 45 px at all four positions, measured with
-         dumpsys display on the running stock ROM. Stock gets this from the same
-         vendor RRO as config_defaultRefreshRate above; ro.sf.rounded_corner_radius
-         is unset on this device, so without an override here SystemUI would not
-         mask the corners at all. -->
-    <dimen name="rounded_corner_radius">45px</dimen>
+    <!-- Rounded display corners. Stock gets this from the same vendor RRO as
+         config_defaultRefreshRate above; ro.sf.rounded_corner_radius is unset on
+         this device, so without an override here SystemUI would not mask the
+         corners at all.
+         ⚠️ This said 45 px and cited "measured with dumpsys display on the
+         running stock ROM". The measurement was misread: both
+         work/device_dump/display/dumpsys-display.txt and the live device report
+             RoundedCorner{position=TopLeft, radius=38, ...}
+         Stock's RRO declares 20dp and stock runs with
+         Settings.Secure display_density_forced=306, so 20dp x 306/160 = 38.25
+         -> getDimensionPixelSize -> 38. 45 is what 20dp gives at the *build*
+         density (360), which is not the density stock actually runs at.
+         Keep the unit as px: corner radius is a property of the glass and must
+         not move when TARGET_SCREEN_DENSITY is 320. -->
+    <dimen name="rounded_corner_radius">38px</dimen>
 
-    <!-- brightnessMinimum 0.0 / brightnessMaximum 1.0 /
-         brightnessDefault 0.39763778 -->
-    <item name="config_screenBrightnessSettingMinimumFloat" format="float" type="dimen">0.0</item>
+    <!-- ★ 0.0 here was a black screen waiting to happen.
+         DisplayDeviceConfig.java:2057-2071 reads this straight into
+         mBacklightMinimum whenever it is not the -2 sentinel, and that is the
+         floor below which the brightness slider cannot go. At 0.0 the slider
+         bottoms out at backlight 0 on panel0-backlight, i.e. the panel is off.
+         The comment above it ("brightnessMinimum 0.0") had copied stock's
+         DisplayDeviceInfo.brightnessMinimum, which is in *brightness* space, not
+         the resource's space.
+         Correct value = BrightnessSynchronizer.brightnessIntToFloat(2)
+                       = (2 - 1) / (255 - 1) = 1/254 = 0.003937008,
+         derived from stock's config_screenBrightnessSettingMinimum=2 and
+         confirmed against the running device: dumpsys power reports
+         mScreenBrightnessMinimum=0.003937008.
+         brightnessMaximum 1.0 / brightnessDefault 0.39763778 are unchanged. -->
+    <item name="config_screenBrightnessSettingMinimumFloat" format="float" type="dimen">0.003937008</item>
     <item name="config_screenBrightnessSettingMaximumFloat" format="float" type="dimen">1.0</item>
     <item name="config_screenBrightnessSettingDefaultFloat" format="float" type="dimen">0.39763778</item>
 
@@ -103,4 +124,177 @@
          mDecoupleHalAutoSuspendModeFromDisplayConfig=true and
          mHalAutoSuspendModeEnabled=true. onyx sets it as well. -->
     <bool name="config_powerDecoupleAutoSuspendModeFromDisplay">true</bool>
+    <!-- ================================================================== -->
+    <!-- NEW: adaptive brightness                                           -->
+    <!-- ================================================================== -->
+
+    <!-- Flag indicating whether we should enable the automatic brightness.
+         Software implementation will be used if config_hardware_auto_brightness_available is not set -->
+    <bool name="config_automatic_brightness_available">true</bool>
+
+    <!-- Array of light sensor lux values to define our levels for auto backlight brightness support.
+         The N entries of this array define N + 1 control points as follows:
+         (1-based arrays)
+
+         Point 1:            (0, value[1]):             lux <= 0
+         Point 2:     (level[1], value[2]):  0        < lux <= level[1]
+         Point 3:     (level[2], value[3]):  level[2] < lux <= level[3]
+         ...
+         Point N+1: (level[N], value[N+1]):  level[N] < lux
+
+         The control points must be strictly increasing.  Each control point
+         corresponds to an entry in the brightness backlight values arrays.
+         For example, if lux == level[1] (first element of the levels array)
+         then the brightness will be determined by value[2] (second element
+         of the brightness values array).
+
+         Spline interpolation is used to determine the auto-brightness
+         backlight values for lux levels between these control points.
+
+         Must be overridden in platform specific overlays -->
+    <integer-array name="config_autoBrightnessLevels">
+        <item>5</item>
+        <item>15</item>
+        <item>40</item>
+        <item>100</item>
+        <item>180</item>
+        <item>400</item>
+        <item>550</item>
+        <item>1000</item>
+        <item>1500</item>
+        <item>2000</item>
+        <item>2500</item>
+        <item>3000</item>
+        <item>4000</item>
+        <item>5000</item>
+    </integer-array>
+
+    <!-- Array of desired screen brightness in nits corresponding to the lux values
+         in the config_autoBrightnessLevels array. The display brightness is defined as the measured
+         brightness of an all-white image.
+
+         If this is defined then:
+            - config_autoBrightnessLcdBacklightValues should not be defined
+            - config_screenBrightnessNits must be defined
+            - config_screenBrightnessBacklight must be defined
+
+         This array should have size one greater than the size of the config_autoBrightnessLevels
+         array. The brightness values must be non-negative and non-decreasing. This must be
+         overridden in platform specific overlays -->
+    <array name="config_autoBrightnessDisplayValuesNits">
+        <item>8</item>
+        <item>8</item>
+        <item>30</item>
+        <item>70</item>
+        <item>100</item>
+        <item>120</item>
+        <item>150</item>
+        <item>180</item>
+        <item>210</item>
+        <item>270</item>
+        <item>340</item>
+        <item>420</item>
+        <item>480</item>
+        <item>550</item>
+        <item>650</item>
+    </array>
+
+    <!-- An array describing the screen's backlight values corresponding to the brightness
+         values in the config_screenBrightnessNits array.
+
+         This array should be equal in size to config_screenBrightnessBacklight. -->
+    <integer-array name="config_screenBrightnessBacklight">
+        <item>0</item>
+        <item>4</item>
+        <item>13</item>
+        <item>30</item>
+        <item>43</item>
+        <item>51</item>
+        <item>64</item>
+        <item>77</item>
+        <item>90</item>
+        <item>115</item>
+        <item>145</item>
+        <item>179</item>
+        <item>205</item>
+        <item>235</item>
+        <item>255</item>
+    </integer-array>
+
+    <!-- An array of floats describing the screen brightness in nits corresponding to the backlight
+         values in the config_screenBrightnessBacklight array.  On OLED displays these  values
+         should be measured with an all white image while the display is in the fully on state.
+         Note that this value should *not* reflect the maximum brightness value for any high
+         brightness modes but only the maximum brightness value obtainable in a sustainable manner.
+
+         This array should be equal in size to config_screenBrightnessBacklight -->
+    <array name="config_screenBrightnessNits">
+        <item>0</item>
+        <item>8</item>
+        <item>30</item>
+        <item>70</item>
+        <item>100</item>
+        <item>120</item>
+        <item>150</item>
+        <item>180</item>
+        <item>210</item>
+        <item>270</item>
+        <item>340</item>
+        <item>420</item>
+        <item>480</item>
+        <item>550</item>
+        <item>650</item>
+    </array>
+
+    <!-- Stability requirements in milliseconds for accepting a new brightness level.  This is used
+         for debouncing the light sensor.  Different constants are used to debounce the light sensor
+         when adapting to brighter or darker environments.  This parameter controls how quickly
+         brightness changes occur in response to an observed change in light level that exceeds the
+         hysteresis threshold. -->
+    <integer name="config_autoBrightnessBrighteningLightDebounce">2000</integer>
+    <integer name="config_autoBrightnessDarkeningLightDebounce">3000</integer>
+
+    <!-- Note: This setting is deprecated, please use
+    config_screenBrightnessSettingMinimumFloat instead -->
+    <!-- Kept in sync with the float above (2 -> 1/254). PowerManager.java:1380
+         exposes this int directly via getMinimumScreenBrightnessSetting(), and it
+         is the fallback DisplayDeviceConfig uses if the float ever reverts to -2. -->
+    <integer name="config_screenBrightnessSettingMinimum">2</integer>
+
+    <!-- Screen brightness used to dim the screen while dozing in a very low power state.
+         May be less than the minimum allowed brightness setting
+         that can be set by the user. -->
+    <!-- Set the int only, not config_screenBrightnessDozeFloat: AOSP's float default
+         is 0.0 rather than the -2 sentinel, so DisplayDeviceConfig never falls back
+         to this int. It is SystemUI that consumes it, at
+         DozeParameters.java:209 (value / 255f). Stock uses 17. -->
+    <integer name="config_screenBrightnessDoze">17</integer>
+
+    <!-- ================================================================== -->
+    <!-- NEW: PinnerService                                                 -->
+    <!-- ================================================================== -->
+
+    <!-- Default files to pin via Pinner Service -->
+    <!-- Stock's list has 9 entries. Two of them, /system/framework/arm64/
+         boot-QPerformance.oat and boot-UxPerformance.oat, are QTI perf JARs that
+         PixelOS does not build (verified absent from out/target/product/malbec),
+         so they are dropped. The remaining 7 were each confirmed present in the
+         build tree. -->
+    <string-array translatable="false" name="config_defaultPinnerServiceFiles">
+        <item>/system/framework/framework.jar</item>
+        <item>/system/framework/services.jar</item>
+        <item>/apex/com.android.media/javalib/updatable-media.jar</item>
+        <item>/system/lib64/libhwui.so</item>
+        <item>/vendor/lib64/libllvm-qgl.so</item>
+        <item>/vendor/lib64/libllvm-glnext.so</item>
+        <item>/vendor/lib64/libsdmextension.so</item>
+    </string-array>
+
+    <!-- ================================================================== -->
+    <!-- NEW: power behaviour (stock parity, optional)                      -->
+    <!-- ================================================================== -->
+
+    <!-- If this is true, the screen will come on when you unplug usb/power/whatever. -->
+    <bool name="config_unplugTurnsOnScreen">true</bool>
+
 </resources>

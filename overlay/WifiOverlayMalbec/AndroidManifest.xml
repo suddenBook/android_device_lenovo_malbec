@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+
+     This is a Wi-Fi only tablet, so the Wi-Fi resource overlay is load bearing:
+     without it com.android.wifi.resources runs pure AOSP defaults, and a large
+     number of the capability flags default to false.
+
+     One overlay is enough. Stock carries every Lenovo value twice — once
+     targeting com.android.wifi.resources and once targeting
+     com.google.android.wifi.resources — because stock ships Google's
+     ServiceWifiResourcesGoogle.apk. PixelOS builds the AOSP
+     ServiceWifiResources.apk, and the two stock RRO sets were verified to hold
+     byte-identical values, so only the AOSP target is needed here.
+
+     ⚠️ Stock's WifiResTarget.apk / WifiResMainlineTarget.apk are gated on
+     ro.boot.product.vendor.sku=sun and this board reports `tuna`, so they are
+     not even installed on stock. (ro.board.platform IS sun — that is the
+     platform family, a different naming axis from the vendor SKU.) Everything
+     that lives only in those two — bridged SoftAP and the four multi-STA
+     concurrency flags — therefore resolves false on stock as well, and is
+     deliberately not carried here. Verified three ways on the running device:
+     `cmd overlay lookup`, `cmd wifi get-softap-supported-features` omitting
+     wifi_softap_bridged_ap_supported, and the absence of ADDITIONAL_STA_*
+     feature bits.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="com.android.wifi.resources.overlay.malbec">
+    <overlay android:targetPackage="com.android.wifi.resources"
+             android:targetName="WifiCustomization"
+             android:isStatic="true"
+             android:priority="1" />
+</manifest>
