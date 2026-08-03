@@ -231,6 +231,41 @@ blob_fixups: blob_fixups_user_type = {
             'android.hardware.graphics.allocator-V2-ndk.so',
         ),
 
+    # host_init_verifier fails the build on every stock service block that has no
+    # `user` line:
+    #
+    #   init.qcom.rc: 461: No user specified for service 'vendor.ssr_setup',
+    #                      so it would have been root.
+    #
+    # It is not asking us to drop privileges -- it is asking us to say so. On the
+    # host build the gate is service_parser.cpp:59-63,
+    #   kAlwaysErrorUserRoot = BUILD_SHIPPING_API_LEVEL > __ANDROID_API_V__
+    # and BUILD_SHIPPING_API_LEVEL comes from PRODUCT_SHIPPING_API_LEVEL, which is
+    # 36 here and is correct (the device really does report
+    # ro.product.first_api_level=36). Lowering it to silence this would misdeclare
+    # the device, so the .rc files get the explicit `user root` instead.
+    #
+    # This is the same defect class as the runtime one handled by
+    # ro.board.api_level=202404 in properties/vendor.prop -- but that property
+    # only governs init on the device (service_parser.cpp:685 reads
+    # ro.vendor.api_level). The host verifier never sees it, so both are needed.
+    #
+    # Behaviour is unchanged: these services ran as root before and still do.
+    ('vendor/etc/init/hw/init.qcom.rc',): blob_fixup()
+        .regex_replace(
+            r'(?m)^(service (?:vendor\.ssr_setup|vendor\.wigig_supplicant'
+            r'|dhcpcd_wlan0|dhcpcd_bond0|dhcpcd_p2p|dhcpcd_wigig0|dhcpcd_bt-pan'
+            r'|iprenew_wlan0|iprenew_bond0|iprenew_p2p|iprenew_wigig0|iprenew_bt-pan'
+            r'|wifi-sdio-on|qlogd|vendor\.power_off_alarm|bugreport)\s[^\n]*\n)',
+            r'\1    user root\n',
+        ),
+
+    ('vendor/etc/init/hw/init.target.rc',): blob_fixup()
+        .regex_replace(
+            r'(?m)^(service vendor\.mdm_launcher\s[^\n]*\n)',
+            r'\1    user root\n',
+        ),
+
 }  # fmt: skip
 
 # Firmware images (xbl, tz, abl, modem, hyp, …) are deliberately not shipped
