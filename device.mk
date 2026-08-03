@@ -179,7 +179,50 @@ PRODUCT_PACKAGES += \
     libalsautilsv2.vendor \
     libaudioaidlcommon.vendor \
     libmediautils_vendor.vendor \
-    libmemunreachable.vendor
+    libmemunreachable.vendor \
+    libaudioutils_shim
+
+# ── 带 ;DISABLE_DEPS 的 blob 所需、但全树无人提供的 soname ─────────────────
+#
+# 这一整类构建期是**查不出来**的：`;DISABLE_DEPS` 同时关掉 shared_libs 生成和
+# check_elf_file，于是 Soong 既不去构建这个依赖也不报错，`m nothing` 和
+# `m pixelos` 全绿，开机后 dlopen 失败。
+#
+# 第七个 session 用一次完整扫描定位（3370 个 ELF / 27346 条 DT_NEEDED，按**链接器
+# 命名空间**求解而不是按分区求并集），实测 20 个真缺口。其中 7 个是新的一类：
+# **文件在镜像里，但跨不过 vendor/system 命名空间边界** —— Android 16 没有 VNDK，
+# /vendor 的二进制只看得到 /odm/lib64、/vendor/lib64{,/hw,/egl} 加上
+# system/etc/llndk.libraries.txt 里那 26 个。所以 android.hardware.health@1.0.so
+# 之类「/system/lib64 里明明有」的库，对 vendor 消费者等于不存在，必须装 .vendor 变体。
+#
+# 分法（判据是**谁在消费**，不是这个库长什么样）：
+#   · 冻结的稳定接口（HIDL @x.y / AIDL -Vn-ndk）-> 走树。ABI 由冻结的接口定义，
+#     树的构建与出厂逐符号等价，这一批已逐个对过消费者的未定义符号与提供者导出。
+#   · 不是接口的普通 C++ 库、而消费者是出厂 blob -> 走 blob（在 proprietary-files.txt
+#     里），因为那是 Android 15 的二进制，跨一个大版本的内部 ABI 不保证。
+#     libaudioserviceexampleimpl / libaudioplatformconverter.qti / libnbaio_mono /
+#     qti-audio-types-aidl-V1-ndk / 六个 soundfx AIDL 效果库都属于这一类。
+PRODUCT_PACKAGES += \
+    android.hardware.bluetooth.audio@2.0.vendor \
+    android.hardware.bluetooth.audio@2.1.vendor \
+    android.hardware.health@1.0.vendor \
+    android.hardware.health@2.0.vendor \
+    android.hardware.health@2.1.vendor \
+    android.hardware.power@1.0.vendor \
+    android.hardware.power@1.1.vendor \
+    android.hardware.power@1.2.vendor \
+    android.hardware.soundtrigger3-V1-ndk.vendor \
+    android.hardware.thermal@1.0.vendor \
+    android.hardware.thermal@2.0.vendor \
+    android.media.soundtrigger.types-V1-ndk.vendor \
+    com.dsi.ant@1.0.vendor \
+    libaudio_aidl_conversion_common_ndk.vendor \
+    libflatbuffers-cpp.vendor \
+    libusbhost.vendor \
+    libwfdaac_vendor \
+    qti-audio-types-aidl-V1-ndk.vendor \
+    vendor.qti.hardware.bluetooth.audio-V1-ndk.vendor \
+    vendor.qti.hardware.display.allocator@4.0.vendor
 
 # 这两个 VINTF 片段走源码而不是 blob。它们本来是 libaudiocorehal.default /
 # libaudioeffecthal.qti 的 required:，实现库改回 blob 之后就没人带它们了，而出厂
@@ -194,8 +237,22 @@ PRODUCT_PACKAGES += \
     audioeffectservice_qti.xml
 
 # IPA（数据路径加速）
+#
+# 两个配置文件必须显式列出来。ipacm 的 Android.bp 没有 required: 带上它们，
+# 而「模块定义了」≠「本产品会构建」—— 这条教训 PROGRESS 第三节记过。
+# 上一次完整构建装了 /vendor/bin/ipacm 却没有任何 IPACM_*.xml，
+# 而 ipacm.rc:42 会 `copy /vendor/etc/IPACM_Filter_cfg.xml`。
+#
+# ⚠️ 走树而不是提取出厂那两份，理由是实测出来的：出厂的 IPACM_cfg.xml **没有**
+# wlan0/wlan1/wlan2/wlan3/wigig0 这几个 Iface 条目，树里 sm8750 那份有
+# （25 行差异全在这里）。这是一台 **WiFi-only** 平板，IPA offload 要用的恰恰
+# 是 wlan 接口 —— 出厂那份是 Lenovo 按自己的 SKU 裁过的。
+# IPACM_Filter_cfg.xml 两边逐字节相同，跟着走树保持一对。
+# 而且 ipacm 二进制本身就是从 hardware/qcom-caf/sm8750 编的，配置跟二进制同源。
 PRODUCT_PACKAGES += \
-    ipacm
+    ipacm \
+    IPACM_cfg.xml \
+    IPACM_Filter_cfg.xml
 
 # Sensors
 # The multihal service and its NDK bridge are AOSP's; only the sub-HALs listed
@@ -290,8 +347,19 @@ PRODUCT_SHIPPING_API_LEVEL := 36
 # it sits on SPI with a zero VID/PID, so it matches no Vendor_*.idc, and AOSP
 # classifies it as a STYLUS purely from its evdev capabilities
 # (BTN_TOOL_PEN, BTN_STYLUS, BTN_STYLUS2, ABS_PRESSURE, ABS_TILT_X/Y).
+#
+# 17ef:617f is the *other* half of the pen: its Bluetooth HID side, which
+# carries the side-button gestures. That is a different device from the SPI
+# digitizer above and needs its own keylayout — without one the side button
+# does nothing at all. DEVICE-FACTS.md has documented since session 1 that the
+# stock system loads Vendor_17ef_Product_617f.kl for it, but the file was only
+# ever staged under work/analysis/ and never wired in here. See the header of
+# our keylayout for why the stock file cannot be copied verbatim (six Lenovo
+# labels that KeyLayoutMap rejects, taking the whole file down with them) and
+# why the stock .idc is deliberately not carried.
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/keylayout/Vendor_17ef_Product_62b2.kl:$(TARGET_COPY_OUT_VENDOR)/usr/keylayout/Vendor_17ef_Product_62b2.kl \
+    $(LOCAL_PATH)/keylayout/Vendor_17ef_Product_617f.kl:$(TARGET_COPY_OUT_VENDOR)/usr/keylayout/Vendor_17ef_Product_617f.kl \
     $(LOCAL_PATH)/idc/Vendor_17ef_Product_62b2.idc:$(TARGET_COPY_OUT_VENDOR)/usr/idc/Vendor_17ef_Product_62b2.idc
 
 # Rootdir
@@ -320,8 +388,18 @@ PRODUCT_COPY_FILES += \
 # Overlays
 # Framework RRO. Values are measured from the stock ROM's dumpsys display, not
 # copied from another device — see the comments in its config.xml.
+#
+# WifiOverlayMalbec is not optional decoration on a Wi-Fi-only tablet. PixelOS
+# builds the AOSP ServiceWifiResources.apk, and its defaults answer "no" to most
+# capability questions: config_wifi5ghzSupport, config_wifi6ghzSupport,
+# config_wifiSoftap*, config_wifiSaeH2eSupported and MAC randomisation are all
+# false out of the box. Stock supplies them from four vendor RROs that live on
+# partitions this port replaces. See the overlay's AndroidManifest for why one
+# overlay covers what stock does with four, and which stock values are
+# deliberately left out because their RROs are gated on vendor.sku=sun.
 PRODUCT_PACKAGES += \
-    FrameworkOverlayMalbec
+    FrameworkOverlayMalbec \
+    WifiOverlayMalbec
 
 # Screen
 TARGET_SCREEN_HEIGHT := 3504
