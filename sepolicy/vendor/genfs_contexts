@@ -41,3 +41,20 @@ genfscon proc /HighReportRate                                  u:object_r:proc_l
 genfscon proc /haptics                                         u:object_r:proc_lenovo_touch:s0
 genfscon proc /gesture_mode                                    u:object_r:proc_lenovo_touch:s0
 genfscon proc /support_pen                                     u:object_r:proc_lenovo_pen:s0
+
+# /proc/nvt_fw_version is deliberately NOT labelled here, even though the stock
+# vendor_sepolicy.cil labels it (vendor_proc_tpver) and grants platform_app and
+# system_app read access. Recording the decision because a diff against stock
+# will keep surfacing it as "the one device-specific label we are missing".
+#
+# By this file's own rule -- the authority is the consumer, not the stock policy
+# -- it has no consumer here. A binary-safe search finds zero references to
+# nvt_fw_version in anything this tree installs, and, notably, zero in the
+# factory's vendor and system *binaries* too. Its reader is a Lenovo
+# factory-test app, i.e. dex on the ZUI product partition, which PixelOS
+# replaces wholesale.
+#
+# Adding it would also mean vendor policy granting two coredomains
+# (platform_app, system_app) access to a vendor-labelled type, which is the
+# direction Treble's neverallows exist to discourage. If a consumer ever ships,
+# add the label and the grant together with it.

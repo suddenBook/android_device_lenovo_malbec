@@ -22,3 +22,9 @@ ro.surface_flinger.use_content_detection_for_refresh_rate=true
 
 # Media
 ro.media.recorder-max-base-layer-fps=60
+
+# QTI "vendor assist" support flag, AOSP side. This is the counterpart of the
+# ro.vendor.qti.va_odm.support=1 that properties/odm.prop already carries; the
+# factory sets both, on system and odm respectively, and shipping only one half
+# was an oversight rather than a decision.
+ro.vendor.qti.va_aosp.support=1

@@ -40,32 +40,14 @@ vendor/apex/com.google.android.widevine.nonupdatable.apex
 
 # Apps
 vendor/app/CACertService/CACertService.apk
-vendor/app/CACertService/oat/arm64/CACertService.odex
-vendor/app/CACertService/oat/arm64/CACertService.vdex
 vendor/app/CneApp/CneApp.apk
-vendor/app/CneApp/oat/arm64/CneApp.odex
-vendor/app/CneApp/oat/arm64/CneApp.vdex
 vendor/app/ConnectionSecurityService/ConnectionSecurityService.apk
-vendor/app/ConnectionSecurityService/oat/arm64/ConnectionSecurityService.odex
-vendor/app/ConnectionSecurityService/oat/arm64/ConnectionSecurityService.vdex
 vendor/app/IWlanService/IWlanService.apk
-vendor/app/IWlanService/oat/arm64/IWlanService.odex
-vendor/app/IWlanService/oat/arm64/IWlanService.vdex
 vendor/app/QFingerprintService/QFingerprintService.apk
-vendor/app/QFingerprintService/oat/arm64/QFingerprintService.odex
-vendor/app/QFingerprintService/oat/arm64/QFingerprintService.vdex
 vendor/app/TimeService/TimeService.apk
-vendor/app/TimeService/oat/arm64/TimeService.odex
-vendor/app/TimeService/oat/arm64/TimeService.vdex
 vendor/app/TrustZoneAccessService/TrustZoneAccessService.apk
-vendor/app/TrustZoneAccessService/oat/arm64/TrustZoneAccessService.odex
-vendor/app/TrustZoneAccessService/oat/arm64/TrustZoneAccessService.vdex
 vendor/app/TxPwrAdmin/TxPwrAdmin.apk
-vendor/app/TxPwrAdmin/oat/arm64/TxPwrAdmin.odex
-vendor/app/TxPwrAdmin/oat/arm64/TxPwrAdmin.vdex
-vendor/app/com.qualcomm.qti.gpudrivers.sun.api35/com.qualcomm.qti.gpudrivers.sun.api35.apk
-vendor/priv-app/pasrservice/oat/arm64/pasrservice.odex
-vendor/priv-app/pasrservice/oat/arm64/pasrservice.vdex
+vendor/app/com.qualcomm.qti.gpudrivers.sun.api35/com.qualcomm.qti.gpudrivers.sun.api35.apk;PRESIGNED
 vendor/priv-app/pasrservice/pasrservice.apk
 
 # Firmware
@@ -1955,6 +1937,7 @@ system_ext/lib64/libwfdconfigutils.so
 system_ext/lib64/libwfdmminterface.so
 system_ext/lib64/libwfdmmsink.so
 system_ext/lib64/libwfdmmsrc_system.so
+system_ext/lib64/libwfdnative.so
 system_ext/lib64/libwfdrtsp.so
 system_ext/lib64/libwfdservice.so
 system_ext/lib64/libwfdsinksm.so
@@ -1971,6 +1954,7 @@ system_ext/lib64/vendor.qti.hardware.qccvndhal@1.0.so
 system_ext/lib64/vendor.qti.qccsyshal_aidl-V1-ndk.so
 system_ext/lib64/vendor.qti.qccsyshal_aidl-halimpl.so
 system_ext/lib64/vendor.qti.qccvndhal_aidl-V1-ndk.so
+system_ext/priv-app/WfdService/WfdService.apk
 
 # Misc
 vendor/bin/AnchorTest

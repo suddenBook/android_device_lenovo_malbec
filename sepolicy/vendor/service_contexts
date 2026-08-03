@@ -18,3 +18,26 @@ afw_service                                                     u:object_r:qcom_
 vendor.microtrust.hardware.afw.IAFWDevice/default               u:object_r:hal_afw_service:s0
 vendor.dolby.dms.IDms/default                                   u:object_r:hal_aidl_dms_service:s0
 vendor.dolby.dvs.IDvs/default                                   u:object_r:dvs_aidl_service:s0
+
+# Dolby DAX Codec2 store. Verbatim from the stock vendor_service_contexts:132,
+# where it sits beside the QTI store at default2 that we already carry.
+#
+# This one was missed when the Dolby stack was labelled, and it is the exact
+# failure shape described in the comment above: the VINTF fragment
+# vendor.dolby.media.c2-default-service-dax.xml declares
+# IComponentStore/default9, so clients call waitForService() on it, while
+# servicemanager refuses the registration because the name has no label. The
+# result is not a denial in the log — it is a client that blocks forever.
+#
+# hal_codec2_service is an AOSP type (system/sepolicy/public/service.te:315).
+# The service has no seclabel of its own; it runs in the mediacodec domain via
+# the mediacodec_exec label on its binary (file_contexts:39), matching stock.
+#
+# Note that mediacodec is not a hal_codec2_server in AOSP, so under enforcing
+# it will additionally need permission to add this service. That rule is
+# deliberately NOT guessed here: the first flash boots permissive, where the
+# add is allowed and the denial is recorded, and a rule written against a real
+# denial is narrower than one written against a prediction. The label, by
+# contrast, cannot wait — Access.cpp:167-170 fails the selabel lookup before
+# it ever consults enforcing mode.
+android.hardware.media.c2.IComponentStore/default9              u:object_r:hal_codec2_service:s0

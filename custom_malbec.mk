@@ -14,8 +14,14 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit_only.mk)
 #                -> media_vendor.mk -> base_vendor.mk
 #
 # and base_vendor.mk is what contributes selinux_policy_nonsystem,
-# passwd_vendor/group_vendor, the fs_config tables, shell_and_utilities_vendor
-# and update_engine. Dropping full_base_telephony.mk without putting full_base.mk
+# passwd_vendor/group_vendor, the fs_config tables and shell_and_utilities_vendor.
+#
+# (Correction: this used to list update_engine here too. It does not come from
+# base_vendor.mk -- update_engine appears only in generic_system.mk:42 /
+# mainline_system.mk:42, neither of which is in this inheritance graph. It
+# reaches this product from device.mk:311, which already adds it explicitly.
+# The rest of the list is accurate, and the conclusion is unchanged: without
+# full_base.mk the vendor image ships with no SELinux policy.) Dropping full_base_telephony.mk without putting full_base.mk
 # in its place — which is what this file used to do — removes the whole base
 # product, not just telephony, and the resulting vendor image has no SELinux
 # policy at all.

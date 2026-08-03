@@ -397,3 +397,69 @@ vendor.wv.oemcrypto.debug.enable_prov40=true
 #
 # KeyMint is NOT affected: its .rc starts unconditionally from `on init`.
 vendor.gatekeeper.is_security_level_spu=0
+
+# ── Values present in the factory vendor/build.prop that this tree was missing ─
+#
+# Found by diffing our 195 props against the factory build.prop set. Only the
+# ones with a statable purpose are taken; the rest are listed below as skipped,
+# with the reason, so the next session does not re-litigate the same list.
+#
+# ⚠️ Method note, because it bit me: "grep the built images for the property
+# name" is NOT a valid way to prove a property has no consumer. Most of these
+# are read from dex inside a compressed .apk/.jar, or by native code that
+# assembles the string at runtime. That grep reports "no consumer" even for
+# ro.vendor.qti.va_odm.support, which this tree already ships deliberately.
+# Positive evidence of harm is actionable; absence of a grep hit is not.
+
+# Frame pacing in the QTI perf stack. Factory vendor/build.prop sets it, and
+# this is a 144 Hz panel where pacing is exactly what it is for.
+vendor.perf.framepacing.enable=1
+
+# Wi-Fi only tablet with no modem: there is no SIM for Keyguard to require.
+keyguard.no_require_sim=true
+
+# Incremental FS, used by Play Store streamed installs. Not a blind copy: the
+# kernel really supports it -- CONFIG_INCREMENTAL_FS=y in the running stock
+# kernel's own config (work/device_dump/root/kernel/config.gz).
+ro.incremental.enable=yes
+
+# AVF is deliberately not enabled on this device (Gunyah, not KVM; only
+# protected VMs are supported, and PRODUCT_AVF_ENABLED is off). Say so
+# explicitly rather than leaving remote attestation to a default.
+avf.remote_attestation.enabled=false
+
+# Deliberately NOT taken from the factory build.prop, each for a specific reason:
+#
+#   persist.vendor.qcomsysd.enabled=1
+#       init.qcom.rc:452 does `enable qcomsysd` when this is 1 AND the build is
+#       userdebug -- which ours is. qcomsysd runs /system/vendor/bin/
+#       qcom-system-daemon, and we do not extract that binary. Setting this
+#       would hand init a service it can never start.
+#
+#   ro.recovery.usb.{vid,adb.pid,fastboot.pid}
+#       Already present in our build with the identical factory values
+#       (18D1/D001/4EE0 -- Google's USB VID, an AOSP default, not a Lenovo one).
+#       Verified in out/.../vendor/build.prop and in our recovery prop.default.
+#
+#   vendor.gatekeeper.disable_spu=true
+#       No consumer anywhere. A binary-safe search of both the factory images
+#       and ours finds it only in vendor_property_contexts (a label) and in the
+#       factory build.prop (the value). It is not the other half of
+#       vendor.gatekeeper.is_security_level_spu above -- that one has a real,
+#       documented consumer chain; this one has none.
+#
+#   ro.vendor.vm.ssr.enable=false
+#       A no-op here. init.target.rc:134-144 has three branches -- empty, false
+#       and true -- and the empty and false branches do exactly the same thing.
+#       So setting false is indistinguishable from leaving it unset.
+#       (Separately: all three branches start vendor.qvirtservice_rs, which this
+#       tree neither defines nor ships. Expected boot noise, see
+#       work/analysis/FIRST-BOOT-TRIAGE.md.)
+#
+#   persist.sys.sf.color_saturation=1.0 / persist.sys.sf.color_mode=0
+#       persist.* user settings whose values equal SurfaceFlinger's own
+#       defaults, so writing them changes nothing and only adds a line the next
+#       reader has to evaluate.
+#
+#   debug.mdpcomp.logs=0 / persist.demo.hdmirotationlock=false
+#       Debug and demo-mode knobs at their default values.

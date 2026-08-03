@@ -189,6 +189,13 @@ PRODUCT_PACKAGES += \
     libmemunreachable.vendor \
     libaudioutils_shim
 
+# Miracast: the compat shim that gives libwfdnative.so the pre-Android-16
+# MotionEvent::initialize symbol. See the blob_fixup in extract-files.py for why
+# this is the correct fix rather than ;DISABLE_CHECKELF. Installs to
+# /system_ext/lib64, the same namespace as its consumer.
+PRODUCT_PACKAGES += \
+    libinput_shim
+
 # ── 带 ;DISABLE_DEPS 的 blob 所需、但全树无人提供的 soname ─────────────────
 #
 # 这一整类构建期是**查不出来**的：`;DISABLE_DEPS` 同时关掉 shared_libs 生成和

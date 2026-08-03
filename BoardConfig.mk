@@ -132,13 +132,26 @@ TARGET_USES_VULKAN := true
 # Window size class is unaffected (973dp vs 1095dp, both >= 840dp expanded).
 # Users can still adjust via Settings > Display > Display size.
 #
-# ⚠️ An earlier revision claimed stock ships a 306 "display size" override.
-# It does not — checked on the running device:
-#   settings get secure display_density_forced -> null
-#   settings get system display_density_forced -> null
-#   wm density -> "Physical density: 360" with no Override line
-# 306 is exactly 360 x 0.85, i.e. the first step *below* default that
-# DisplayDensityUtils offers in Settings. It was a menu option read as a value.
+# ⚠️ About the 306 that keeps coming up, because this comment has been wrong in
+# both directions and the value 306 also underpins the rounded_corner_radius in
+# overlay/FrameworkOverlayMalbec:
+#
+#   - Stock's default IS 360. That part was always right.
+#   - An earlier revision said stock ships a 306 "display size" override, and
+#     derived things from it. Wrong: it is not a stock default.
+#   - The correction that replaced it said `wm density` shows "no Override line".
+#     Also wrong, and checkable in this repo:
+#     work/device_dump/display/wm.txt literally reads
+#         Physical density: 360
+#         Override density: 306
+#     and dumpsys-display.txt:201/:202 shows mBaseDisplayInfo density 360 versus
+#     mOverrideDisplayInfo density 306.
+#
+# What 306 actually was: the owner had set it by hand in Settings > Display size
+# before that dump was taken (confirmed by the owner). It is a user setting on
+# one unit, not a property of the device, and nothing should be derived from it.
+#
+# 320 here is a deliberate owner preference, not a correction of stock.
 #
 # Panel is dual sourced (BOE nt36536e / CSOT nt36536), 144 Hz. The bootloader
 # names the panel on the kernel command line
@@ -157,7 +170,13 @@ DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE += \
     hardware/qcom-caf/common/vendor_framework_compatibility_matrix.xml \
 
 DEVICE_MATRIX_FILE := hardware/qcom-caf/common/compatibility_matrix_aidl.xml
-DEVICE_MANIFEST_FILE := $(DEVICE_PATH)/configs/hidl/manifest.xml
+# += rather than :=. build/make/core/soong_config.mk:699 consumes this as a list
+# (add_json_list, DeviceManifestFiles) and AOSP's own build/make/target/product/
+# full.mk:26 appends to it, so := silently drops anything an inherited config
+# contributes. Nothing contributes today, which is exactly why this would go
+# unnoticed until something did. Note the DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE
+# two lines up already uses +=; this line was just inconsistent with it.
+DEVICE_MANIFEST_FILE += $(DEVICE_PATH)/configs/hidl/manifest.xml
 
 # Kernel
 BOARD_INCLUDE_DTB_IN_BOOTIMG := true
@@ -227,7 +246,16 @@ BOARD_BOOTCONFIG := \
 #
 # selinux.cpp:102-118 reads androidboot.selinux from bootconfig, and honours it
 # only when ALLOW_PERMISSIVE_SELINUX is compiled in, which it is on userdebug.
-MALBEC_BRINGUP ?= true
+# ⚠️ 第九轮把默认从 `true` 翻成 `false`。上一轮设成 opt-out 的理由是「随手一次裸
+# `m` 会得到 enforcing + 无 adb 的构建，而设备在几百公里外、只有一次刷机机会」——
+# 那个顾虑是真的，但代价是**任何**构建（包括将来给别人的）都默认烤进
+# androidboot.selinux=permissive，而产物里没有任何东西能把它和一台永久 permissive
+# 的 ROM 区分开。
+#
+# 现在两头都占：work/scripts/40-build.sh 显式 export MALBEC_BRINGUP=${MALBEC_BRINGUP:-true}，
+# 所以照常用那个包装脚本构建拿到的仍然是 permissive + adb；而裸 `m` 得到的是
+# enforcing。开关还在，只是不再是默认。
+MALBEC_BRINGUP ?= false
 ifeq ($(MALBEC_BRINGUP),true)
 BOARD_BOOTCONFIG += androidboot.selinux=permissive
 endif
@@ -434,6 +462,18 @@ VENDOR_SECURITY_PATCH := 2026-05-05
 # Verified Boot
 BOARD_AVB_ENABLE := true
 # --flags 3 = HASHTREE_DISABLED | VERIFICATION_DISABLED.
+#
+# ⚠️ 第九轮补一条实测，因为原注释把后果说轻了：这不只是「bootloader 开机时不校验」。
+# fs_avb.cpp:255-259 先判 verification_disabled 置 kVerificationDisabled，而
+# :554-558 的 SetUpAvbHashtree 对 kVerificationDisabled 和 kHashtreeDisabled
+# **一视同仁**直接返回 kDisabled —— 也就是 /system /vendor /product /system_ext
+# /odm /vendor_dlkm /system_dlkm 七个只读分区**运行期完全没有 dm-verity**，不是
+# 「只是启动时不查」。而且 vbmeta 与 vbmeta_system 都在 AB_OTA_PARTITIONS 里，
+# 每次 OTA 都会把这个状态再抹到目标机上。
+#
+# 顺带堵掉一个会被提出来的中间方案：`--flags 2`（只 VERIFICATION_DISABLED）
+# **不是**中间档。因为 :255 先判 verification_disabled，它同样走到那个
+# kDisabled 分支。要 dm-verity 就只能是 flags 0，没有第三种。
 #
 # ⚠️ This is an INTENTIONAL, PERMANENT divergence for this fork, not a bring-up
 # leftover — do not "fix" it. It is baked into vbmeta.img, and vbmeta is in

@@ -40,17 +40,36 @@
          config_defaultRefreshRate above; ro.sf.rounded_corner_radius is unset on
          this device, so without an override here SystemUI would not mask the
          corners at all.
-         ⚠️ This said 45 px and cited "measured with dumpsys display on the
-         running stock ROM". The measurement was misread: both
-         work/device_dump/display/dumpsys-display.txt and the live device report
-             RoundedCorner{position=TopLeft, radius=38, ...}
-         Stock's RRO declares 20dp and stock runs with
-         Settings.Secure display_density_forced=306, so 20dp x 306/160 = 38.25
-         -> getDimensionPixelSize -> 38. 45 is what 20dp gives at the *build*
-         density (360), which is not the density stock actually runs at.
-         Keep the unit as px: corner radius is a property of the glass and must
-         not move when TARGET_SCREEN_DENSITY is 320. -->
-    <dimen name="rounded_corner_radius">38px</dimen>
+
+         Keeping the unit as px is right: the corner radius is a property of the
+         glass, so it must not move when TARGET_SCREEN_DENSITY does.
+
+         The value, though, has been wrong twice, in opposite directions, and
+         both times because the dp -> px conversion was anchored to the wrong
+         density. Writing the derivation down so it stops happening:
+
+             stock RRO declares    20dp
+             stock default density 360   ->  20 * 360/160 = 45 px
+             dump-time density     306   ->  20 * 306/160 = 38.25 -> 38 px
+
+         An earlier revision said 45px and cited a dumpsys measurement; that was
+         the right number with the wrong evidence. It was then "corrected" to
+         38px because work/device_dump/display/dumpsys-display.txt:71 does report
+             RoundedCorner{position=TopLeft, radius=38, center=Point(38, 38)}
+         and wm.txt records "Override density: 306".
+
+         But 306 was not a stock default and not a menu option misread as a
+         value: the owner had set it by hand in Settings > Display size before
+         that dump was taken (confirmed by the owner). It says nothing about the
+         hardware. Stock's own default is 360: wm.txt:2 says "Physical density:
+         360", and dumpsys-display.txt:201 mBaseDisplayInfo density 360 versus
+         :202 mOverrideDisplayInfo density 306. So the radius Lenovo dimensioned
+         the glass against is 45 px, and 38 was an artefact of one user setting.
+
+         Note this is independent of our TARGET_SCREEN_DENSITY := 320, which is a
+         deliberate owner preference (320 lands exactly on the xhdpi bucket). A px
+         value does not scale with it; that is the point of using px. -->
+    <dimen name="rounded_corner_radius">45px</dimen>
 
     <!-- ★ 0.0 here was a black screen waiting to happen.
          DisplayDeviceConfig.java:2057-2071 reads this straight into

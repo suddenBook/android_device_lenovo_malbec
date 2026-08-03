@@ -60,9 +60,30 @@ def _renamed_vendor_libs():
             if not line or line.startswith('#'):
                 continue
             head, _, tags = line.lstrip('-').partition(';')
-            if ';MODULE_SUFFIX=_vendor' not in ';' + tags:
+
+            # Exact tag match, not a substring test. `';MODULE_SUFFIX=_vendor'
+            # in ';' + tags` also matches a hypothetical ;MODULE_SUFFIX=_vendorfoo.
+            if 'MODULE_SUFFIX=_vendor' not in tags.split(';'):
                 continue
-            head = head.split('|')[0].split(':')[0]
+
+            # An entry is [-]src[:dst][|hash]. Strip the hash, then take the
+            # DESTINATION when the line renames, because the destination is what
+            # decides the module name: extract_utils derives it from file.root,
+            # i.e. the destination basename (extract_utils/file.py:134,
+            # makefiles.py:142-165).
+            #
+            # This used to take .split(':')[0], i.e. the source. That is right
+            # only while no ;MODULE_SUFFIX= entry also carries a :dst rename,
+            # which is true today and is why the bug was invisible. The tree
+            # already has a renaming entry of the other kind (;FIX_SONAME on
+            # libtensorflowlite_c.so:...libtensorflowlite_c_vendor.so), so the
+            # shape exists; the first entry combining the two would have
+            # silently produced a fixup pointing at a module that does not
+            # exist, and lib_fixups fail open rather than erroring.
+            head = head.split('|')[0]
+            src, sep, dst = head.partition(':')
+            head = dst if sep else src
+
             if not head.startswith('vendor/') or not head.endswith('.so'):
                 continue
             names.add(os.path.basename(head)[:-len('.so')])
@@ -181,6 +202,35 @@ blob_fixups: blob_fixups_user_type = {
     # 这是 Android 16 移植带 Android 15 音频 blob 的通用问题，不是本机特有的。
     ('vendor/lib64/libaudioserviceexampleimpl.so',): blob_fixup()
         .add_needed('libaudioutils_shim.so'),
+
+    # Miracast (WiFi Display). Exactly the same shape as the line above, and the
+    # shim is likewise already upstream — it just was not noticed the first time.
+    #
+    # libwfdnative.so is WfdService.apk's JNI library. It was compiled against an
+    # Android 15 frameworks/native, where MotionEvent::initialize took `int flags`;
+    # Android 16 changed that parameter to ftl::Flags<MotionFlag>, so the mangled
+    # name it imports no longer exists. Of its 138 undefined symbols, resolved
+    # against all 1086 shared libraries this build installs under /system,
+    # /system_ext and /apex, that one symbol is the *only* miss.
+    #
+    # hardware/lineage/compat/libinput/Input.cpp:29-42 defines precisely that old
+    # mangled name and forwards to the new one, wrapping the int as
+    # ftl::Flags<MotionFlag>(flags). Module `libinput_shim`
+    # (hardware/lineage/compat/Android.bp:355-371) is system_ext_specific and
+    # 64-bit, i.e. the same partition and linker namespace as libwfdnative.so.
+    #
+    # ⚠️ Do NOT reach for ;DISABLE_CHECKELF here instead. That silences the build
+    # check without providing the symbol, so the library still fails to load at
+    # runtime — an installed, permanently broken Miracast, and silently so. The
+    # shim actually defines the symbol, which is why this is a fix and that is not.
+    #
+    # Without these two blobs the whole native WFD stack we already ship (47
+    # entries, plus wfd-system-ext-privapp-permissions-qti.xml allowlisting a
+    # package that was not installed) is dead weight: wfdservice.rc only starts
+    # wfdservice64 `on property:vendor.wfdservice64=enable`, and the APK is what
+    # sets that property.
+    ('system_ext/lib64/libwfdnative.so',): blob_fixup()
+        .add_needed('libinput_shim.so'),
 
     (
         'system_ext/lib64/libwfddisplayconfig.so',

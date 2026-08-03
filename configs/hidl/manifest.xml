@@ -43,10 +43,20 @@
          to the factory binary and links android.hardware.power-V5-ndk.so.
          V6 is not installed at all (installed-files-vendor.txt has only V5).
 
-         Independent confirmation: this device declares target-level 202404, and
-         system/etc/vintf/compatibility_matrix.202404.xml lists
-         android.hardware.power version "5" exactly. Declaring 6 claims a
-         capability from a newer vendor API level than we ship.
+         CORRECTION (ninth round): this comment used to add "independent
+         confirmation: target-level is 202404 and compatibility_matrix.202404.xml
+         lists power version 5 exactly, so declaring 6 claims a capability from a
+         newer vendor API level". That reasoning is wrong, and it matters because
+         the next person would reuse it. Declaring V6 would NOT have been
+         rejected: compatibility_matrix.202504.xml:382-383 lists 5-6, that matrix
+         is also installed here, and CompatibilityMatrix::combine
+         (CompatibilityMatrix.cpp:374-376) merges every level above deviceLevel
+         in via addAllAsOptional. Separately, AssembleVintf.cpp's
+         setManifestAidlHalVersion auto-downgrades unfrozen AIDL versions when
+         RELEASE_AIDL_USE_UNFROZEN=false.
+
+         So the constraint is purely the runtime one stated above: the installed
+         binary implements V5. Right choice, wrong reason.
 
          The AIDL version number carries no scheduling or battery policy — that
          lives in /vendor/etc/powerhint.xml plus the perf blobs
@@ -65,8 +75,15 @@
          declared. This one is unambiguous: there is no
          android.hardware.bluetooth.audio-V5-ndk.so anywhere in the build — only
          V3 and V4 are installed — so v5 declares an interface version nothing
-         in the image can serve. compatibility_matrix.202404.xml lists "3-4".
-         Stock declares 4. -->
+         in the image can serve. Stock declares 4.
+
+         CORRECTION (ninth round): the old text also cited
+         compatibility_matrix.202404.xml listing "3-4" as a reason V5 was
+         rejected. Same mistake as the power block above:
+         compatibility_matrix.202504.xml:126-127 lists 3-5 and is merged in as
+         optional, so V5 would have matched the matrix fine. The real and
+         sufficient reason is the one in the first sentence — the library does
+         not exist in this build. -->
     <hal format="aidl">
         <name>android.hardware.bluetooth.audio</name>
         <version>4</version>
