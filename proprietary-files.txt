@@ -268,7 +268,6 @@ vendor/etc/init/init_thermal-engine-v2.rc
 vendor/etc/init/ipacm-diag.rc
 vendor/etc/init/lenovo.hardware.ai-service.rc
 vendor/etc/init/loc-launcher.rc
-vendor/etc/init/lrootfs.rc
 vendor/etc/init/memtrack_qti.rc
 vendor/etc/init/nicmd.rc
 vendor/etc/init/port-bridge.rc
@@ -331,7 +330,6 @@ vendor/etc/init/vendor.qti.hardware.sensorscalibrate-service.rc
 vendor/etc/init/vendor.qti.hardware.servicetrackeraidl-service.rc
 vendor/etc/init/vendor.qti.hardware.soter-service.rc
 vendor/etc/init/vendor.qti.hardware.trustedui-aidl-service-qti.rc
-vendor/etc/init/vendor.qti.hardware.vibrator.service.rc
 vendor/etc/init/vendor.qti.hardware.wifi.wifilearner-service.rc
 vendor/etc/init/vendor.qti.media.c2@1.0-service.rc
 vendor/etc/init/vendor.qti.media.c2audio@1.0-service.rc
@@ -357,7 +355,6 @@ vendor/etc/vintf/manifest/android.hardware.drm-service.xml
 vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml
 vendor/etc/vintf/manifest/bcs-ranging.xml
 vendor/etc/vintf/manifest/bluetooth-finder.xml
-vendor/etc/vintf/manifest/bluetooth_audio.xml
 vendor/etc/vintf/manifest/bluetooth_hci.xml
 vendor/etc/vintf/manifest/bluetooth_sar.xml
 vendor/etc/vintf/manifest/bt_lmp_event-saidl.xml
@@ -377,7 +374,6 @@ vendor/etc/vintf/manifest/manifest_btaudiocoreservices_qti.xml
 vendor/etc/vintf/manifest/manifest_identity_credential.xml
 vendor/etc/vintf/manifest/memtrack_qti.xml
 vendor/etc/vintf/manifest/mwqem-saidl.xml
-vendor/etc/vintf/manifest/power.xml
 vendor/etc/vintf/manifest/qasr_vintf.xml
 vendor/etc/vintf/manifest/qesdk-manager.xml
 vendor/etc/vintf/manifest/qms-saidl.xml
@@ -418,7 +414,6 @@ vendor/etc/vintf/manifest/vendor.qti.hardware.sensorscalibrate.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.servicetrackeraidl-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.soter-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.trustedui-aidl-service.xml
-vendor/etc/vintf/manifest/vendor.qti.hardware.vibrator.service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.vpp-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.wifi.wifilearner-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.wifidisplaysession-service.xml
@@ -1911,6 +1906,7 @@ vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini
 vendor/etc/wifi/qca6750/WCNSS_qcom_cfg.ini
 vendor/etc/wifi/vendor_cmd.xml
 vendor/etc/wifi/wcn7750/WCNSS_qcom_cfg.ini
+vendor/etc/wifi/wpa_supplicant.conf
 vendor/etc/wifi/wpa_supplicant_overlay.conf
 vendor/etc/xtwifi.conf
 vendor/lib64/libWlanServiceJni.so
@@ -2049,7 +2045,6 @@ vendor/bin/hw/vendor.qti.hardware.minkipcbinder@1.0-service
 vendor/bin/hw/vendor.qti.hardware.secureprocessor
 vendor/bin/hw/vendor.qti.hardware.servicetrackeraidl-service
 vendor/bin/hw/vendor.qti.hardware.soter-service
-vendor/bin/hw/vendor.qti.hardware.vibrator.service
 vendor/bin/hw/vendor.qti.media.c2@1.0-service
 vendor/bin/hw/vendor.qti.memory.pasrmanager-service
 vendor/bin/hw/vendor.qti.psiclient@1.0-service
@@ -2112,7 +2107,6 @@ vendor/bin/lenovo.hardware.ai-service
 vendor/bin/loadalgo
 vendor/bin/loopback.sh
 vendor/bin/lowi-server
-vendor/bin/lrootfs.sh
 vendor/bin/mlid
 vendor/bin/myftm
 vendor/bin/nicmd
@@ -2199,7 +2193,6 @@ vendor/etc/ASR_binary/Whisper/speech_float.eai
 vendor/etc/CHGPD.cfg
 vendor/etc/CHGPD_Baldur.cfg
 vendor/etc/FIT_V24_2_volte_full_ip.cfg
-vendor/etc/HapticsPolicy.xml
 vendor/etc/Hapticsconfig.xml
 vendor/etc/Record_playback.cfg
 vendor/etc/ZUI_Full.cfg
@@ -2221,7 +2214,6 @@ vendor/etc/default_volume_tables.xml
 vendor/etc/dolby/dax-default.xml
 vendor/etc/dolby_vision.cfg
 vendor/etc/excluded-input-devices.xml
-vendor/etc/fstab.qcom.dm
 vendor/etc/fstab.zram_wb
 vendor/etc/ftm_test_config
 vendor/etc/ftm_test_config_kera-mtp-qmp-snd-card

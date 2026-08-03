@@ -62,7 +62,14 @@ $(call inherit-product, frameworks/native/build/phone-xhdpi-6144-dalvik-heap.mk)
 $(call inherit-product, packages/modules/Virtualization/apex/product_packages.mk)
 
 # Qualcomm
-$(call soong_config_set,rfs,mpss_firmware_symlink_target,modem_firmware)
+# The symlink target has to be a directory something actually mounts.
+# rootdir/etc/fstab.qcom:83 mounts by-name/modem at /vendor/firmware_mnt, and
+# nothing anywhere mounts /vendor/modem_firmware — so "modem_firmware" produced a
+# dangling /vendor/rfs/msm/mpss/readonly/firmware. Stock points it at
+# firmware_mnt. Inert today (ro.baseband=apq, ro.radio.noril=yes, MPSS never
+# runs) but it is a silent deviation that would break modem RFS on any variant
+# that does have a modem, and it costs nothing to be right.
+$(call soong_config_set,rfs,mpss_firmware_symlink_target,firmware_mnt)
 $(call inherit-product, hardware/qcom-caf/common/common.mk)
 
 # QTI HALs built from source rather than carried as blobs, matching onyx.

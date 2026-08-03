@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+
+     Verbatim from the stock vendor RRO (vendor/overlay/FrameworksResTarget_Vendor.apk,
+     res/xml/irq_device_map.xml), which this port replaces.
+
+     BatteryStatsService / IrqDeviceMap reads this to put a human-readable
+     subsystem name against a wakeup interrupt. Without it the wakeup shows up
+     unattributed in battery blame.
+
+     Only one mapping, and it is generic Qualcomm PMIC rather than anything
+     board specific, so unlike config_mainDisplayShape (see ../values/config.xml)
+     this one is safe to carry over: if the IRQ is not present the lookup simply
+     never matches and nothing else changes.
+-->
+<irq-device-map>
+    <device name="pm8xxx_rtc_alarm">
+        <subsystem>Alarm</subsystem>
+    </device>
+</irq-device-map>

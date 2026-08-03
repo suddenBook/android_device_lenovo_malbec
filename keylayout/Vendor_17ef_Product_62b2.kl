@@ -179,7 +179,11 @@ key 139   MENU
 key 140   CALCULATOR
 # key 141 "KEY_SETUP"
 key 142   SLEEP
-key 143   WAKEUP
+# WAKE, matching key 654 below. The folio keyboard really does advertise
+# KEY_WAKEUP (getevent -pl), and without the flag PhoneWindowManager drops the
+# event while the screen is off (isWakeKey is computed from FLAG_WAKE), which
+# makes the key do nothing in the only situation it exists for.
+key 143   WAKEUP    WAKE
 # key 144 "KEY_FILE"
 # key 145 "KEY_SENDFILE"
 # key 146 "KEY_DELETEFILE"

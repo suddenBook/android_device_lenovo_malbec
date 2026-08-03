@@ -79,6 +79,25 @@
          values/config.xml: doze 0.0, dim 0.05), so neither needs an override
          and writing the dim value into the doze resource only made AOD wrong. -->
 
+    <!-- ★ config_mainDisplayShape is deliberately NOT carried over from the
+         stock vendor RRO, even though that RRO does set it. Decoded, stock's
+         value is
+
+             M20 0 h1040 s20 0 20 20 v2360 s0 20 -20 20 h-1040 s-20 0 -20 -20 v-2360 ...
+
+         i.e. a rounded rectangle 20+1040+20 = 1080 wide and 20+2360+20 = 2400
+         tall. This panel is 2190x3504. The path is for some other model that
+         shares Lenovo's vendor image — the same pattern as the
+         vendor.lenovo.hardware.vibrator_dual-service entry in stock's
+         file_contexts, whose binary does not exist on this device either.
+
+         Copying it would tell every app calling WindowInsets#getDisplayShape()
+         that the screen is 1080x2400. AOSP's default is the empty string, which
+         makes DisplayShape.fromResources() synthesise the shape from the real
+         display size and the rounded_corner_radius above — correct here, and
+         correct on any future panel. Leaving it unset is the right answer, not
+         an omission. -->
+
     <!-- No config_mainBuiltInDisplayCutout override: the panel has no cutout and
          AOSP's default for that resource is already the empty string
          (frameworks/base/core/res/res/values/config.xml). Restating it added

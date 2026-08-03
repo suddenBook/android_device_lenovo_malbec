@@ -230,7 +230,18 @@ debug.c2.use_dmabufheaps=1
 debug.stagefright.c2inputsurface=-1
 debug.stagefright.ccodec=4
 debug.stagefright.omx_default_rank=0
-ro.mediaserver.64b.enable=true
+# ro.mediaserver.64b.enable is deliberately absent. It was the only property in
+# the whole built vendor/build.prop with no property_contexts entry, so it fell
+# through to the "*" catch-all -> default_prop. /vendor/build.prop is loaded with
+# kVendorContext (property_service.cpp:716-724) and every key goes through
+# CheckPermissions, and system/sepolicy/private/property.te:793-796 is
+#   neverallow { domain -init } default_prop:property_service set;
+# so no rule could ever be written for it — vendor_init is permanently barred.
+# Stock worked around this by patching the *platform* file
+# (plat_property_contexts:1733 labels it vendor_medsrv_set_64b), which is not
+# something a device tree can do. Android 16 has no mediaserver anyway, so the
+# property is dead: dropping it is strictly better than shipping a guaranteed
+# "failed to set property" on every boot.
 drm.service.enabled=true
 
 # Perf
