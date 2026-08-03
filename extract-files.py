@@ -225,6 +225,31 @@ blob_fixups: blob_fixups_user_type = {
             'vendor.qti.hardware.display.config-V12-ndk.so',
         ),
 
+    # The tree builds libtensorflowlite_c from external/tensorflow and installs it
+    # to /vendor/lib64, but AOSP builds TFLite without the XNNPack delegate, so
+    # that copy does not export TfLiteXNNPackDelegate{Create,Delete,OptionsDefault}.
+    # Three stock blobs need them, and check_elf_file fails the build on the
+    # unresolved symbols.
+    #
+    # Both copies are needed, so the factory one is extracted under a renamed
+    # destination with ;FIX_SONAME (see proprietary-files.txt) and its consumers
+    # are pointed at the new soname. This is the one collision shape that
+    # neither dropping a side nor MAKE_COPY_RULE_ONLY can solve. onyx does the
+    # same for its two consumers; libVoiceSdk is additional on this device.
+    #
+    # The consumer list was derived by reading DT_NEEDED off the FACTORY files,
+    # not off proprietary/ -- the latter has already been rewritten by fixups,
+    # so scanning it under-reports (PROGRESS.md section 3).
+    (
+        'vendor/lib64/libVoiceSdk.so',
+        'vendor/lib64/libcapiv2uvvendor.so',
+        'vendor/lib64/liblistensoundmodel2vendor.so',
+    ): blob_fixup()
+        .replace_needed(
+            'libtensorflowlite_c.so',
+            'libtensorflowlite_c_vendor.so',
+        ),
+
     'vendor/lib64/libqvrservice.so': blob_fixup()
         .replace_needed(
             'android.hardware.graphics.allocator-V1-ndk.so',

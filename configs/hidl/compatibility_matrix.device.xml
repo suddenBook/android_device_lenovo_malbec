@@ -92,4 +92,41 @@
             <instance>default</instance>
         </interface>
     </hal>
+    <!-- Third-party vendor HALs the stock image declares. These are not
+         Lenovo's own, which is why the original pass over the vendor manifests
+         missed them: it only looked at lenovo.* and vendor.lenovo.*.
+         check_vintf then failed the build with
+
+           The following instances are in the device manifest but not
+           specified in framework compatibility matrix:
+             vendor.dolby.dms.IDms/default (@1)
+             vendor.dolby.dvs.IDvs/default (@1)
+             vendor.microtrust.hardware.afw.IAFWDevice/default (@1)
+
+         Declared optional for the same reason as the Lenovo ones: the vendor
+         image provides them, nothing framework-side is required to use them.
+         No <version> in the stock fragments means AIDL version 1.
+         Taken verbatim from vendor/etc/vintf/manifest/{dms-service,
+         dvs-aidl-service,manifest_afw}.xml. -->
+    <hal format="aidl" optional="true">
+        <name>vendor.dolby.dms</name>
+        <interface>
+            <name>IDms</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>vendor.dolby.dvs</name>
+        <interface>
+            <name>IDvs</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>vendor.microtrust.hardware.afw</name>
+        <interface>
+            <name>IAFWDevice</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
 </compatibility-matrix>

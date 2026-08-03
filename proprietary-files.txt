@@ -1919,7 +1919,6 @@ system_ext/lib64/libwfdconfigutils.so
 system_ext/lib64/libwfdmminterface.so
 system_ext/lib64/libwfdmmsink.so
 system_ext/lib64/libwfdmmsrc_system.so
-system_ext/lib64/libwfdnative.so
 system_ext/lib64/libwfdrtsp.so
 system_ext/lib64/libwfdservice.so
 system_ext/lib64/libwfdsinksm.so
@@ -1936,7 +1935,6 @@ system_ext/lib64/vendor.qti.hardware.qccvndhal@1.0.so
 system_ext/lib64/vendor.qti.qccsyshal_aidl-V1-ndk.so
 system_ext/lib64/vendor.qti.qccsyshal_aidl-halimpl.so
 system_ext/lib64/vendor.qti.qccvndhal_aidl-V1-ndk.so
-system_ext/priv-app/WfdService/WfdService.apk
 
 # Misc
 vendor/bin/AnchorTest
@@ -1985,7 +1983,6 @@ vendor/bin/fmconfig
 vendor/bin/fmfactorytest
 vendor/bin/fmfactorytestserver
 vendor/bin/ftmdaemon
-vendor/bin/hal_proxy_daemon
 vendor/bin/hdcp1prov
 vendor/bin/hdcp2p2prov
 vendor/bin/hexlpservice
@@ -2121,7 +2118,6 @@ vendor/bin/sec_log_enabler
 vendor/bin/sec_nvm
 vendor/bin/sg_write_buffer
 vendor/bin/shsusrd
-vendor/bin/sigma_dut
 vendor/bin/slim_daemon
 vendor/bin/snapdragon_services
 vendor/bin/spdaemon
@@ -2152,7 +2148,6 @@ vendor/bin/vndservice
 vendor/bin/vndservicemanager
 vendor/bin/vppcommonlibraryunittest
 vendor/bin/vpplibraryfunctionaltest
-vendor/bin/vpplibraryunittest
 vendor/bin/vppservice
 vendor/bin/vppserviceunittest
 vendor/bin/wdsdaemon
@@ -2366,6 +2361,7 @@ vendor/lib64/libScenescape.so
 vendor/lib64/libStereoRectifyWrapper.so
 vendor/lib64/libTxPwrJni.so
 vendor/lib64/libVoiceSdk.so
+vendor/lib64/libtensorflowlite_c.so:vendor/lib64/libtensorflowlite_c_vendor.so;FIX_SONAME
 vendor/lib64/libadm.so
 vendor/lib64/libaipriv.so
 vendor/lib64/libaodoptfeature.so
