@@ -597,6 +597,24 @@ PRODUCT_COPY_FILES += \
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/device_state_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/devicestate/device_state_configuration.xml
 
+# RRO partition precedence.
+#
+# This tree's overlays are in /vendor/overlay, which AOSP orders BELOW
+# /product/overlay - so every GMS overlay silently outranks ours. Measured, not
+# assumed: `cmd overlay list android` prints in increasing priority and puts
+# android.overlay.malbec first, ahead of com.google.android.overlay.pixelconfig*.
+# The case that surfaced it is config_defaultNightMode, which
+# PixelConfigOverlay2021_GMS pins to 2 (dark) - adding it to our overlay would
+# simply have lost.
+#
+# OverlayConfig.java:76 hardcodes the path to /product/overlay, which is why a
+# device-tree file lands on the product partition. The file itself carries the
+# format rules (a typo makes it silently ignored) and the measurement showing our
+# 71 resources and the product overlays' 595 currently have an EMPTY
+# intersection, i.e. this reorder changes nothing else today.
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/configs/partition_order.xml:$(TARGET_COPY_OUT_PRODUCT)/overlay/partition_order.xml
+
 # Rootdir
 # fstab.qcom is the one vendor config this port has to change, so the device
 # tree owns it and proprietary-files.txt skips the stock copy.

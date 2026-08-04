@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+
+     RRO partition precedence.
+
+     Why this file exists: this device tree's overlays live in /vendor/overlay,
+     and by AOSP's default partition order that makes them LOWER priority than
+     the GMS overlays in /product/overlay. Measured on the device rather than
+     assumed - `cmd overlay list android` prints in increasing priority order and
+     puts android.overlay.malbec first, ahead of every
+     com.google.android.overlay.pixelconfig*_gms:
+
+         [x] android.overlay.malbec                            <- ours, lowest
+         ...
+         [x] com.google.android.overlay.pixelconfig2021_gms    <- wins today
+
+     Consequence: any framework resource that both we and a GMS overlay set is
+     decided by GMS, silently. The concrete case that surfaced it is
+     config_defaultNightMode - PixelConfigOverlay2021_GMS sets it to 2
+     (MODE_NIGHT_YES), which is why the device comes up in dark mode even though
+     AOSP's own default (config.xml:898) is 1. On this panel - an LCD, not OLED -
+     dark mode costs contrast and buys no power, and the device owner cannot read
+     it. Simply adding the resource to FrameworkOverlayMalbec would NOT have
+     worked; it would have lost.
+
+     The mechanism is AOSP's own: OverlayConfig.PARTITION_ORDER_FILE_PATH is
+     hardcoded to "/product/overlay/partition_order.xml"
+     (frameworks/base/core/java/com/android/internal/content/om/OverlayConfig.java:76)
+     and sortPartitions() reorders the partition list from it, which is why this
+     is copied to the product partition even though it is a device-tree file.
+
+     Format constraints, from parseAndValidatePartitionsOrderXml() (:232-288):
+       - root element must be <partition-order>
+       - every partition must be listed exactly once; a duplicate, a missing one,
+         or a count mismatch against PackagePartitions.SYSTEM_PARTITIONS makes
+         the whole file be IGNORED with only a Log.w, so a typo here fails silent
+       - the names are Build.Partition.PARTITION_NAME_* (Build.java:1747-1759):
+         system, vendor, odm, oem, product, system_ext
+       - document order is priority order, LOWER first
+
+     The only change from AOSP's default (system, vendor, odm, oem, product,
+     system_ext) is that vendor moves from second to just after product. That is
+     the minimum edit that puts this device tree above the generic Pixel config
+     overlays while leaving system_ext highest, and it is the correct semantic
+     for a port: a device-specific overlay should outrank a generic one.
+
+     Blast radius was measured before making the change, not estimated. Our three
+     overlays define 71 resources; the product overlays define 595; the
+     intersection is EMPTY. So today this reorder changes exactly nothing except
+     making the night-mode override possible. Re-check that intersection if a
+     future GMS bump adds resources - the check is:
+         for a in vendor/overlay/*.apk product/overlay/*.apk; do
+             aapt2 dump resources "$a" | grep -oE 'resource 0x[0-9a-f]+ [a-z-]+/[A-Za-z_0-9]+'
+         done
+     and compare the two sets.
+
+     Verify after flashing with:
+         adb shell cmd overlay list android
+     android.overlay.malbec must now appear AFTER the pixelconfig*_gms entries,
+     and
+         adb shell cmd overlay lookup android android:integer/config_defaultNightMode
+     must return 1.
+-->
+<partition-order>
+    <partition name="system" />
+    <partition name="odm" />
+    <partition name="oem" />
+    <partition name="product" />
+    <partition name="vendor" />
+    <partition name="system_ext" />
+</partition-order>

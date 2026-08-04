@@ -118,6 +118,32 @@
          at priority >= APP_REQUEST_REFRESH_RATE_RANGE_PRIORITY_CUTOFF (5) and
          the peak setting sits at 9, so it bounds them. Only a human choosing
          144 in Settings can do it, and the pen starts working again on 120. -->
+    <!-- Default to LIGHT, not dark.
+
+         AOSP's own default is already 1 / MODE_NIGHT_NO (config.xml:898). Dark
+         mode on this device comes from PixelConfigOverlay2021_GMS, which sets
+         this resource to 2 - it is a Pixel behaviour PixelOS ships to every
+         device, not something this port asked for.
+
+         It is wrong here on the hardware: this panel is an LCD, not OLED (the
+         backlight driver logs [AWNl/E]lcd_brightness_work), so dark mode buys no
+         power and costs contrast, and the device owner reported being unable to
+         read the UI.
+
+         ⚠️ This line ONLY works because configs/partition_order.xml moves
+         /vendor/overlay above /product/overlay. Without that this resource is a
+         no-op: `cmd overlay list android` prints in increasing priority and
+         android.overlay.malbec came FIRST, below every pixelconfig*_gms. Setting
+         it here and stopping would have looked like a fix and changed nothing.
+         Verify with:
+             adb shell cmd overlay lookup android android:integer/config_defaultNightMode
+         which must return 1.
+
+         This is only the DEFAULT; Settings > Display > Dark theme still wins,
+         because UiModeManagerService:653 reads Settings.Secure.UI_NIGHT_MODE and
+         falls back to this resource only when that is unset. -->
+    <integer name="config_defaultNightMode">1</integer>
+
     <integer name="config_defaultPeakRefreshRate">120</integer>
     <integer name="config_defaultRefreshRate">120</integer>
 
