@@ -89,10 +89,22 @@ class StylusSettingsFragment : SettingsBasePreferenceFragment() {
                 getString(R.string.pen_lost_alert_summary)
             }
 
-        // The button bindings only mean anything while a pen exists. Hiding the
+        // The button bindings only mean anything once a pen exists. Hiding the
         // category rather than showing five dead rows is the same thing Settings
         // does with its own stylus preferences.
+        //
+        // ⚠️ "Once a pen exists", not "while Bluetooth is on".
+        // StylusMetadataTagger.hasBondedPen returns false whenever the adapter is
+        // off (:107) — it has to, because bondedDevices is unreadable then. Using
+        // it alone made the user's whole configuration vanish from Settings the
+        // moment they turned Bluetooth off, while the bindings themselves kept
+        // living in the framework's per-user input_gestures.xml and kept working
+        // the instant the pen came back. PREF_PEN_LAST_SEEN is written on every
+        // connect and disconnect (:173, :177), so it answers "has this device
+        // ever had a pen" without needing the adapter.
+        val everSeenPen =
+            GestureBinder.prefs(context).getLong(Constants.PREF_PEN_LAST_SEEN, 0L) != 0L
         findPreference<PreferenceCategory>(Constants.PREF_CAT_PEN_BUTTONS)?.isVisible =
-            StylusMetadataTagger.hasBondedPen(context)
+            StylusMetadataTagger.hasBondedPen(context) || everSeenPen
     }
 }

@@ -53,6 +53,24 @@ object GestureBinder {
      * addCustomInputGesture). Deleting another feature's rows as a side effect
      * of saving ours is the kind of thing that is only noticed months later.
      */
+    /*
+     * ⚠️ Known boundary, single-user only.
+     *
+     * addCustomInputGesture is @UserHandleAware and resolves to
+     * mContext.getUserId() (InputManager.java:1511-1518). Everything that calls
+     * reconcile() -- the service, the boot receiver, both settings screens --
+     * runs as user 0. Dispatch, however, looks the gesture up for the *current*
+     * user: KeyGestureController.java:1060-1062 passes mCurrentUserId into
+     * InputGestureManager, whose table is a SparseArray keyed by userId
+     * (InputGestureManager.java:69-71).
+     *
+     * So with a second user or a work profile in the foreground, every pen
+     * button and both keyboard app keys are inert. This tablet is single-owner,
+     * so it is written down rather than worked around: the fix is a
+     * createContextAsUser(UserHandle.of(ActivityManager.getCurrentUser())) here
+     * plus a USER_SWITCHED receiver to re-reconcile, and neither is worth the
+     * moving parts until somebody actually adds a second user.
+     */
     fun reconcile(context: Context) {
         val im = context.getSystemService(InputManager::class.java) ?: run {
             Log.w(TAG, "no InputManager")

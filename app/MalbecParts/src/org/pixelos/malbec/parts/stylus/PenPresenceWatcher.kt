@@ -20,6 +20,7 @@ import android.os.Handler
 import android.os.PowerManager
 import android.os.SystemClock
 import android.os.VibrationEffect
+import android.os.VibrationAttributes
 import android.os.Vibrator
 import android.provider.Settings
 import android.util.Log
@@ -82,10 +83,18 @@ class PenPresenceWatcher(
             "android.bluetooth.input.profile.action.CONNECTION_STATE_CHANGED"
     }
 
-    private var localInitiated = false
-    private var penSaidGoodbye = false
-    private var alertedThisSession = false
-    private var pendingAlert: Runnable? = null
+    // @Volatile because these are written from two threads: the main thread
+    // (the BroadcastReceiver, and onPenAnnouncedDisconnect via the key-gesture
+    // handler) and a binder thread — IKeyGestureHandler.aidl:23 is `oneway`, so
+    // InputManagerGlobal dispatches the pen's goodbye off the main looper
+    // (InputManagerGlobal.java:1188-1199).
+    @Volatile private var localInitiated = false
+    @Volatile private var penSaidGoodbye = false
+    @Volatile private var alertedThisSession = false
+    // Rule 7's actual state. Set only in onConnected(); an alert can only be
+    // armed for a pen this session has actually seen connected.
+    @Volatile private var sawConnected = false
+    @Volatile private var pendingAlert: Runnable? = null
 
     private val prefs by lazy { PreferenceManager.getDefaultSharedPreferences(context) }
 
@@ -169,6 +178,7 @@ class PenPresenceWatcher(
         localInitiated = false
         penSaidGoodbye = false
         alertedThisSession = false
+        sawConnected = true
         StylusMetadataTagger.tagBondedPens(context)
         prefs.edit().putLong(Constants.PREF_PEN_LAST_SEEN, System.currentTimeMillis()).apply()
     }
@@ -189,6 +199,14 @@ class PenPresenceWatcher(
         }
         // Rule 7: the pen is bonded but was never connected in this session, so
         // this is a boot-time or adapter-restart artefact.
+        //
+        // ⚠️ This used to read `if (device == null) return`, which is
+        // unreachable: `device` comes from EXTRA_DEVICE, and the branch at :122
+        // (`if (!isPen(device)) return`) has already proved it non-null on every
+        // path that reaches here. The rule was stated but not implemented, so a
+        // HID STATE_DISCONNECTED emitted during adapter bring-up for a bonded
+        // but absent pen would arm the 30 s timer and fire.
+        if (!sawConnected) return
         if (device == null) return
 
         cancelPending()
@@ -211,8 +229,18 @@ class PenPresenceWatcher(
     private fun fire(device: BluetoothDevice) {
         Log.i(TAG, "pen out of range for ${GRACE_MILLIS}ms")
 
-        context.getSystemService(Vibrator::class.java)
-            ?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK))
+        // ⚠️ The attributes are load-bearing, not decoration. vibrate(effect)
+        // with no VibrationAttributes lands on USAGE_UNKNOWN, and
+        // VibrationSettings.java:435-437 drops every usage outside
+        // BATTERY_SAVER_USAGE_ALLOWLIST while Battery Saver is on; :439-443 then
+        // takes the intensity from the haptic-feedback family, so turning off
+        // "Touch feedback" also silences it. Both of those are exactly the
+        // states someone is in when they walk away from a tablet.
+        // USAGE_NOTIFICATION is in the allowlist (VibrationSettings.java:94-99).
+        context.getSystemService(Vibrator::class.java)?.vibrate(
+            VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK),
+            VibrationAttributes.createForUsage(VibrationAttributes.USAGE_NOTIFICATION),
+        )
 
         if (prefs.getBoolean(Constants.PREF_PEN_LOST_WAKE, false)) {
             context.getSystemService(PowerManager::class.java)?.wakeUp(

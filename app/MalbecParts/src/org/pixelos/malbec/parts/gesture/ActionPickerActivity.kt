@@ -96,6 +96,40 @@ class ActionPickerFragment : PreferenceFragmentCompat() {
         }
     }
 
+    /**
+     * One resolved app, with its label and icon already loaded.
+     *
+     * The reason this type exists at all: loadLabel() and loadIcon() each open
+     * the target APK's resources, and a tablet has 150-250 launcher entries.
+     * Doing that inline while building preferences means 3 loads per app on
+     * whatever thread we happen to be on — and the only thread we are ever on
+     * here is the main one, inside a preference click handler.
+     */
+    private data class AppEntry(
+        val info: ResolveInfo,
+        val label: CharSequence,
+        val icon: android.graphics.drawable.Drawable?,
+    )
+
+    private var appLoader: Thread? = null
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // The loader holds no reference to the fragment, but it can still be
+        // mid-flight; the posted continuation checks isAdded before touching UI.
+        appLoader = null
+    }
+
+    /**
+     * "Open an app" — the app list, loaded off the main thread.
+     *
+     * ⚠️ This used to run entirely on the main thread: queryIntentActivities,
+     * then a sortedBy that called loadLabel on every result, then a loop calling
+     * loadLabel *again* plus loadIcon. That is 3 resource loads x N apps, and on
+     * this device N is around 200. It never shipped in a state where anyone
+     * pressed it — the build it went out in did not boot — so the ANR was found
+     * by reading rather than by hitting it.
+     */
     private fun buildAppList() {
         val screen: PreferenceScreen = preferenceScreen
         screen.removeAll()
@@ -105,33 +139,56 @@ class ActionPickerFragment : PreferenceFragmentCompat() {
         }
         screen.addPreference(category)
 
-        for (info in launchableApps()) {
-            val pref = Preference(requireContext()).apply {
-                title = info.loadLabel(requireContext().packageManager)
-                icon = info.loadIcon(requireContext().packageManager)
-                setOnPreferenceClickListener {
-                    GestureBinder.setAction(
-                        requireContext(),
-                        prefKey,
-                        GestureAction.launchAppId(
-                            info.activityInfo.packageName,
-                            info.activityInfo.name,
-                        ),
-                    )
-                    requireActivity().setResult(Activity.RESULT_OK)
-                    requireActivity().finish()
-                    true
+        val loading = Preference(requireContext()).apply {
+            title = getString(R.string.action_picker_loading)
+            isSelectable = false
+        }
+        category.addPreference(loading)
+
+        val pm = requireContext().packageManager
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        lateinit var thread: Thread
+        thread = Thread {
+            val entries = loadLaunchableApps(pm)
+            handler.post {
+                // Identity, not null: a second buildAppList() replaces appLoader,
+                // and the older thread must not paint over the newer list.
+                if (!isAdded || appLoader !== thread) return@post
+                category.removePreference(loading)
+                for (entry in entries) {
+                    category.addPreference(appPreference(entry))
                 }
             }
-            category.addPreference(pref)
         }
+        appLoader = thread
+        thread.start()
     }
 
-    private fun launchableApps(): List<ResolveInfo> {
-        val pm = requireContext().packageManager
+    private fun appPreference(entry: AppEntry) =
+        Preference(requireContext()).apply {
+            title = entry.label
+            icon = entry.icon
+            setOnPreferenceClickListener {
+                GestureBinder.setAction(
+                    requireContext(),
+                    prefKey,
+                    GestureAction.launchAppId(
+                        entry.info.activityInfo.packageName,
+                        entry.info.activityInfo.name,
+                    ),
+                )
+                requireActivity().setResult(Activity.RESULT_OK)
+                requireActivity().finish()
+                true
+            }
+        }
+
+    /** Runs on a worker thread. Loads each label exactly once, then sorts on it. */
+    private fun loadLaunchableApps(pm: PackageManager): List<AppEntry> {
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         return pm.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0))
-            .sortedBy { it.loadLabel(pm).toString().lowercase() }
+            .map { AppEntry(it, it.loadLabel(pm), runCatching { it.loadIcon(pm) }.getOrNull()) }
+            .sortedBy { it.label.toString().lowercase() }
     }
 
     private fun appLabelFor(actionId: String): CharSequence? {
