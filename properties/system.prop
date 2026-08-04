@@ -1,7 +1,16 @@
 # SurfaceFlinger
-# Carried over from the stock ZUI 18 build. The idle/touch/launcher timers drive
-# the variable refresh rate behaviour; set_pen_timer_ms is the stylus idle timer
-# and matters for latency when drawing.
+# Carried over from the stock ZUI 18 build. set_idle_timer_ms and
+# set_touch_timer_ms drive the variable refresh rate behaviour.
+#
+# ⚠️ set_launcher_timer_ms / set_pen_timer_ms / set_refresh_timer_ms were here
+# too, with a comment claiming set_pen_timer_ms "matters for latency when
+# drawing". Removed in session 12: Android 16 reads none of the three. They are
+# absent from frameworks/native/services/surfaceflinger/sysprop/
+# SurfaceFlingerProperties.sysprop and from all of frameworks/native and
+# frameworks/base, and `grep -rlaF` over the BUILT image finds each string only
+# inside build.prop itself -- never in system/bin/surfaceflinger,
+# libSurfaceFlingerProp.so or any vendor library. The two that survive here do
+# appear in libSurfaceFlingerProp.so, which is how the difference was measured.
 debug.sf.enable_hwc_vds=0
 # debug.sf.latch_unsignaled and debug.sf.auto_latch_unsignaled moved to
 # vendor.prop. Stock ships latch_unsignaled twice -- system/build.prop:148 says
@@ -13,9 +22,6 @@ ro.surface_flinger.display_update_imminent_timeout_ms=1000
 ro.surface_flinger.enable_frame_rate_override=false
 ro.surface_flinger.game_default_frame_rate_override=60
 ro.surface_flinger.set_idle_timer_ms=2000
-ro.surface_flinger.set_launcher_timer_ms=30000
-ro.surface_flinger.set_pen_timer_ms=10000
-ro.surface_flinger.set_refresh_timer_ms=200
 ro.surface_flinger.set_touch_timer_ms=3000
 ro.surface_flinger.supports_background_blur=0
 ro.surface_flinger.use_content_detection_for_refresh_rate=true

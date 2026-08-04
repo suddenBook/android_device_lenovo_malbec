@@ -382,4 +382,35 @@
         <item>265</item>
     </integer-array>
 
+    <!-- Three values the factory ROM sets through RROs on the *product*
+         partition, which PixelOS replaces. Nothing warns when they disappear:
+         each one silently falls back to the AOSP default and the feature just
+         behaves differently. Recovered by dumping every stock RRO that targets
+         `android` with aapt2 and diffing against the built framework-res.apk
+         (which already includes the PixelOS/LineageOS static overlays). -->
+
+    <!-- Stock: true, from product/overlay/LgsiFrameworksOverlay.apk.
+         AOSP default is false (core/res/res/values/config.xml). Consumer is
+         SystemUI KeyguardStatusBarRepository.kt:71 — with it false there is no
+         user switcher on the lock screen, which matters on a tablet where
+         multi-user is a headline feature. -->
+    <bool name="config_keyguardUserSwitcher">true</bool>
+
+    <!-- Stock: true, from product/overlay/FrameworksResCommon_Sys.apk.
+         AudioManager.java:7054 turns this into
+         PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED. The QTI HAL does support the
+         unprocessed source, so reporting the AOSP default of false tells
+         recording apps a capability the hardware has is unavailable. -->
+    <bool name="config_supportAudioSourceUnprocessed">true</bool>
+
+    <!-- Stock: 2500 / 4628 / 3420 (LgsiFrameworksOverlay). AOSP defaults are
+         2596 / 4082 / 2850. These are Night Light's colour-temperature range and
+         default; the stock triple is calibrated for this panel. Night Light is
+         genuinely reachable here — config_setColorTransformAccelerated is
+         already true via vendor/lineage/overlay/common/frameworks/base/core/res/
+         res/values/config.xml:154 — so these are live, not dead keys. -->
+    <integer name="config_nightDisplayColorTemperatureMin">2500</integer>
+    <integer name="config_nightDisplayColorTemperatureMax">4628</integer>
+    <integer name="config_nightDisplayColorTemperatureDefault">3420</integer>
+
 </resources>

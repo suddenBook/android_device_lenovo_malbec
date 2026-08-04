@@ -57,41 +57,23 @@ value:2916
 [AID_VENDOR_THALES_AUTHSECRET]
 value:2917
 
-[system/vendor/bin/cnd]
-mode: 0755
-user: AID_SYSTEM
-group: AID_SYSTEM
-caps: NET_BIND_SERVICE NET_ADMIN BLOCK_SUSPEND
 
-[system/vendor/bin/ims_rtp_daemon]
-mode: 0755
-user: AID_RADIO
-group: AID_RADIO
-caps: NET_BIND_SERVICE
 
-[system/vendor/bin/loc_launcher]
-mode: 0755
-user: AID_GPS
-group: AID_GPS
-caps: SETGID SETUID
 
-[system/vendor/bin/pd-mapper]
-mode: 0755
-user: AID_SYSTEM
-group: AID_SYSTEM
-caps: NET_BIND_SERVICE
 
-[system/vendor/bin/pm-service]
-mode: 0755
-user: AID_SYSTEM
-group: AID_SYSTEM
-caps: NET_BIND_SERVICE
 
-[system/vendor/bin/slim_daemon]
-mode: 0755
-user: AID_GPS
-group: AID_GPS
-caps: NET_BIND_SERVICE
+
+# ⚠️ Six [system/vendor/bin/...] stanzas were removed in session 12 (cnd,
+# ims_rtp_daemon, loc_launcher, pd-mapper, pm-service, slim_daemon).
+#
+# They were dead. This device has a real vendor partition
+# (BoardConfig.mk:419 TARGET_COPY_OUT_VENDOR := vendor), so a `system/vendor/`
+# prefix routes the entry into the SYSTEM partition's fs_config table, where no
+# file ever matches it. The live entries are the [vendor/bin/...] ones below,
+# which is why both spellings were present for the same binaries.
+#
+# The prefix is only correct on a device where vendor is a directory inside
+# system (TARGET_COPY_OUT_VENDOR := system/vendor). Do not re-add them.
 
 [vendor/bin/cnd]
 mode: 0755

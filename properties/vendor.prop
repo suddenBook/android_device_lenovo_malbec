@@ -26,7 +26,12 @@ ro.surface_flinger.primary_display_orientation=ORIENTATION_270
 #   *without writing the out parameter*, so SF's switch falls to
 #   default: return ui::ROTATION_0.
 #
-# And this tree builds that composer from source, so the stub is what runs.
+# ⚠️ That last citation used to end "and this tree builds that composer from
+# source, so the stub is what runs". Session 12 moved the composer to a blob, so
+# the source file above is no longer what executes and that reasoning no longer
+# applies. The setting is still correct, for a simpler reason: the factory ROM
+# sets both of these on adjacent lines (vendor/build.prop:173,174) and runs the
+# same composer binary we now ship. Keep the value, do not keep the old rationale.
 debug.sf.ignore_hwc_physical_display_orientation=true
 
 # Buffer latching. Both read off the running stock ROM rather than off
@@ -125,7 +130,6 @@ graphics.gpu.profiler.support=true
 # SurfaceFlinger
 # 相位偏移那几条决定合成节奏，出厂按 144 Hz 面板调过，用 AOSP 默认会掉帧。
 debug.sf.use_phase_offsets_as_durations=1
-debug.sf.enable_advanced_sf_phase_offset=1
 debug.sf.early.app.duration=13666666
 debug.sf.early.sf.duration=10500000
 debug.sf.earlyGl.app.duration=13666666
@@ -136,8 +140,14 @@ debug.sf.enable_gl_backpressure=1
 debug.sf.disable_client_composition_cache=1
 debug.sf.predict_hwc_composition_strategy=0
 debug.sf.treat_170m_as_sRGB=1
-debug.sf.hw=0
-debug.egl.hw=0
+# ⚠️ debug.sf.enable_advanced_sf_phase_offset, debug.sf.hw and debug.egl.hw were
+# here. Removed in session 12 -- no consumer in Android 16. Measured on the built
+# image, not inferred: `strings system/bin/surfaceflinger | grep -x debug.sf.hw`
+# returns 0 (it only ever matched as a prefix of debug.sf.hwc.min.duration and
+# debug.sf.hwc_service_name), libEGL.so has no debug.egl.hw, and the phase-offset
+# one appears nowhere outside build.prop. The neighbouring
+# debug.sf.use_phase_offsets_as_durations and the early/late duration values ARE
+# read by surfaceflinger and stay.
 debug.graphics.game_default_frame_rate.disabled=1
 ro.surface_flinger.clear_slots_with_set_layer_buffer=false
 ro.surface_flinger.force_hwc_copy_for_virtual_displays=true
@@ -201,7 +211,16 @@ ro.bluetooth.a2dp_offload.supported=true
 persist.bluetooth.a2dp_offload.cap=sbc-aac-aptx-aptxhd-ldac
 persist.bluetooth.a2dp_offload.disabled=false
 persist.bluetooth.leaudio_offload.disabled=false
-persist.vendor.bt.a2dp_offload_cap=sbc-aptx-aptxtws-aptxhd-aac-ldac
+# ⚠️ persist.vendor.bt.a2dp_offload_cap was here. Removed in session 12: it has
+# NO reader. `grep -rlaF` over every partition of both the built image and the
+# factory image finds the string only inside vendor/build.prop itself — Lenovo
+# sets it and nothing consumes it either. The live capability list is
+# persist.bluetooth.a2dp_offload.cap above, which the AOSP stack does read.
+# It was also the FIRST SELinux denial of every boot (audit(0.0:3)): QTI labels
+# the prefix persist.vendor.bt.a2dp as bluetooth_prop
+# (device/qcom/sepolicy/generic/private/property_contexts:47), a system_ext type
+# vendor_init may not set. Deleting a dead property is the right fix; granting
+# vendor_init write access to bluetooth_prop to set something nobody reads is not.
 persist.vendor.bt.aac_frm_ctl.enabled=true
 persist.vendor.bt.aac_vbr_frm_ctl.enabled=true
 persist.vendor.qcom.bluetooth.aac_vbr_ctl.enabled=true
@@ -428,9 +447,28 @@ keyguard.no_require_sim=true
 # kernel's own config (work/device_dump/root/kernel/config.gz).
 ro.incremental.enable=yes
 
-# AVF is deliberately not enabled on this device (Gunyah, not KVM; only
-# protected VMs are supported, and PRODUCT_AVF_ENABLED is off). Say so
-# explicitly rather than leaving remote attestation to a default.
+# AVF: remote attestation off. The hypervisor here is Gunyah, not KVM —
+# /dev/kvm does not exist (work/device_dump/root/avf/kvm.txt) and `vm info`
+# reports "Only protected VMs are supported" — so say this explicitly rather
+# than leaving it to a default.
+#
+# ⚠️ This comment used to add "and PRODUCT_AVF_ENABLED is off". That was FALSE.
+# device.mk:62 inherits packages/modules/Virtualization/apex/product_packages.mk,
+# whose line 45 is `PRODUCT_AVF_ENABLED := true`, and it takes effect —
+# out/soong/soong.custom_malbec.variables records "avf_enabled": "true".
+#
+# It is left ON deliberately, because the shipped result matches the factory ROM
+# exactly, which is the parity we want:
+#   system/apex/com.android.virt.apex   ours 94.9 MB / factory 87.8 MB (both full)
+#   ro.config.isolated_compilation_enabled=true   set by both
+#   com.android.compos                  shipped by NEITHER
+#   VmTerminalApp                       shipped by NEITHER (this is the one that
+#                                       would actually fail: its Debian guest is
+#                                       an unprotected VM, which this hypervisor
+#                                       refuses)
+# Turning PRODUCT_AVF_ENABLED off would ship a *stub* virt apex the factory does
+# not ship, while isolated_compilation_enabled=true stayed pointing at a CompOS
+# that is not there. Do not "fix" it.
 avf.remote_attestation.enabled=false
 
 # Userspace thermal mitigation. Without this line the entire subsystem is dead.
