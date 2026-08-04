@@ -165,8 +165,39 @@
 
          ⚠️ Not 156px, which is what work/reference/hirero-malbec-device puts
          here. At 320 real ppi that would be 12.4 mm of corner masking on a
-         panel whose vendor RRO says 3.6 mm. -->
-    <dimen name="rounded_corner_radius">45px</dimen>
+         panel whose vendor RRO says 3.6 mm.
+
+         ★ 60px, not stock's 45px, and this one is an EXPERIMENT rather than a
+         derivation - say so plainly so the next person does not read it as
+         settled. At 45px the owner photographed a bright crescent of lit panel
+         at all four corners (work/s14/corner-white.png, zoomed in
+         work/s14/crescent-zoom.png, taken on a solid white screen; there is no
+         screen protector on the device, that was checked).
+
+         What the photo does establish: the crescent's INNER edge is visibly
+         stair-stepped, i.e. rasterised, so it is a rendered boundary and not an
+         optical artefact of the glass; its outer edge is smooth, i.e. physical.
+         So SystemUI's mask really is stopping short of where the panel stops
+         lighting.
+
+         What it does NOT establish is the sign. Pure geometry says a mask arc
+         and a glass arc should never produce a crescent BRIGHTER than the screen
+         around it: with mask radius Rm and glass radius Rg, Rg>Rm hides the mask
+         entirely (no artefact at all) and Rg<Rm gives a BLACK crescent. A
+         brighter-than-screen arc fits neither, so something about the assumed
+         geometry is wrong and guessing harder from one oblique photo was not
+         going to fix it.
+
+         60px is therefore a deliberate single step, sized from the crescent's
+         measured proportions (max thickness ~= 0.293*(Rg-Rm) puts Rg at roughly
+         1.3x Rm), to be read as a probe:
+             crescent shrinks  -> direction correct, converge on the value
+             crescent grows    -> direction wrong, go BELOW 45px instead
+             crescent unchanged-> not this resource; look at the corner drawable
+                                  itself (RoundedCornerResDelegate) rather than
+                                  the radius
+         Whichever way it lands, record the outcome here and delete this note. -->
+    <dimen name="rounded_corner_radius">60px</dimen>
 
     <!-- ★ The status bar's left and right content insets come from HERE, not
          from any SystemUI dimension, and leaving it at AOSP's 0dp default is
@@ -199,14 +230,22 @@
          battery icon ~55px from the right. That 20dp step is visible, and it is
          the whole of the complaint.
 
-         45px restores symmetry: minLeft becomes 45px and minRight stays 45px,
-         because 45 == the privacy dot floor. It is also the value the resource
-         is named for - the panel's corner radius is 45px (above), and this
-         resource exists to keep bar content out of the corner arc. AOSP's own
-         device overlays set it equal to the radius on every recent Pixel
-         (device/generic/goldfish/phone/overlay/.../pixel_7/AndroidOverlay/res/
-         values/dimens.xml:25 is 47px radius / 47px padding; pixel_7_pro is
-         50/50), and the PixelOS onyx tree sets 14dp against a 156px radius.
+         45px restores symmetry, and that is the whole justification: minLeft
+         becomes 45px and minRight stays 45px, because 45px is exactly the
+         privacy dot floor (ongoing_appops_dot_min_padding = 20dp at density
+         360). Any value at or above the dot floor makes the two sides equal;
+         45 is the smallest one that does, so it buys symmetry without spending
+         more edge margin than necessary.
+
+         ⚠️ Deliberately NOT tied to rounded_corner_radius above, even though
+         they were briefly the same number and AOSP's own Pixel overlays do set
+         them equal (pixel_7 is 47px radius / 47px padding, pixel_7_pro 50/50;
+         PixelOS onyx is 14dp against a 156px radius). The radius is currently
+         an unresolved experiment - see its comment - and coupling this to it
+         would move the status bar every time the corner mask is probed, which
+         is two variables at once. If the radius settles above 45px and the
+         corners then look cramped, revisit; until then this stands on the dot
+         floor alone.
 
          Keep the unit px for the same reason as the radius above: it tracks the
          glass, not the density.
