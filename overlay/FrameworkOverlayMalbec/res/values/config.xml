@@ -335,4 +335,51 @@
     <!-- If this is true, the screen will come on when you unplug usb/power/whatever. -->
     <bool name="config_unplugTurnsOnScreen">true</bool>
 
+    <!-- ================================================================== -->
+    <!-- Doze / Always-On Display                                           -->
+    <!-- ================================================================== -->
+
+    <!-- Without this the entire doze subsystem is inert, and the omission is
+         silent. AOSP's default is the empty string
+         (frameworks/base/core/res/res/values/config.xml:2932) and nothing in
+         vendor/, device/ or packages/ sets it. The chain:
+         AmbientDisplayConfiguration.ambientDisplayAvailable() is
+         !isEmpty(config_dozeComponent) -> false, so
+         pulseOnNotificationAvailable() is false and every doze feature is
+         disabled; DreamManagerService then gets a null ComponentName and
+         DozeService is never bound.
+
+         This tree was already self-inconsistent about it: config_screenBrightnessDoze
+         above cites DozeParameters.java, which is code inside DozeService,
+         a service that never ran. Both stock RROs decode to exactly this value,
+         and so do both peer trees. -->
+    <string name="config_dozeComponent" translatable="false">com.android.systemui/com.android.systemui.doze.DozeService</string>
+
+    <!-- ================================================================== -->
+    <!-- Colour modes                                                       -->
+    <!-- ================================================================== -->
+
+    <!-- AOSP's default is an EMPTY array (core/res/res/values/config.xml:1079-1085),
+         which makes ColorDisplayService.isColorModeAvailable() always false and
+         leaves colorMode at NOT_SET — so Settings > Display > Colors vanishes
+         and the ten vendor colour modes the retained QTI SDM HAL provides are
+         unreachable. Values are stock's. 0/1/3 are the AOSP
+         COLOR_MODE_{NATURAL,BOOST,AUTOMATIC} constants; 256-265 are the
+         vendor-range modes (VENDOR_COLOR_MODE_BASE = 256). -->
+    <integer-array name="config_availableColorModes">
+        <item>0</item>
+        <item>1</item>
+        <item>3</item>
+        <item>256</item>
+        <item>257</item>
+        <item>258</item>
+        <item>259</item>
+        <item>260</item>
+        <item>261</item>
+        <item>262</item>
+        <item>263</item>
+        <item>264</item>
+        <item>265</item>
+    </integer-array>
+
 </resources>

@@ -150,4 +150,57 @@
          rmem_min,rmem_def,rmem_max,wmem_min,wmem_def,wmem_max -->
     <string name="config_wifi_tcp_buffers" translatable="false">524288,1048576,2097152,524288,1048576,4194304</string>
 
+    <!-- ===================== Factory-active keys this overlay was missing =====================
+
+         Nine keys that the factory RROs set to something other than the AOSP
+         default, and that this overlay did not carry. All nine are inside
+         AOSP's <overlayable name="WifiCustomization"> so they are legal to
+         override, and the first seven are corroborated by both peer trees.
+         Defaults cited from
+         packages/modules/Wifi/service/ServiceWifiResources/res/values/config.xml.
+
+         Deliberately NOT carried: config_wifiDelayDisconnectOnImsLostMs
+         (factory 1000, AOSP 0). It delays disconnect when IMS is lost, and this
+         is a Wi-Fi-only tablet with no modem and no IMS — AOSP's 0 is correct
+         here and copying 1000 would be cargo-culting the phone's value. -->
+
+    <!-- Factory 32, AOSP default 16 (L199). Halving the hotspot client cap is a
+         visible regression on a tablet used for tethering. -->
+    <integer translatable="false" name="config_wifiHardwareSoftapMaxClientCount">32</integer>
+
+    <!-- Factory "Lenovo Idea Tab Pro Gen 2", AOSP default "Android_" (L965).
+         This is the name the device advertises over Wi-Fi Direct. -->
+    <string translatable="false" name="config_wifiP2pDeviceNamePrefix">Lenovo Idea Tab Pro Gen 2</string>
+
+    <!-- Factory ["zh,GBK"], AOSP default empty (L1193). Without it, GBK-encoded
+         SSIDs — common on mainland-Chinese APs — render as mojibake. -->
+    <string-array translatable="false" name="config_wifiCharsetsForSsidTranslation">
+        <item>zh,GBK</item>
+    </string-array>
+
+    <!-- Factory 2, AOSP default 1 (L600). At 1, a single mistyped password
+         disables the network. -->
+    <integer translatable="false" name="config_wifiDisableReasonByWrongPasswordThreshold">2</integer>
+
+    <!-- Factory 3, AOSP default 1 (L627). At 1 the BSSID blocklist monitor is
+         over-eager about "AP unable to handle new STA". -->
+    <integer translatable="false" name="config_wifiBssidBlocklistMonitorApUnableToHandleNewStaThreshold">3</integer>
+
+    <!-- Factory true, AOSP default false (L273). Partial initial scan is
+         lighter on wake-up than the full scan AOSP does. -->
+    <bool translatable="false" name="config_wifiEnablePartialInitialScan">true</bool>
+
+    <!-- Factory false, AOSP default true (L296). Changes auto-join behaviour
+         for networks sharing credentials; kept at the factory value because the
+         driver and its roaming behaviour are the factory's. -->
+    <bool translatable="false" name="config_wifi_only_link_same_credential_configurations">false</bool>
+
+    <!-- Factory false, AOSP default true (L217). Low impact — bridged AP is
+         off anyway — but carried for parity with the driver's actual support. -->
+    <bool translatable="false" name="config_wifiSoftapAutoUpgradeToBridgedConfigWhenSupported">false</bool>
+
+    <!-- Factory 1000, AOSP default -1 (unlimited) (L990). AOSP is the more
+         permissive value; carried for stock parity of the saved-network cap. -->
+    <integer translatable="false" name="config_wifiMaxNumWifiConfigurations">1000</integer>
+
 </resources>
