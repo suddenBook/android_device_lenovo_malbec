@@ -1,0 +1,65 @@
+# vendor_init needs write access to the vendor_internal_prop types this device
+# declares in property.te. Without these, every one of those properties is
+# silently dropped the moment SELinux goes enforcing.
+#
+# Why it is needed at all: property.te turns a set of prefixes that used to fall
+# through to vendor_default_prop into dedicated vendor_internal_prop types. That
+# is the right call for privilege separation, but vendor_init's default write
+# access covers vendor_default_prop ONLY, so labelling a property that
+# /vendor/build.prop assigns takes away the permission that made it work.
+#
+# ⚠️ property.te:8-13 justifies the labelling by claiming vendor_default_prop
+# cannot be set by vendor_init. That is INVERTED. The neverallow at
+# system/sepolicy/private/domain.te:841 explicitly excludes vendor_init, and
+# private/vendor_init.te:312 grants it. Do not reason from that comment.
+#
+# Measured, not assumed. Both of these appear in work/first-boot/s12-boot1:
+#
+#   avc: denied { set } property=vendor.thermal.mode
+#        scontext=u:r:vendor_init:s0 tcontext=u:object_r:vendor_thermal_prop:s0
+#   avc: denied { set } property=persist.vendor.lgsi.adbdebug
+#        scontext=u:r:vendor_init:s0 tcontext=u:object_r:vendor_lenovotb_init_prop:s0
+#
+# They do not break anything today only because this is a permissive bring-up
+# build -- CheckMacPerms (system/core/init/property_service.cpp:163-177) returns
+# success when permissive, so the property is stored anyway.
+#
+# What each one costs under enforcing:
+#
+#   vendor_thermal_prop        vendor.thermal.mode is what gates the whole
+#                              on property:vendor.thermal.mode=* block in
+#                              init.qcom.rc:524. Lose it and thermal-switch-engine
+#                              never starts and none of the seven
+#                              thermal-engine-malbec-*.conf policies load. That is
+#                              exactly the failure session 11 added the property to
+#                              fix, so losing it silently undoes that work.
+#
+#   vendor_lenovotb_init_prop  init.target.rc:270 does
+#                              `setprop persist.vendor.lgsi.adbdebug
+#                               ${ro.boot.lgsi.adbdebug}` from a vendor rc, and the
+#                              same denial covers vendor_init READING the
+#                              ${ro.odm.*} values it expands elsewhere in that file.
+#
+# Pattern and precedent: device/qcom/sepolicy_vndr/sm8750/generic/vendor/common/
+# vendor_init.te:75-109 does exactly this for QTI's own vendor_internal_prop types.
+set_prop(vendor_init, vendor_thermal_prop)
+set_prop(vendor_init, vendor_lenovotb_init_prop)
+
+# ⚠️ NOT granted, deliberately: vendor_init -> build_prop / build_bootimage_prop.
+#
+# Two more property-set denials show up on every boot:
+#
+#   avc: denied { set } property=ro.system.build.fingerprint     tcontext=build_prop
+#   avc: denied { set } property=ro.bootimage.build.fingerprint  tcontext=build_bootimage_prop
+#
+# The source is the factory init.target.rc:278-283, `on property:
+# ro.odm.fingerprint.update=*`, which rewrites the fingerprint across vendor /
+# system / product / odm / bootimage. That is Lenovo's per-unit fingerprint
+# mechanism and it must NOT be granted here:
+#
+#   1. It cannot succeed anyway. Those are ro.* properties, which are write-once,
+#      and build.prop has already set them by the time this trigger fires.
+#   2. If it ever did succeed it would overwrite the fingerprint PixelOS manages
+#      (SetSafetyNetProps(), system/core/init/property_service.cpp:1377-1389).
+#
+# The denial is expected noise, not a defect. Leave it.

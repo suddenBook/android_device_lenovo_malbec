@@ -1,0 +1,20 @@
+# The camera HAL writes the per-unit OTP serial numbers into vendor.*_cam_prop
+# properties. property.te:14-15 already names this as the highest-value entry in
+# that file -- but the matching rule was never written, so the write has been
+# denied on every boot since the type was introduced.
+#
+# Measured, present in every boot capture including work/first-boot/s12-boot1:
+#
+#   avc: denied { set } for property=vendor.main_back.otp_check
+#        scontext=u:r:hal_camera_default:s0 tcontext=u:object_r:vendor_cam_prop:s0
+#        tclass=property_service
+#
+# This one cannot be fixed by relabelling. vendor_cam_prop is a
+# vendor_internal_prop, and system/sepolicy/private/property.te carries
+#
+#     neverallow { domain -init -vendor_init } vendor_default_prop:property_service set;
+#
+# so leaving the prefix on vendor_default_prop (which is what happened before the
+# type existed) would make it permanently ungrantable for hal_camera_default.
+# Creating the type was correct; it just needs this rule to go with it.
+set_prop(hal_camera_default, vendor_cam_prop)

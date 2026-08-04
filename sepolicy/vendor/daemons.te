@@ -18,6 +18,36 @@ init_daemon_domain(prop_init)
 
 set_prop(prop_init, vendor_lenovotb_init_prop)
 
+# ⚠️ prop_init also tries to write sys.bt.address and ro.serialno, and both are
+# denied on every boot:
+#
+#   avc: denied { set } property=sys.bt.address  tcontext=u:object_r:system_prop:s0
+#   avc: denied { set } property=ro.serialno     tcontext=u:object_r:serialno_prop:s0
+#
+# Neither is granted, and neither CAN be. This was tried and the build refused:
+#
+#   libsepol.report_failure: neverallow on line 291 of
+#   system/sepolicy/private/property.te violated by
+#   allow prop_init system_prop:property_service { set };
+#
+# That neverallow is `{ domain -coredomain ... }`, i.e. no vendor domain may set
+# system_prop at all. QTI's set_prop(vendor_init, system_prop) is not a
+# counter-example -- vendor_init is exempted by name, prop_init is not. A vendor
+# property_contexts cannot narrow it either: check_prop_prefix --strict only
+# accepts vendor-prefixed names and `sys.` is not one.
+#
+# It costs nothing, which is the part worth writing down. sys.bt.address is NOT
+# SET ON THE FACTORY ROM EITHER -- `grep -icE 'bt.address|bdaddr'` over
+# work/device_dump/root/fs/getprop.txt from the running stock system returns 0.
+# Stock runs enforcing, so its prop_init hits the same neverallow and Bluetooth
+# works anyway; the MAC comes from the controller, not from this property. Same
+# for ro.serialno: it is write-once and init has already set it from
+# androidboot.serialno before prop_init runs.
+#
+# So these two denials are expected noise on this device, not a defect. If a
+# future audit reports "the Bluetooth MAC is lost under enforcing", this is the
+# answer.
+
 allow prop_init self:capability net_admin;
 allow prop_init self:netlink_generic_socket { read write create getattr bind setopt };
 
