@@ -283,7 +283,6 @@ blob_fixups: blob_fixups_user_type = {
     # fixup for a file that is not shipped. 19-verify-device-tree.py now checks
     # that every blob_fixups key is still in proprietary-files.txt.
     (
-        'vendor/lib64/lenovo.hardware.ai-V1-ndk.so',
         'vendor/lib64/libqcodec2_core.so',
     ): blob_fixup()
         .replace_needed(
@@ -430,6 +429,16 @@ blob_fixups: blob_fixups_user_type = {
     # A regex that stops at the first newline inserts `user root` in the middle
     # of the continued command, and init then reports
     # `Invalid keyword '-iwigig0'`. Consume the continuations first.
+    #
+    # Second edit: drop the import of init.qcom.factory.rc. That file is no
+    # longer extracted (311 lines of FFBM/QMMI factory-test plumbing: three
+    # `disabled` services whose binaries -- fastmmi, vendor.mmid, mmi_diag --
+    # are not in this image either, the rest gated on ro.bootmode=ffbm-* or
+    # vendor.sys.boot_mode=ffbm|qmmi, plus 30 `disabled` vendor.audio_tc*
+    # stanzas that invoke mm-audio-ftm, also dropped). init treats a missing
+    # import as a parse error and logs it on every boot, so the import has to go
+    # with the file. Nothing else in the vendor image imports it -- checked
+    # against the factory init tree, this line is its only referrer.
     ('vendor/etc/init/hw/init.qcom.rc',): blob_fixup()
         .regex_replace(
             r'(?m)^(service (?:vendor\.ssr_setup|vendor\.wigig_supplicant'
@@ -438,6 +447,10 @@ blob_fixups: blob_fixups_user_type = {
             r'|wifi-sdio-on|qlogd|vendor\.power_off_alarm|bugreport)\s'
             r'(?:[^\n]*\\\n)*[^\n]*\n)',
             r'\1    user root\n',
+        )
+        .regex_replace(
+            r'(?m)^import /vendor/etc/init/hw/init\.qcom\.factory\.rc\n',
+            '',
         ),
 
     # Two edits to init.target.rc:
@@ -457,6 +470,16 @@ blob_fixups: blob_fixups_user_type = {
     #    logs are ever wanted for WLAN firmware debugging. This is diagnostics
     #    only -- WLAN itself is driven by the separate cnss-daemon, which is
     #    untouched.
+    #
+    #  * The four `mkdir /data/goodix_sensor*` lines go. This unit's
+    #    accelerometer and gyroscope are ST LSM6DSVETR and its ambient-light
+    #    sensor is a GS6155 -- read straight off the running device from
+    #    /sys/devices/platform/product-device-info/info_{gsensor,gyro,lsensor}.
+    #    There is no Goodix part anywhere in this machine (info_fingerprint is
+    #    empty, and the touch controller is Novatek over SPI); the stanza is
+    #    another SKU's, carried on a shared vendor partition. All it did here was
+    #    create four empty directories under /data and log an AVC denial for
+    #    vendor_init on system_data_file every boot.
     ('vendor/etc/init/hw/init.target.rc',): blob_fixup()
         .regex_replace(
             r'(?m)^(service vendor\.mdm_launcher\s(?:[^\n]*\\\n)*[^\n]*\n)',
@@ -465,6 +488,58 @@ blob_fixups: blob_fixups_user_type = {
         .regex_replace(
             r'(?m)^(service vendor\.cnss_diag\s(?:[^\n]*\\\n)*[^\n]*\n(?:[ \t]+[^\n]*\n)*)',
             r'\1   disabled\n',
+        )
+        .regex_replace(
+            r'(?m)^[ \t]*mkdir /data/goodix_sensor[^\n]*\n',
+            '',
+        ),
+
+    # ★ Input boost hold time: 500 ms -> 100 ms.
+    #
+    # This is the single largest deliberate divergence Lenovo made from
+    # Qualcomm's own tuning on this silicon, and it is the best explanation
+    # found for "the tablet runs hot".
+    #
+    # init.kernel.post_boot-tuna_default_2_3_2_1.sh:126-129 (the variant that
+    # actually runs here -- init.kernel.post_boot.sh:42-44 dispatches on
+    # soc_id 694, and the 2/3/2/1 topology string picks this file) carries:
+    #
+    #   # TN Begin modified by keji.sun 20251030 MALBECW-1193(input and scroll boost)
+    #   echo 1516800 1516800 2073600 2073600 2073600 2073600 2073600 1920000 \
+    #        > /proc/sys/walt/input_boost/input_boost_freq
+    #   echo 500 > /proc/sys/walt/input_boost/input_boost_ms
+    #
+    # Every other variant this device ships, and onyx (the official PixelOS
+    # device on the SAME SoC), use Qualcomm's baseline instead:
+    #
+    #   echo 1075200 0 0 0 0 0 0 0 > .../input_boost_freq     # silvers only
+    #   echo 100 (onyx: 40)        > .../input_boost_ms
+    #
+    # kernel/msm-6.6 input-boost.c:73,143,159: the vector is applied as a
+    # freq_qos MINIMUM on every listed CPU and released input_boost_ms after the
+    # LAST input event. So Lenovo's line pins all eight cores at 60-75% of their
+    # maximum for half a second past the end of every scroll or tap. On a tablet
+    # that is close to a permanent all-cluster frequency floor.
+    #
+    # Only the hold time is changed here, and deliberately only that:
+    #
+    #  * During a scroll the boost is re-armed by every touch sample (120-360 Hz
+    #    on this digitiser), so the hold time is irrelevant while your finger is
+    #    down -- what it buys is the TAIL after you lift. Half a second of eight
+    #    cores at 2 GHz per flick, for nothing.
+    #  * The frequency vector, by contrast, is what Lenovo was actually buying
+    #    (scroll smoothness), and cutting it is a user-visible trade. 100 ms is
+    #    still Qualcomm's own baseline hold, so this is a return to the platform
+    #    default rather than an invention.
+    #  * Changing both at once would make the result unattributable. The vector
+    #    is I-5 in work/s15/reports/I-cpu-sched-power.md and is explicitly
+    #    gated on an on-battery measurement that has never been taken.
+    #
+    # To revert: the stock line is `echo 500 > ...input_boost_ms`.
+    ('vendor/bin/init.kernel.post_boot-tuna_default_2_3_2_1.sh',): blob_fixup()
+        .regex_replace(
+            r'(?m)^(\s*)echo 500 > /proc/sys/walt/input_boost/input_boost_ms$',
+            r'\g<1>echo 100 > /proc/sys/walt/input_boost/input_boost_ms',
         ),
 
     # qsap_location is Qualcomm's QESDK precise-positioning service. It cannot

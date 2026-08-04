@@ -58,3 +58,39 @@
 # section 8 (H2) for the sweep that would settle it if pressure is still absent.
 on property:sys.boot_completed=1
     write /proc/support_pen 1
+
+# ---------------------------------------------------------------------------
+# Per-unit Bluetooth / Wi-Fi MAC address storage.
+#
+# These two directories are where this unit's hardware identity lives:
+#
+#   /mnt/vendor/persist/bluetooth/.bt_nv.bin   -> ro.odm.lenovo.btaddr
+#   /mnt/vendor/persist/wcn7750/wlan_mac.bin   -> ro.odm.lenovo.wifiaddr
+#
+# libLenovoNvram.so reads them, and /vendor/bin/prop_init (class core, enabled,
+# started from `on boot`) is what loads that library and publishes the two
+# properties.
+#
+# On stock the only thing that created either directory was tndiag.rc's
+# `on boot` block. tndiag is deliberately not shipped here (it is a
+# root-privileged DIAG serial-number / MAC / RPMB-key write surface -- the
+# reasoning is in sepolicy/vendor/daemons.te), so the mkdirs had to move
+# somewhere, and this is that somewhere.
+#
+# `on post-fs` rather than stock's `on boot`, for two reasons, both improvements
+# rather than transcription:
+#   * /mnt/vendor/persist is mounted by then -- QTI's own persist mkdirs
+#     (init.qcom.rc:167-168 /time and /iar_db, :243 /display, :252 /hvdcp_opti)
+#     are in this same action, so the stage is proven on this device.
+#   * `on boot` would be a race. init merges all `on boot` blocks and runs them
+#     in file-parse order, and prop_init.rc's `on boot / start prop_init` sorts
+#     before tndiag.rc did -- so on stock the directories were created *after*
+#     the process that reads them was started, and it only ever worked because
+#     persist survives flashing and the directories were already there from the
+#     factory. Doing it at post-fs removes the dependency on that history, which
+#     matters for anyone who ever erases persist.
+#
+# Modes and ownership are verbatim from stock tndiag.rc.
+on post-fs
+    mkdir /mnt/vendor/persist/wcn7750 0770 system system
+    mkdir /mnt/vendor/persist/bluetooth 0770 system system

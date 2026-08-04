@@ -342,58 +342,7 @@ vendor/firmware/CAMERA_ICP_1.b20
 vendor/firmware/CAMERA_ICP_1.elf
 vendor/firmware/CAMERA_ICP_1.mbn
 vendor/firmware/CAMERA_ICP_1.mdt
-vendor/firmware/CAMERA_ICP_170.elf
-vendor/firmware/CAMERA_ICP_1_970.b00
-vendor/firmware/CAMERA_ICP_1_970.b01
-vendor/firmware/CAMERA_ICP_1_970.b02
-vendor/firmware/CAMERA_ICP_1_970.b03
-vendor/firmware/CAMERA_ICP_1_970.b04
-vendor/firmware/CAMERA_ICP_1_970.b05
-vendor/firmware/CAMERA_ICP_1_970.b06
-vendor/firmware/CAMERA_ICP_1_970.b07
-vendor/firmware/CAMERA_ICP_1_970.b08
-vendor/firmware/CAMERA_ICP_1_970.b09
-vendor/firmware/CAMERA_ICP_1_970.b10
-vendor/firmware/CAMERA_ICP_1_970.b11
-vendor/firmware/CAMERA_ICP_1_970.b12
-vendor/firmware/CAMERA_ICP_1_970.b13
-vendor/firmware/CAMERA_ICP_1_970.b14
-vendor/firmware/CAMERA_ICP_1_970.b15
-vendor/firmware/CAMERA_ICP_1_970.b16
-vendor/firmware/CAMERA_ICP_1_970.b17
-vendor/firmware/CAMERA_ICP_1_970.b18
-vendor/firmware/CAMERA_ICP_1_970.b19
-vendor/firmware/CAMERA_ICP_1_970.b20
-vendor/firmware/CAMERA_ICP_1_970.elf
-vendor/firmware/CAMERA_ICP_1_970.mbn
-vendor/firmware/CAMERA_ICP_1_970.mdt
-vendor/firmware/CAMERA_ICP_970.b00
-vendor/firmware/CAMERA_ICP_970.b01
-vendor/firmware/CAMERA_ICP_970.b02
-vendor/firmware/CAMERA_ICP_970.b03
-vendor/firmware/CAMERA_ICP_970.b04
-vendor/firmware/CAMERA_ICP_970.b05
-vendor/firmware/CAMERA_ICP_970.b06
-vendor/firmware/CAMERA_ICP_970.b07
-vendor/firmware/CAMERA_ICP_970.b08
-vendor/firmware/CAMERA_ICP_970.b09
-vendor/firmware/CAMERA_ICP_970.b10
-vendor/firmware/CAMERA_ICP_970.b11
-vendor/firmware/CAMERA_ICP_970.b12
-vendor/firmware/CAMERA_ICP_970.b13
-vendor/firmware/CAMERA_ICP_970.b14
-vendor/firmware/CAMERA_ICP_970.b15
-vendor/firmware/CAMERA_ICP_970.b16
-vendor/firmware/CAMERA_ICP_970.b17
-vendor/firmware/CAMERA_ICP_970.b18
-vendor/firmware/CAMERA_ICP_970.b19
-vendor/firmware/CAMERA_ICP_970.b20
-vendor/firmware/CAMERA_ICP_970.elf
-vendor/firmware/CAMERA_ICP_970.mbn
-vendor/firmware/CAMERA_ICP_970.mdt
 vendor/firmware/aw882xx_acf.bin
-vendor/firmware/boe_novatek_ts_fw.bin
-vendor/firmware/boe_novatek_ts_mp.bin
 vendor/firmware/csot_novatek_ts_fw.bin
 vendor/firmware/csot_novatek_ts_mp.bin
 vendor/firmware/evass.b00
@@ -418,35 +367,16 @@ vendor/firmware/evass.b18
 vendor/firmware/evass.b19
 vendor/firmware/evass.mbn
 vendor/firmware/evass.mdt
-vendor/firmware/gen70900_aqe.fw
-vendor/firmware/gen70900_sqe.fw
-vendor/firmware/gen70900_zap.mbn
-vendor/firmware/gen70e00_sqe.fw
-vendor/firmware/gen70e00_zap.mbn
-vendor/firmware/gen71700_gmu.bin
 vendor/firmware/gen80000_aqe.fw
-vendor/firmware/gen80000_gmu.bin
 vendor/firmware/gen80000_sqe.fw
 vendor/firmware/gen80000_zap.mbn
 vendor/firmware/gen80600_gmu.bin
-vendor/firmware/gmu_gen70900.bin
-vendor/firmware/vpu20_1v.mbn
-vendor/firmware/vpu20_1v_unsigned.mbn
 vendor/firmware/vpu30_2v.mbn
 vendor/firmware/vpu30_2v_unsigned.mbn
-vendor/firmware/vpu33_4v.mbn
-vendor/firmware/vpu33_4v_unsigned.mbn
-vendor/firmware/vpu35_4v.mbn
-vendor/firmware/vpu35_4v_unsigned.mbn
-vendor/firmware/wigig.ini
 vendor/gpu/kbc/sequence_manifest.bin
-vendor/gpu/kbc/sequence_manifest_a730.bin
 vendor/gpu/kbc/unified_kbcs_32.bin
-vendor/gpu/kbc/unified_kbcs_32_a730.bin
 vendor/gpu/kbc/unified_kbcs_64.bin
-vendor/gpu/kbc/unified_kbcs_64_a730.bin
 vendor/gpu/kbc/unified_ksqs.bin
-vendor/gpu/kbc/unified_ksqs_a730.bin
 
 # Init
 vendor/etc/init/android.hardware.biometrics.face@4.0-service.face.rc
@@ -458,8 +388,6 @@ vendor/etc/init/android.hardware.power-service.rc
 vendor/etc/init/android.hardware.security.keymint-service-qti.rc
 vendor/etc/init/c2painternetservice.rc
 vendor/etc/init/com.qualcomm.qti.wifidisplayhal@1.0-service.rc
-vendor/etc/init/dataadpl.rc
-vendor/etc/init/dataqti.rc
 vendor/etc/init/dcfd.rc
 vendor/etc/init/dlsc.rc
 vendor/etc/init/dms-service.rc
@@ -467,7 +395,6 @@ vendor/etc/init/dvs-aidl-service.rc
 vendor/etc/init/feature_enabler_client.rc
 vendor/etc/init/hexlpservice.rc
 vendor/etc/init/hlosminkdaemon.rc
-vendor/etc/init/hw/init.qcom.factory.rc
 vendor/etc/init/hw/init.qcom.rc
 vendor/etc/init/hw/init.qcom.usb.rc
 vendor/etc/init/hw/init.qti.kernel.rc
@@ -476,7 +403,6 @@ vendor/etc/init/hw/init.target.rc
 vendor/etc/init/init.extend_reclaim.rc
 vendor/etc/init/init.qlm-service.rc
 vendor/etc/init/init.qt-service.rc
-vendor/etc/init/init.qti.fm.rc
 vendor/etc/init/init.qti.media.rc
 vendor/etc/init/init.qti.qcv.rc
 vendor/etc/init/init.spdaemon.rc
@@ -485,29 +411,22 @@ vendor/etc/init/init.vendor.sensors.rc
 vendor/etc/init/init.vendor.wlan.rc
 vendor/etc/init/init_fan_service.rc
 vendor/etc/init/init_thermal-engine-v2.rc
-vendor/etc/init/ipacm-diag.rc
-vendor/etc/init/lenovo.hardware.ai-service.rc
 vendor/etc/init/loc-launcher.rc
 vendor/etc/init/memtrack_qti.rc
-vendor/etc/init/port-bridge.rc
 vendor/etc/init/prop_init.rc
 vendor/etc/init/qconfig.rc
 vendor/etc/init/qdcmss.rc
 vendor/etc/init/qesdk-manager.rc
 vendor/etc/init/qesdk-secmanager.rc
 vendor/etc/init/qguard.rc
-vendor/etc/init/qmipriod.debug.rc
-vendor/etc/init/qmipriod.rc
 vendor/etc/init/qseecomd.rc
 vendor/etc/init/qspa_vendor.rc
-vendor/etc/init/qttestservice.rc
 vendor/etc/init/qwesd.rc
 vendor/etc/init/shsusrd.rc
 vendor/etc/init/snapdragon_services.rc
 vendor/etc/init/ssgtzd.rc
 vendor/etc/init/tlpd.rc
 vendor/etc/init/tn_vendor_performance.rc
-vendor/etc/init/tndiag.rc
 vendor/etc/init/trusteduilistener.rc
 vendor/etc/init/vendor.dolby.media.c2-default-service-dax.rc
 vendor/etc/init/vendor.lenovo.hardware.battery-service.rc
@@ -555,7 +474,6 @@ vendor/etc/init/vendor.qti.syshealthmon-service.rc
 vendor/etc/init/vendor.qti.tftp.rc
 vendor/etc/init/vendor.sensors.qti.rc
 vendor/etc/init/vendor.sensors.sscrpcd.rc
-vendor/etc/init/vmmgr.rc
 vendor/etc/init/vppservice.rc
 vendor/etc/init/wfdvndservice.rc
 vendor/etc/init/wifisar.rc
@@ -572,27 +490,21 @@ vendor/etc/vintf/manifest/bttpi-saidl.xml
 vendor/etc/vintf/manifest/c2_manifest_vendor.xml
 vendor/etc/vintf/manifest/c2_manifest_vendor_audio.xml
 vendor/etc/vintf/manifest/cacert-saidl.xml
-vendor/etc/vintf/manifest/deviceinfo-saidl.xml
 vendor/etc/vintf/manifest/dms-service.xml
 vendor/etc/vintf/manifest/dvs-aidl-service.xml
 vendor/etc/vintf/manifest/face-default.xml
-vendor/etc/vintf/manifest/lenovo.hardware.ai-service.xml
 vendor/etc/vintf/manifest/manifest_afw.xml
 vendor/etc/vintf/manifest/manifest_audio_qti_services.xml
 vendor/etc/vintf/manifest/manifest_btaudiocoreservices_qti.xml
 vendor/etc/vintf/manifest/manifest_identity_credential.xml
 vendor/etc/vintf/manifest/memtrack_qti.xml
-vendor/etc/vintf/manifest/mwqem-saidl.xml
 vendor/etc/vintf/manifest/qasr_vintf.xml
 vendor/etc/vintf/manifest/qesdk-manager.xml
-vendor/etc/vintf/manifest/qspa/qspa-modem.xml
-vendor/etc/vintf/manifest/qspa/qspa-nav.xml
 vendor/etc/vintf/manifest/snapdragon_services.xml
 vendor/etc/vintf/manifest/soundtrigger.qti.xml
 vendor/etc/vintf/manifest/vendor.dolby.media.c2-default-service-dax.xml
 vendor/etc/vintf/manifest/vendor.lenovo.hardware.battery-service.xml
 vendor/etc/vintf/manifest/vendor.lenovo.hardware.display-service.xml
-vendor/etc/vintf/manifest/vendor.lenovo.hardware.factory-service.xml
 vendor/etc/vintf/manifest/vendor.lenovo.hardware.hyperschedule-service.xml
 vendor/etc/vintf/manifest/vendor.lenovo.hardware.keyboard.xml
 vendor/etc/vintf/manifest/vendor.lenovo.hardware.misc-service.xml
@@ -640,7 +552,6 @@ vendor/etc/permissions/android.hardware.camera.full.xml
 vendor/etc/permissions/android.hardware.camera.raw.xml
 vendor/etc/permissions/android.hardware.hardware_keystore.xml
 vendor/etc/permissions/android.hardware.keystore.app_attest_key.xml
-vendor/etc/permissions/android.hardware.light.xml
 vendor/etc/permissions/android.hardware.location.xml
 vendor/etc/permissions/android.hardware.opengles.aep.xml
 vendor/etc/permissions/android.hardware.touchscreen.multitouch.jazzhand.xml
@@ -658,7 +569,6 @@ vendor/etc/permissions/android.software.device_id_attestation.xml
 vendor/etc/permissions/android.software.ipsec_tunnels.xml
 vendor/etc/permissions/android.software.midi.xml
 vendor/etc/permissions/android.software.opengles.deqp.level.xml
-vendor/etc/permissions/android.software.sip.voip.xml
 vendor/etc/permissions/android.software.verified_boot.xml
 vendor/etc/permissions/android.software.vulkan.deqp.level.xml
 vendor/etc/permissions/handheld_core_hardware.xml
@@ -673,7 +583,6 @@ vendor/etc/permissions/vendor.qti.dcf.xml
 vendor/etc/permissions/vendor.qti.qva.xml
 
 # Seccomp
-vendor/etc/seccomp_policy/atfwd@2.0.policy
 vendor/etc/seccomp_policy/c2audio.vendor.base-arm.policy
 vendor/etc/seccomp_policy/c2audio.vendor.base-arm64.policy
 vendor/etc/seccomp_policy/c2audio.vendor.ext-arm.policy
@@ -938,24 +847,13 @@ vendor/lib64/bm5a79v08s13n75.bin
 vendor/lib64/bm5a79v08s13n76.bin
 vendor/lib64/libaudiochargerlistener.so
 vendor/lib64/libbatterylistener.so;DISABLE_DEPS
-vendor/lib64/libembmsservice.so
 vendor/lib64/vendor.lenovo.hardware.battery-V5-ndk.so
-vendor/lib64/vendor.qti.hardware.embmsslaidl-V2-ndk.so
 
 # Audio
 vendor/bin/adsprpcd
-vendor/bin/agmcap
-vendor/bin/agmcompresscap
-vendor/bin/agmcompressplay
-vendor/bin/agmhostless
-vendor/bin/agmplay
-vendor/bin/agmvoiceui
 vendor/bin/audioadsprpcd
-vendor/bin/aw882xx_cali
 vendor/bin/hw/vendor.qti.media.c2audio@1.0-service
-vendor/bin/mm-audio-ftm
 vendor/bin/trusteduilistener
-vendor/etc/FIT_V24_3_audio.cfg
 vendor/etc/MM_audio_playback_capture_v2.0.cfg
 vendor/etc/a2dp_audio_policy_configuration.xml
 vendor/etc/acdbdata/IDP_UPD/IDP_UPD_acdb_cal.acdb
@@ -1040,7 +938,6 @@ vendor/etc/acdbdata/tuna_qrd_2418yc/QRD_tuna4_workspaceFileXml.qwsp
 vendor/etc/aidl/le_audio/aidl_audio_set_configurations.json
 vendor/etc/aidl/le_audio/aidl_audio_set_scenarios.json
 vendor/etc/audio/audio_module_config_primary.xml
-vendor/etc/audio/sku_tuna/audio_effects.conf
 vendor/etc/audio/sku_tuna/audio_effects.xml
 vendor/etc/audio/sku_tuna/audio_effects_config.xml
 vendor/etc/audio/sku_tuna/audio_effects_config_stub.xml
@@ -1463,7 +1360,6 @@ vendor/etc/display/formats.json
 vendor/etc/display/graphics_alignments.json
 vendor/etc/display/moto_stc_profile.xml
 vendor/etc/display/pipe_config_DPU11__.xml
-vendor/etc/display/qdcm_calib_data_boe_nt36536e_144hz_vid.json
 vendor/etc/display/qdcm_calib_data_csot_af_nt36536_144hz_vid.json
 vendor/etc/display/qdcm_calib_data_csot_nt36536_144hz_vid.json
 vendor/etc/display/sdm_display_resolution_extn.xml
@@ -1580,7 +1476,6 @@ vendor/etc/perf/commonresourceconfigs.xml
 vendor/etc/perf/commonsysnodesconfigs.xml
 vendor/etc/perf/factorsconfig.xml
 vendor/etc/perf/perfboostsconfig.xml
-vendor/etc/perf/perfconfigstore.xml
 vendor/etc/perf/powerhint.xml
 vendor/etc/perf/qapeboostsconfig.xml
 vendor/etc/perf/qapeconfigstore.xml
@@ -1614,7 +1509,6 @@ vendor/lib64/vendor.lenovo.hardware.hyperschedule-V2-ndk.so
 vendor/lib64/vendor.lenovo.hardware.performance-V1-ndk.so
 vendor/lib64/vendor.qti.esepowermanager@1.0.so
 vendor/lib64/vendor.qti.hardware.perf2-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.wigig.netperftuner@1.0.so
 vendor/lib64/vendor.qti.power.pasrmanager@1.0.so
 
 # Sensors
@@ -1708,7 +1602,6 @@ vendor/etc/sensors/hals.conf
 vendor/etc/sensors/javalibs/odpmanagerlib-aar
 vendor/etc/sensors/sns_odp_config
 vendor/etc/sensors/sns_reg_config
-vendor/etc/sensors_diag.cfg
 vendor/lib64/libSensorsInterface.so
 vendor/lib64/libsensor_calibration.so
 vendor/lib64/libsensorcal.so
@@ -1727,8 +1620,6 @@ vendor/lib64/vendor.qti.hardware.sensorscalibrate-V1-ndk.so
 #     have nothing to do with the modem. Session 13 already retracted these two
 #     once for the same reason; do not "finish the job" on them.
 vendor/etc/media_codecs_google_telephony.xml
-vendor/lib64/libqcrilNrLogger.so
-vendor/lib64/libqcrilNrQtiMutex.so
 
 # TEE / Keystore
 vendor/bin/hw/android.hardware.gatekeeper-service-qti
@@ -1770,19 +1661,13 @@ vendor/bin/wifisar.sh
 vendor/etc/hostapd/hostapd.accept
 vendor/etc/hostapd/hostapd.deny
 vendor/etc/hostapd/hostapd_default.conf
-vendor/etc/wifi/kiwi_v2/WCNSS_qcom_cfg.ini
 vendor/etc/wifi/p2p_supplicant_overlay.conf
-vendor/etc/wifi/peach/WCNSS_qcom_cfg.ini
-vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini
-vendor/etc/wifi/qca6750/WCNSS_qcom_cfg.ini
 vendor/etc/wifi/vendor_cmd.xml
 vendor/etc/wifi/wcn7750/WCNSS_qcom_cfg.ini
 vendor/etc/wifi/wpa_supplicant.conf
 vendor/etc/wifi/wpa_supplicant_overlay.conf
-vendor/lib64/libWlanServiceJni.so
 vendor/lib64/libcert_parse.wpa_s.so
 vendor/lib64/liblowi_wifihal.so
-vendor/lib64/vendor.qti.hardware.data.iwlandata-V2-ndk.so
 vendor/lib64/vendor.qti.hardware.wifi.wifilearner-V1-ndk.so
 
 # System-side QTI
@@ -1831,34 +1716,16 @@ system_ext/priv-app/WfdService/WfdService.apk
 vendor/bin/C2PAInternetService
 vendor/bin/KmInstallKeybox
 vendor/bin/StoreKeybox
-vendor/bin/adpl
-vendor/bin/aecxsimulator
 vendor/bin/btconfig
-vendor/bin/ccid_daemon_nr
 vendor/bin/cdsprpcd
 vendor/bin/cnss-daemon
-vendor/bin/cnss_cli
 vendor/bin/cnss_diag
-vendor/bin/color_sampling_tool
-vendor/bin/coresight_reset_source_sink.sh
-vendor/bin/cplay
-vendor/bin/ctrlapp_dut
-vendor/bin/dcc_extension.sh
 vendor/bin/diag-router
-vendor/bin/diag_mdlog
-vendor/bin/diag_socket_log
 vendor/bin/dlsc
 vendor/bin/dppdaemon
 vendor/bin/dspservice
-vendor/bin/e_loop
-vendor/bin/engine-service
 vendor/bin/fan_service
 vendor/bin/feature_enabler_client
-vendor/bin/fm_qsoc_patches
-vendor/bin/fmconfig
-vendor/bin/fmfactorytest
-vendor/bin/fmfactorytestserver
-vendor/bin/ftmdaemon
 vendor/bin/hdcp1prov
 vendor/bin/hdcp2p2prov
 vendor/bin/hexlpservice
@@ -1869,7 +1736,6 @@ vendor/bin/hw/dvs-aidl-service
 vendor/bin/hw/qconfigservice
 vendor/bin/hw/vendor.dolby.dms.service
 vendor/bin/hw/vendor.dolby.media.c2-default-service-dax
-vendor/bin/hw/vendor.lenovo.hardware.factory-service
 vendor/bin/hw/vendor.lenovo.hardware.keyboard-service
 vendor/bin/hw/vendor.lenovo.hardware.misc-service
 vendor/bin/hw/vendor.lenovo.hardware.touchscreen-service
@@ -1898,7 +1764,6 @@ vendor/bin/init.kernel.post_boot-tuna_2_3_1_1.sh
 vendor/bin/init.kernel.post_boot-tuna_2_3_2_0.sh
 vendor/bin/init.kernel.post_boot-tuna_default_2_3_2_1.sh
 vendor/bin/init.kernel.post_boot.sh
-vendor/bin/init.mdm.sh
 vendor/bin/init.qcom.cabl.high.sh
 vendor/bin/init.qcom.cabl.low.sh
 vendor/bin/init.qcom.cabl.medium.sh
@@ -1921,21 +1786,13 @@ vendor/bin/init.qti.kernel.sh
 vendor/bin/init.qti.media.sh
 vendor/bin/init.qti.qcv.sh
 vendor/bin/init.qti.write.sh
-vendor/bin/ipacm-diag
-vendor/bin/ipp_key_gen
 vendor/bin/irsc_util
 vendor/bin/ks
-vendor/bin/lenovo.hardware.ai-service
-vendor/bin/loadalgo
-vendor/bin/loopback.sh
 vendor/bin/lowi-server
 vendor/bin/mlid
 vendor/bin/pd-mapper
 vendor/bin/pm-proxy
 vendor/bin/pm-service
-vendor/bin/pm_ioctl_app
-vendor/bin/pmic_key_reset
-vendor/bin/port-bridge
 vendor/bin/ppd
 vendor/bin/prop_init
 vendor/bin/qca6234-service.sh
@@ -1943,84 +1800,54 @@ vendor/bin/qesdk-manager
 vendor/bin/qesdk-secmanager
 vendor/bin/qguard
 vendor/bin/qlm-service
-vendor/bin/qmipriod
-vendor/bin/qrtr-cfg
-vendor/bin/qrtr-lookup
 vendor/bin/qrtr-ns
 vendor/bin/qsap_dcfd
 vendor/bin/qsap_qapeservice
 vendor/bin/qsap_voiceui
 vendor/bin/qt-service
-vendor/bin/qti
-vendor/bin/qtigetprop
-vendor/bin/qtisetprop
-vendor/bin/qttestservice
 vendor/bin/qwes_cli
 vendor/bin/qwesd
 vendor/bin/rmt_storage
 vendor/bin/rpmbClient
 vendor/bin/sec_nvm
-vendor/bin/sg_write_buffer
 vendor/bin/shsusrd
 vendor/bin/snapdragon_services
 vendor/bin/spdaemon
-vendor/bin/spectraltool
 vendor/bin/sscrpcd
 vendor/bin/ssgqmigd
 vendor/bin/ssgqmigd64
 vendor/bin/ssgtzd
-vendor/bin/ssr_diag
 vendor/bin/ssr_setup
-vendor/bin/subsystem_ramdump
 vendor/bin/system_dlkm_modprobe.sh
 vendor/bin/tftp_server
 vendor/bin/time_daemon
 vendor/bin/tlpd
-vendor/bin/tndiag
 vendor/bin/ubwcconvert
 vendor/bin/vendor.qti.hardware.soter-provision
 vendor/bin/vendor.qti.qspmhal-service
 vendor/bin/vendor.qti.syshealthmon-service
 vendor/bin/vendor_cmd_tool
 vendor/bin/vendor_modprobe.sh
-vendor/bin/vmmgr
 vendor/bin/vppservice
-vendor/bin/wdsdaemon
 vendor/bin/wfdhdcphalservice;DISABLE_DEPS
 vendor/bin/wfdvndservice
-vendor/etc/5GNR_LTE_CN_V9.cfg
 vendor/etc/ASR_binary/Whisper/libQnnHtpV79Skel.so
 vendor/etc/ASR_binary/Whisper/speech_float.eai
-vendor/etc/CHGPD.cfg
-vendor/etc/CHGPD_Baldur.cfg
-vendor/etc/FIT_V24_2_volte_full_ip.cfg
 vendor/etc/Hapticsconfig.xml
 vendor/etc/Record_playback.cfg
-vendor/etc/ZUI_Full.cfg
-vendor/etc/ZUI_Simplified.cfg
-vendor/etc/ZUI_TPUT.cfg
 vendor/etc/apdr.conf
 vendor/etc/cablconfig.xml
 vendor/etc/card-defs.xml
 vendor/etc/clstc_config_library.xml
-vendor/etc/configstore/wigig.xml
-vendor/etc/copy_aplog_dirs.xml
 vendor/etc/country_code_list.xml
 vendor/etc/data/dsi_config.xml
-vendor/etc/data/nicm_config.xml
 vendor/etc/data/tlpd_oem_config.xml
-vendor/etc/default-permissions/vendor.qti.data.txpwradmin.xml
 vendor/etc/default_volume_tables.xml
 vendor/etc/dolby/dax-default.xml
 vendor/etc/dolby_vision.cfg
 vendor/etc/excluded-input-devices.xml
 vendor/etc/fstab.zram_wb
-vendor/etc/ftm_test_config
-vendor/etc/ftm_test_config_tuna-qrd-snd-card
 vendor/etc/gpfspath_oem_config.xml
-vendor/etc/init.qti.fm.sh
-vendor/etc/lenovocust.rc
-vendor/etc/lenovoraw.rc
 vendor/etc/lm/AppClassifierFeature.xml
 vendor/etc/lm/LightningLaunchesFeature.xml
 vendor/etc/lm/PreKillFeature.xml
@@ -2054,8 +1881,6 @@ vendor/etc/public.libraries.txt
 vendor/etc/qguard.json
 vendor/etc/qspa/nav_disabled.rc
 vendor/etc/qspa/nsp_disabled.rc
-vendor/etc/qvirtmgr-vndr.json
-vendor/etc/recovery-resource.dat
 vendor/etc/sec_config
 vendor/etc/smomo_setting.xml
 vendor/etc/ssg/c2pa_enroll_config.json
@@ -2065,7 +1890,6 @@ vendor/etc/ssg/tz_whitelist.json
 vendor/etc/sysconfig/cacert-oem-defined-uids.xml
 vendor/etc/ueventd.rc
 vendor/etc/usecaseKvManager.xml
-vendor/etc/vmmgr.conf
 vendor/etc/wfdconfig.xml
 vendor/lib64/android.hardware.common-V2-ndk_platform.so
 vendor/lib64/com.qti.chifeaturecompatibility.so
@@ -2103,7 +1927,6 @@ vendor/lib64/com.qti.feature2.stub.so
 vendor/lib64/com.qti.feature2.swmf.so
 vendor/lib64/com.qti.qseeaon.so
 vendor/lib64/com.qti.qseeutils.so
-vendor/lib64/com.qti.settings.sm7750.so
 vendor/lib64/com.qti.settings.sm8750.so
 vendor/lib64/com.qti.stats.common.so
 vendor/lib64/com.qualcomm.mcx.distortionmapper.so
@@ -2112,11 +1935,6 @@ vendor/lib64/com.qualcomm.mcx.nonlinearmapper.so
 vendor/lib64/com.qualcomm.mcx.policy.mfl.so
 vendor/lib64/com.qualcomm.mcx.policy.sfl.so
 vendor/lib64/com.qualcomm.qti.mcx.usecase.extension.so
-vendor/lib64/com.qualcomm.qti.uceservice@2.0.so
-vendor/lib64/com.qualcomm.qti.uceservice@2.1.so
-vendor/lib64/com.qualcomm.qti.uceservice@2.2.so
-vendor/lib64/com.qualcomm.qti.uceservice@2.3.so
-vendor/lib64/ftm_fm_lib.so;DISABLE_DEPS
 vendor/lib64/hw/libsoundtriggerhal.qti.so;DISABLE_DEPS
 vendor/lib64/hw/mbedtls_qti.so
 vendor/lib64/hw/qc_bcs_lib.so
@@ -2127,7 +1945,6 @@ vendor/lib64/hw/vendor.qti.hardware.fm-impl.so
 vendor/lib64/hw/vendor.qti.hardware.servicetrackeraidl-impl.so
 vendor/lib64/hw/vendor.qti.hardware.soter-impl.so
 vendor/lib64/hw/vendor.qti.memory.pasrmanager-impl.so
-vendor/lib64/lenovo.hardware.ai-V1-ndk.so
 vendor/lib64/libAlacSwDec.so
 vendor/lib64/libApeSwDec.so
 vendor/lib64/libCB.so
@@ -2152,10 +1969,8 @@ vendor/lib64/libQnnHtpProfilingReader.so
 vendor/lib64/libQnnHtpV73Stub.so
 vendor/lib64/libScenescape.so
 vendor/lib64/libStereoRectifyWrapper.so
-vendor/lib64/libTxPwrJni.so
 vendor/lib64/libVoiceSdk.so
 vendor/lib64/libadm.so
-vendor/lib64/libaipriv.so
 vendor/lib64/libapengine.so
 vendor/lib64/libappclassifier.so
 vendor/lib64/libarcsoft_face_biometric.so
@@ -2168,6 +1983,17 @@ vendor/lib64/libbase64.so
 vendor/lib64/libbiometricsface_ca.arcsoft.so
 vendor/lib64/libbitmlengine.so
 vendor/lib64/libbitmlenginev2.so
+# ⚠️ Keep. The session-15 blob audit proposed dropping this as a dead chain
+# ("only consumer is libboot_control_qti.so, which itself has 0 consumers").
+# The second half is false and the build said so immediately:
+#   readelf -d vendor/bin/hw/android.hardware.boot-service.qti
+#     -> NEEDED libboot_control_qti.so
+#   readelf -d vendor/lib64/libboot_control_qti.so
+#     -> NEEDED librecovery_updater.so
+# Dropping it takes out A/B slot selection and therefore OTA. Its sibling
+# librecovery_updater_msm.so really does have zero referrers image-wide and is
+# gone; the two names look alike and are not the same thing.
+vendor/lib64/librecovery_updater.so
 vendor/lib64/libboot_control_qti.so
 vendor/lib64/libbt-hidlclient.so;DISABLE_DEPS
 vendor/lib64/libbtnv.so
@@ -2198,12 +2024,10 @@ vendor/lib64/libdeccfg.so
 vendor/lib64/libdepthcomputation.so
 vendor/lib64/libdiag.so
 vendor/lib64/libdiagatbparser.so
-vendor/lib64/libdiagjni.so
 vendor/lib64/libdigital-dimming.so
 vendor/lib64/libdisp-aba.so
 vendor/lib64/libdlbdsservice.so
 vendor/lib64/libdlbpreg.so
-vendor/lib64/libdmap_consent_sdk.so
 vendor/lib64/libdmshal.so
 vendor/lib64/libdolbyclstc.so
 vendor/lib64/libdolbydecoderprocessor.so
@@ -2216,7 +2040,6 @@ vendor/lib64/libdsutils.so
 vendor/lib64/libeai_fixed.so
 vendor/lib64/libeai_float.so
 vendor/lib64/libeepromcutter.so
-vendor/lib64/libengineplugin.so
 vendor/lib64/libfaceid_ca_proxy.arcsoft.so
 vendor/lib64/libfastcrc.so
 vendor/lib64/libfastcvdsp_stub.so
@@ -2249,7 +2072,6 @@ vendor/lib64/libjni_imageutil.so
 vendor/lib64/libjnihelper.so
 vendor/lib64/libjpege.so
 vendor/lib64/libkcl.so
-vendor/lib64/libkcl_a730.so
 vendor/lib64/libkernelmanager.so
 vendor/lib64/liblearningmodule.so
 vendor/lib64/liblenovo_keyboard.so
@@ -2258,7 +2080,6 @@ vendor/lib64/libllvm-glnext.so
 vendor/lib64/libllvm-qcom.so
 vendor/lib64/libllvm-qgl.so
 vendor/lib64/liblmutils-ns.so
-vendor/lib64/libloadalgo_stub.so
 vendor/lib64/liblocdiagiface.so
 vendor/lib64/liblowi_client.so
 vendor/lib64/liblowi_common.so
@@ -2286,12 +2107,7 @@ vendor/lib64/libmpbase.so
 vendor/lib64/libnative-api.so
 vendor/lib64/libnicm.so
 vendor/lib64/libnicm_dsi.so
-vendor/lib64/libnicm_interface.so
-vendor/lib64/libnicm_internal.so
-vendor/lib64/libnicm_netlink.so
-vendor/lib64/libnicm_recovery.so
 vendor/lib64/libnicm_utils.so
-vendor/lib64/libnicm_vh.so
 vendor/lib64/libnspdependencyservice.so
 vendor/lib64/libnspdescriptorhandlerservice.so
 vendor/lib64/libnspdiagservice.so
@@ -2335,7 +2151,6 @@ vendor/lib64/libqapesdk.so
 vendor/lib64/libqasr.so;DISABLE_DEPS
 vendor/lib64/libqcbor.so
 vendor/lib64/libqcci_legacy.so
-vendor/lib64/libqcmaputils.so
 vendor/lib64/libqconfigclient.so
 vendor/lib64/libqdi.so
 vendor/lib64/libqdp.so
@@ -2355,7 +2170,6 @@ vendor/lib64/libqmi_client_helper.so
 vendor/lib64/libqmi_client_qmux.so
 vendor/lib64/libqmi_common_so.so
 vendor/lib64/libqmi_csi.so
-vendor/lib64/libqmi_csvt_srvc.so
 vendor/lib64/libqmi_encdec.so
 vendor/lib64/libqmi_legacy.so
 vendor/lib64/libqmiextservices.so
@@ -2383,12 +2197,9 @@ vendor/lib64/libqtigefar.so;DISABLE_DEPS
 vendor/lib64/libqtiidentitycredential.so
 vendor/lib64/libqtjsonhelper.so
 vendor/lib64/libqtnodes.so
-vendor/lib64/libqttestservice.so
 vendor/lib64/libqwes.so
 vendor/lib64/librcc.so
 vendor/lib64/librcmask.so
-vendor/lib64/librecovery_updater.so
-vendor/lib64/librecovery_updater_msm.so
 vendor/lib64/libreffeature.so
 vendor/lib64/librpmb.so
 vendor/lib64/libsbprovision.so
@@ -2499,8 +2310,6 @@ vendor/lib64/qsn1rtlp43270.bin
 vendor/lib64/qsn2all.bin
 vendor/lib64/qsn3all.bin
 vendor/lib64/qti.video.utils.videobufferlayout.so
-vendor/lib64/qtiPeripheralMgr.so
-vendor/lib64/qtiwakelock.so
 vendor/lib64/rfs/dsp/libVppAisQnnHtp.so
 vendor/lib64/rfs/dsp/libVppFrcQnnHtp.so
 vendor/lib64/rfs/dsp/libapn_dsp_skel.so
@@ -2527,18 +2336,12 @@ vendor/lib64/rfs/dsp/libvpt_action_recognition.so
 vendor/lib64/rfs/dsp/libworker_pool.so
 vendor/lib64/vendor.dolby.dms-V1-ndk.so
 vendor/lib64/vendor.dolby.hardware.dms@2.0.so
-vendor/lib64/vendor.lenovo.hardware.factory-V2-ndk.so
 vendor/lib64/vendor.lenovo.hardware.keyboard-V3-ndk_platform.so
 vendor/lib64/vendor.lenovo.hardware.misc-V1-ndk.so
 vendor/lib64/vendor.lenovo.hardware.touchscreen-V5-ndk.so
 vendor/lib64/vendor.qti.MemHal-V1-ndk.so
-vendor/lib64/vendor.qti.data.mwqem@1.0.so
-vendor/lib64/vendor.qti.data.mwqemaidlservice-V1-ndk.so
-vendor/lib64/vendor.qti.data.slm@1.0.so
 vendor/lib64/vendor.qti.diaghal-V1-ndk.so
-vendor/lib64/vendor.qti.diaghal@1.0.so;MODULE_SUFFIX=_vendor
 vendor/lib64/vendor.qti.hardware.alarm-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.automotive.vehicle@1.0.so
 vendor/lib64/vendor.qti.hardware.bttpi-V3-ndk.so
 vendor/lib64/vendor.qti.hardware.c2pa-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.cacertaidlservice-V1-ndk.so
@@ -2566,7 +2369,6 @@ vendor/lib64/vendor.qti.hardware.hexlp-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.iop@1.0.so
 vendor/lib64/vendor.qti.hardware.iop@2.0.so
 vendor/lib64/vendor.qti.hardware.minkipcbinder-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.mwqemadapteraidlservice-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.qasr-V2-ndk.so
 vendor/lib64/vendor.qti.hardware.qconfig-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.qdutils_disp@1.0.so
