@@ -597,6 +597,20 @@ PRODUCT_COPY_FILES += \
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/device_state_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/devicestate/device_state_configuration.xml
 
+# QTI perf config store.
+#
+# The other thirteen files in vendor/etc/perf/ stay blobs and are byte identical
+# to the factory ones. This one is owned here because it needs exactly one value
+# changed and there is no runtime way to change it: memperfd is disabled,
+# because the QHCP service it blocks on forever is registered by /vendor/bin/qms
+# (the modem QMI daemon) which a Wi-Fi-only tablet does not ship. The full
+# derivation and the live measurement are in the file's own comment.
+#
+# Keep this in sync when the factory firmware is updated: diff the new stock
+# perfconfigstore.xml against this one and re-apply the single memperfd line.
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/configs/perf/perfconfigstore.xml:$(TARGET_COPY_OUT_VENDOR)/etc/perf/perfconfigstore.xml
+
 # RRO partition precedence.
 #
 # This tree's overlays are in /vendor/overlay, which AOSP orders BELOW
@@ -656,7 +670,13 @@ PRODUCT_COPY_FILES += \
 # partitions this port replaces. See the overlay's AndroidManifest for why one
 # overlay covers what stock does with four, and which stock values are
 # deliberately left out because their RROs are gated on vendor.sku=sun.
+#
+# DolbyAtmosOverlayMalbec carries one array: the dialogue-enhancer step list,
+# which upstream fills with a ladder this panel's Dolby tuning never uses, so
+# the app showed "Unknown". Derived from vendor/etc/dolby/dax-default.xml —
+# derivation in the overlay's own arrays.xml.
 PRODUCT_PACKAGES += \
+    DolbyAtmosOverlayMalbec \
     FrameworkOverlayMalbec \
     SettingsProviderOverlayMalbec \
     WifiOverlayMalbec

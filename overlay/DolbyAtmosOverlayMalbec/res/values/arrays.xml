@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+
+    <!-- Dialogue enhancer steps.
+
+         Why this override exists: with PixelOS' stock list the app showed
+         "Unknown" for the dialogue enhancer on every fresh boot of this device,
+         and it was NOT a broken backend. Measured on the running unit with
+         `setprop log.tag.DolbyAtmos D`:
+
+             DolbyAtmos-DolbyController: getDialogueEnhancerAmount: enabled=true amount=4
+             DolbyAtmos-DolbySettingsFragment: dialogue enhancer value 4 unknown
+
+         DolbySettingsFragment.kt:242-250 only shows a label when the value the
+         DAP reports back is present in dolby_dialogue_values; otherwise it
+         substitutes R.string.dolby_unknown. Upstream ships 0,2,6,9,12 — a
+         ladder from some other vendor's tuning. This device never uses 2 or 9.
+
+         The authority is the panel's own Dolby tuning,
+         vendor/etc/dolby/dax-default.xml, which is a blob we ship verbatim.
+         Its eight profiles use exactly five distinct dialog-enhancer-amount
+         values, and no others:
+
+             profile 0 Dynamic            spk 4   hp 4(off) other 4
+             profile 1 Movie              spk 6   hp 4      other 4
+             profile 2 Music              spk 4   hp 4(off) other 4(off)
+             profile 3 Voice              spk 8   hp 8      other 8
+             profile 4 Mobility_default   0 / 0 / 0
+             profile 5 Mobility_on_the_go 4 / 4 / 4
+             profile 6 Mobility_commute   8 / 8 / 8
+             profile 7 Mobility_travel    12 / 12 / 12
+
+         => { 0, 4, 6, 8, 12 }. Listing precisely that set means no profile this
+         device can select is ever unlabelled, and the shipped default (4) reads
+         as "Low" — the same rung Dolby itself puts it on in the Mobility ladder
+         (0 / 4 / 8 / 12).
+
+         Deliberately NOT done: patching packages/apps/DolbyAtmos. The value
+         ladder is a property of the panel tuning, not of the app, so it belongs
+         in the device overlay; and this tree keeps zero patches outside
+         device/ and vendor/.
+
+         Verified while diagnosing this, and worth recording because the owner
+         asked whether the app does anything at all: it does. The DAP effect is
+         live (dumpsys media.audio_flinger: UUID 9d4921da-…, name "DAP",
+         implementor "Dolby Laboratories", one client, 48 kHz float in and out
+         on the output chain), and every value the app reads back matches
+         dax-default.xml profile 0 / speaker exactly — volume leveler enabled,
+         bass enhancer off, speaker virtualizer off, GEQ flat, IEQ off. It is
+         reading and writing the real effect, not a stub. -->
+    <string-array name="dolby_dialogue_values" translatable="false">
+        <item>0</item>
+        <item>4</item>
+        <item>6</item>
+        <item>8</item>
+        <item>12</item>
+    </string-array>
+
+</resources>
