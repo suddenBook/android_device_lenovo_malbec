@@ -35,61 +35,58 @@
 # also ships, minus everything cellular — this is a Wi-Fi-only tablet with no
 # modem, so the qcril/IMS stack would only retry and log.
 #
-# ⚠️ vendor/lib64/libtinyxml2.so is listed ON PURPOSE, even though it is pure
-# AOSP and the tree builds a vendor variant of it. It is the one library on this
-# device with a *silent layout ABI break* between the vendor blobs' compile-time
-# headers and the current tree:
+# ⚠️ vendor/lib64/libtinyxml2.so is DELIBERATELY ABSENT, and the reason is the
+# single most important thing on this list. Do not "fix" it by adding it back.
 #
-#   AOSP e26130265cbfe70dd26a22648b1c719406ce2c9e "Upgrade tinyxml2 to 11.0.0"
-#   turned DynArray/MemPoolT's `int` members into `size_t`, which grew
-#   sizeof(tinyxml2::XMLDocument) from 776 (0x308) to 880 (0x370).
+# AOSP e26130265cbfe70dd26a22648b1c719406ce2c9e "Upgrade tinyxml2 to 11.0.0"
+# turned DynArray's and MemPoolT's `int` members into `size_t`, growing
+# sizeof(tinyxml2::XMLDocument) from 776 (0x308) to 880 (0x370). Sixteen blobs
+# here link libtinyxml2.so and SEVEN construct an XMLDocument by value, so each
+# construction overruns its slot by 104 bytes:
 #
-# 16 blobs here link libtinyxml2.so and SEVEN construct an XMLDocument by value
-# — libpowercore.so embeds two at offsets 0x128/0x438 (stride 0x310 = 776
-# rounded up), libaudioeffecthal.qti.so memsets exactly 0x308 of stack and
-# builds one there. With the 880-byte constructor every one of them overruns by
-# 104 bytes. That is the whole reason poweropt-service and audiohalservice.qti
-# crashed on the first flash, and it is armed but not yet fired in
-# libcamxcoreutils.so / libcamxods.so / libquasar.so / libapengine.so /
-# liblearningmodule.so.
+#   libpowercore.so          two embedded at this+0x128 / this+0x438, stride 0x310
+#   libaudioeffecthal.qti.so memsets exactly 0x308 of stack, constructs there
+#   libcamxcoreutils.so      \
+#   libcamxods.so             |  not yet triggered -- these fire on first
+#   libquasar.so              |  camera open / effect load
+#   libapengine.so            |
+#   liblearningmodule.so     /
 #
-# The exported symbol sets of the two builds are IDENTICAL (231 = 231), so
-# check_elf_file, 33-blob-linkcheck.py and every other symbol-based gate is
-# structurally blind to this. Only the layout differs.
+# The exported symbol sets of the factory and tree builds are IDENTICAL
+# (231 = 231, `diff` of the sorted name lists is empty), because everything that
+# moved is private. check_elf_file, 33-blob-linkcheck.py and every other
+# symbol-based gate is structurally blind to this class of break.
 #
-# Extracting the factory copy is safe in both directions:
-#   · the four TREE-BUILT vendor consumers were compiled against the v11 header,
-#     but the members that moved are private and live at offset >= 0x100; the
-#     XMLNode base and every scalar (_errorID, _errorStr, ...) occupy 0x00-0xa8
-#     and are byte-identical in both versions, which is all the inlinable public
-#     API touches. A consumer that reserves 880 while the library writes 776
-#     merely wastes 104 bytes — only the reverse corrupts memory.
-#   · libtinyxml2 is not LLNDK, so the vendor linker namespace never sees
-#     /system/lib64's v11. The system side is untouched.
+# We cannot ship the factory copy. Android 16 closes all three routes, each
+# measured, not assumed:
 #
-# It carries ;MAKE_COPY_RULE_ONLY rather than being a normal prebuilt module,
-# and that is forced, not stylistic. external/tinyxml2/Android.bp:36 is a plain
-# `cc_library` with vendor_available/product_available/recovery_available, so
-# Soong considers its partition to be `system` even for the vendor variant. A
-# soc_specific prebuilt of the same name is then rejected outright by
-# build/soong/android/prebuilt.go:508-517
-# (checkInvariantsForSourceAndPrebuilt -> "partition is different:
-# system(libtinyxml2) != vendor(prebuilt_libtinyxml2)"), which is a hard
-# invariant with its own regression test (prebuilt_test.go:443). Measured, not
-# assumed: a plain entry here fails `m nothing` in 7 seconds.
-# MAKE_COPY_RULE_ONLY emits a PRODUCT_COPY_FILES rule instead of a Soong module,
-# so there is no module to change partitions and no conflict. The tree still
-# builds its own vendor variant; the copy rule overrides the install. Which rule
-# kati keeps is verified, not assumed -- see work/analysis/blob-ownership.txt
-# and `python3 work/scripts/30-dup-installs.py --check`.
+#   1. plain blob entry -> Soong rejects it outright.
+#      external/tinyxml2/Android.bp:36 is a plain cc_library with
+#      vendor_available, so its partition is `system` even for the vendor
+#      variant, and build/soong/android/prebuilt.go:508-517 makes changing
+#      partition a hard invariant with its own regression test
+#      (prebuilt_test.go:443):
+#        "partition is different: system(libtinyxml2) != vendor(prebuilt_libtinyxml2)"
 #
-# Two alternatives were tried and rejected, recorded so nobody retries them:
-#   · a plain blob entry -- the partition invariant above;
-#   · a soname rename (;FIX_SONAME + replace_needed) -- libtinyxml2_1.so proves
-#     a rename does not isolate C++ symbols (210 identical mangled names), and
-#     audiohalservice.qti has libtinyxml2.so directly in DT_NEEDED, so the v11
-#     copy would sit in that process's global lookup scope and win regardless of
-#     what the dlopened blob asked for.
+#   2. ;MAKE_COPY_RULE_ONLY (a PRODUCT_COPY_FILES rule) -> blocked by the
+#      check-non-elf-file-timestamps rule:
+#        "found ELF prebuilt in PRODUCT_COPY_FILES, use cc_prebuilt_binary /
+#         cc_prebuilt_library_shared instead."
+#
+#   3. ;MODULE_SUFFIX=_vendor (a differently named prebuilt whose stem still
+#      lands on the contested path) -> blocked by the Soong filesystem creator:
+#        build/soong/fsgen/Android.bp:41 module "custom_malbec_generated_vendor_image":
+#        "packaging conflict at lib64/libtinyxml2.so"
+#      Note this one is NEW in Android 16 and it means the "blob wins a
+#      contested path" mechanisms in work/analysis/BLOB-CRITERION.md no longer
+#      work for anything that lands in a Soong-generated filesystem image.
+#      BUILD_BROKEN_DUP_RULES is a kati-level flag and does not apply here.
+#
+# So the fix is on the consumer side instead: poweropt-service is dropped (it is
+# Qualcomm's power-tuning daemon, not needed to boot) and libaudioeffecthal.qti
+# is built from source, where it is compiled against the v11 header and reserves
+# the right 880 bytes. The five CamX/effects libraries above are still armed;
+# see work/analysis/OPEN-ISSUES.md for the exposure and the options.
 
 # APEX
 vendor/apex/com.google.android.widevine.nonupdatable.apex
@@ -309,7 +306,6 @@ vendor/etc/init/loc-launcher.rc
 vendor/etc/init/memtrack_qti.rc
 vendor/etc/init/nicmd.rc
 vendor/etc/init/port-bridge.rc
-vendor/etc/init/poweropt-service.rc
 vendor/etc/init/prop_init.rc
 vendor/etc/init/qconfig.rc
 vendor/etc/init/qcrilNrd.rc
@@ -1006,7 +1002,6 @@ vendor/lib64/hw/audio.bluetooth_qti.default.so;DISABLE_DEPS
 vendor/lib64/hw/audio/libQnnHtp.so;MODULE_SUFFIX=_audio
 vendor/lib64/hw/libaudiocorehal.default.so;DISABLE_DEPS
 vendor/lib64/hw/libaudiocorehal.qti.so;DISABLE_DEPS
-vendor/lib64/hw/libaudioeffecthal.qti.so;DISABLE_DEPS
 vendor/lib64/hw/vendor.qti.hardware.bluetooth_audio@2.0-impl.so
 vendor/lib64/hw/vendor.qti.hardware.bluetooth_audio@2.1-impl.so
 vendor/lib64/libadsp_default_listener.so
@@ -1468,7 +1463,6 @@ vendor/bin/hw/vendor.lenovo.hardware.hyperschedule-service
 vendor/bin/hw/vendor.lenovo.hardware.performance-service
 vendor/bin/hw/vendor.qti.hardware.perf2-hal-service
 vendor/bin/power_off_alarm
-vendor/bin/poweropt-service
 vendor/bin/thermal-engine-v2
 vendor/bin/tn_vendor_performance.sh
 vendor/etc/media_codecs_performance_kera_v0.xml
@@ -2748,7 +2742,6 @@ vendor/lib64/libtestutils.so
 vendor/lib64/libtfestriping.so
 vendor/lib64/libthreadutils.so
 vendor/lib64/libtime_genoff.so
-vendor/lib64/libtinyxml2.so;MAKE_COPY_RULE_ONLY
 vendor/lib64/libtinyxml2_1.so
 vendor/lib64/libtlpd.so
 vendor/lib64/libtlpd_configmgr.so

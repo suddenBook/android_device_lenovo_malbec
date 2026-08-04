@@ -297,6 +297,27 @@ PRODUCT_PACKAGES += \
     manifest_audiocorehal_default.xml \
     audioeffectservice_qti.xml
 
+# libaudioeffecthal.qti is built from source rather than extracted, and this is
+# a deliberate exception to the "audio implementation libraries are blobs" rule
+# two blocks up. That rule exists because the factory libar-pal.so carries 44
+# Awinic smart-PA symbols the source tree has none of -- which is about
+# libar-pal and libaudiocorehal, not about the effects library.
+#
+# The factory libaudioeffecthal.qti.so cannot be used on Android 16 at all. It
+# memsets exactly 0x308 (776) bytes of stack and constructs a
+# tinyxml2::XMLDocument there, but AOSP's tinyxml2 11.0.0 uprev grew that object
+# to 0x370 (880). The extra 104 bytes land on the callee-saved register area and
+# zero the TPIDR_EL0 copy used for the stack guard, so the next instruction
+# (ldr x8,[x22,#0x28]) faults on address 0x28 -- esr 0x92000005, exactly what
+# the first-flash tombstone shows. Every attempt to ship the 776-byte library
+# instead is blocked by Android 16; the three measured refusals are documented
+# at the top of proprietary-files.txt.
+#
+# The source build is compiled against the v11 header, so it reserves the right
+# size and the bug cannot occur.
+PRODUCT_PACKAGES += \
+    libaudioeffecthal.qti
+
 # IPA（数据路径加速）
 #
 # 两个配置文件必须显式列出来。ipacm 的 Android.bp 没有 required: 带上它们，
