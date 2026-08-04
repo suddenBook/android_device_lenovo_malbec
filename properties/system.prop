@@ -106,3 +106,125 @@ ro.vendor.qti.va_aosp.support=1
 # menu entry that fails.
 persist.debug.wfd.enable=1
 persist.sys.wfd.virtual=0
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Log levels
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Measured on the running build, from work/s16/boot0/logcat-all.txt: in a
+# 60-second window with the SCREEN ON, sitting idle at the launcher, the main
+# buffer takes 3276 lines -- about 55 per second. That is not a diagnostic aid,
+# it is a diagnostic obstacle: the one line that matters is buried, and logd's
+# 64 MB buffer holds minutes instead of hours.
+#
+# ⚠️ Screen state matters and must be stated whenever this is re-measured. The
+# same device with the screen OFF and dozing produces 135 lines per 60 s. Quote
+# the wrong one and the numbers look like a tenfold improvement that nothing
+# caused.
+#
+# ── How this works, because it is counter-intuitive ────────────────────────
+#
+# `log.tag.<TAG>` sets a MINIMUM PRIORITY, and it is enforced inside liblog for
+# EVERY writer, including hardcoded ALOGD/ALOGV/Slog.d that no build flag can
+# reach: __android_log_is_loggable_len is consulted at
+# system/logging/liblog/logger_write.cpp:388 and :402, and Java's
+# Log.println_native routes through the same call
+# (frameworks/base/core/jni/android_util_Log.cpp:94). So this silences vendor
+# blobs we do not build, which is the only lever we have over them.
+#
+# Values: V < D < I < W < E < F < S. `=W` keeps warnings and errors and drops
+# the chatter below them. Everything here is a NON-ro property, so any of it can
+# be undone live for one debugging session without a reflash:
+#     adb shell setprop log.tag.WifiHAL V
+#
+# ── The rule used to decide ────────────────────────────────────────────────
+#
+# Silence only messages that carry no incremental information. A repeated
+# message that indicates a real defect stays visible, even when it is the
+# loudest thing in the buffer -- silencing a symptom is how a defect gets
+# forgotten. Two of the biggest offenders are therefore deliberately NOT here;
+# see the end of this block.
+
+# WifiHAL — one V line per BSS per field, on every scan. 444 lines/minute at
+# idle, the single largest source in the buffer. wpa_supplicant and the
+# framework already log every state transition that matters.
+log.tag.WifiHAL=W
+
+# AGM — `metadata: metadata_print:` dumps every key/value of every audio graph
+# metadata blob at D. 223 lines/minute.
+log.tag.AGM=I
+
+# PAL — the same subsystem one layer up: findKVs / setDeviceMediaConfig traces.
+log.tag.PAL=W
+
+# SDM — `Received Idle Timeout` and `Tear down the Concurrent Writeback
+# topology` at I, twice a second whenever the panel idles. Display errors are
+# at E and stay.
+log.tag.SDM=W
+
+# PERFHAL-CLIENT — 192 identical `perf_lock_acq() 170: opcode=... isMvOpcode=0`
+# lines. Logged at E, but it is a call trace, not an error: it fires on every
+# successful perf lock acquisition. Nothing distinguishes one line from the
+# next, so E is not usable for this tag at all.
+log.tag.PERFHAL-CLIENT=F
+
+# sec_channel — ⚠️ DELIBERATELY NOT SILENCED, and the reason is a correction.
+#
+# An earlier draft of this block set log.tag.sec_channel=F, on the stated
+# grounds that /vendor/bin/ssgtzd "retries every 5 seconds, forever". Measured
+# against the actual capture, that is wrong:
+#
+#   18:28:40.797  Modemcomm: Init Instance on handle:0 failed with -3
+#   18:28:40.797  Modemcomm: Failed to get handle of SSGQMSCA service
+#   ... every 5 s ...
+#   18:31:30.989  Modemcomm: Failed to get handle of SSGSCA service as well
+#                 - exiting
+#
+# 67 lines over 170 seconds, then it stops. Re-confirmed on the running device
+# an hour later: zero sec_channel lines in a 60-second window while ssgtzd is
+# still resident (pid 1520). It is a bounded boot-time burst, not a spammer, and
+# 67 lines is not worth spending a suppression on.
+#
+# It is left visible on top of that, because the last line is informative: it is
+# this device telling us that the Secure Services Group's QMI Secure Channel
+# Agent, which lives on the MODEM, is unreachable -- which it must be, since
+# ro.baseband=apq and there is no modem.
+#
+# ⚠️ Do not delete ssgtzd on the strength of that. It is the TrustZone-side
+# secure channel daemon, and there is an unresolved lead: KeyMint attestation on
+# this build fails with SECURE_HW_COMMUNICATION_FAILED (-49), and this is the
+# other secure-channel daemon in the system. No evidence links them yet, and
+# session 15 has already shown what happens when a service is removed because it
+# looked idle (`qms` -> memperfd wedged forever).
+
+# SP — Google's on-device handwriting/speech models complaining that a TFLite
+# zip file ref was finalised without being closed. An app-side leak in a
+# preinstalled GMS package; nothing here can fix it.
+log.tag.SP=E
+
+# AOSP-MdnsDiscoveryManag / MdnsServiceBrowser — one line per mDNS query and
+# response. 156 lines/minute with a Chromecast on the network.
+log.tag.AOSP-MdnsDiscoveryManag=W
+log.tag.MdnsServiceBrowser=W
+
+# The rest, same rule, smaller volume.
+log.tag.cnss-daemon=W
+log.tag.sensors-hal=W
+log.tag.BackgroundInstallControlService=I
+log.tag.DrmLibTime=W
+log.tag.msm_vidc=W
+log.tag.QC-time-services=W
+log.tag.InetDiagMessage=W
+
+# ── Deliberately NOT silenced ──────────────────────────────────────────────
+#
+# RkpdWidevine / QCOM-OEMCrypto (136 lines/minute, mostly E). These are the
+# visible symptom of a real defect: OEMCrypto initialises Widevine L1
+# successfully, but /data/vendor/mediadrm/IDM1013/L1/oemcert.bin does not exist
+# and provisioning fails inside the TA. Until that is settled, this noise is the
+# only outward sign of it, and Netflix/Prime HD depend on the answer.
+#
+# SettingsState ("invalid override flag name ...", ~1430 lines). Boot-only, not
+# steady state, and it is GMS pushing device_config overrides for flags this
+# build does not define. Loud but bounded, and it is a genuine signal about
+# which Google feature flags this ROM lacks.

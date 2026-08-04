@@ -137,7 +137,29 @@ debug.sf.earlyGl.sf.duration=10500000
 debug.sf.late.app.duration=13666666
 debug.sf.late.sf.duration=10500000
 debug.sf.enable_gl_backpressure=1
-debug.sf.disable_client_composition_cache=1
+# ★ 0, not stock's 1. This is one of the very few places this file deliberately
+# leaves stock parity, and the reason is measurable.
+#
+# SurfaceFlinger.cpp:544 defaults it to 0 (cache ENABLED). With it at 1,
+# Output::updateProtectedContentState / the client-composition path can never
+# take the "nothing in this layer stack changed, reuse the last GPU buffer" fast
+# path (Output.cpp:1428) -- every frame that needs GPU composition is fully
+# re-rendered even when the screen is completely static.
+#
+# On this device that is not a corner case, because the rounded-corner mask
+# forces CLIENT composition of the whole 3504x2190 surface
+# (OutputLayer.cpp:979-982). So a motionless screen was being re-rendered at the
+# full panel rate. It costs power all the time and it is the most likely single
+# contributor to the flicker the owner reported in desktop mode, where several
+# freeform windows are each carrying their own rounded corners.
+#
+# Stock ZUI sets 1 and gets away with it because ZUI has no desktop mode, so it
+# never reaches the pathological case. onyx -- same SoC, official PixelOS device
+# -- sets 0 (vendor.prop:93), and so does AOSP.
+#
+# ⚠️ Reverting this to 1 would also revert a power regression that has never
+# been quantified; if you do revert it, measure first.
+debug.sf.disable_client_composition_cache=0
 debug.sf.predict_hwc_composition_strategy=0
 debug.sf.treat_170m_as_sRGB=1
 # ⚠️ debug.sf.enable_advanced_sf_phase_offset, debug.sf.hw and debug.egl.hw were

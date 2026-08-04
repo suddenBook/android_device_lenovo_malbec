@@ -155,3 +155,36 @@ get_prop(vendor_qti_init_shell, vendor_lenovotb_init_prop)
 # where you find out.
 allow vendor_hal_usb_qti sysfs_qcom_battery:dir search;
 r_dir_file(vendor_hal_usb_qti, sysfs_qcom_battery)
+
+#####################################
+# Property-area enumeration — dontaudit, and this one is a judgement call worth
+# writing down because "just allow it" would be a real security regression.
+#
+# 790 of the 842 AVC records in work/s16/boot0 are the same shape: one process
+# doing getattr/open/map on EVERY file under /dev/__properties__, i.e. on all
+# ~280 property types at once. Two independent callers, not one:
+#
+#   u:r:zygote:s0             193 getattr + 272 open + 183 map, comm="main"
+#   u:r:hal_camera_default:s0  49 getattr +  52 open +  49 map, comm="binder:N_2"
+#
+# Both are __system_property_foreach / property_list() walks — a library asking
+# "what properties exist" rather than reading any particular one. On the zygote
+# side it is the Vulkan preload (ro.hwui.use_vulkan=true) pulling in
+# vulkan.adreno.so; on the camera side it is libcamxsettingsmanager.so via
+# libcamxcommonutils.so. Both are vendor blobs we do not build and cannot patch.
+#
+# Why dontaudit and not allow: granting the access would mean ~280 get_prop()
+# lines per domain, handing zygote — the ancestor of every app process — read
+# access to the entire property space, including types the platform
+# deliberately keeps away from it. The enumeration ALREADY works: it is a walk
+# that skips what it cannot open, and both callers behave correctly today
+# (camera takes pictures, Vulkan initialises). Under enforcing they will keep
+# behaving correctly, just with fewer entries visible. So there is nothing to
+# fix — only an audit record to stop emitting.
+#
+# ⚠️ This also unmasks the rest of the log. With these 790 records gone the boot
+# has ~50 AVC records instead of 842, and the audit backlog stops overflowing —
+# the s16 capture hit the kernel's 64-record burst limit, so the 842 was itself
+# an undercount and some real denials were dropped on the floor.
+dontaudit zygote property_type:file { getattr open map read };
+dontaudit hal_camera_default property_type:file { getattr open map read };
