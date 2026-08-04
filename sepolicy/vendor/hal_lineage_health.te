@@ -1,0 +1,22 @@
+# Charging control HAL — the one grant device/lineage/sepolicy does not cover.
+#
+# device/lineage/sepolicy/common/vendor/hal_lineage_health_default.te defines
+# the domain and its exec transition, and the qcom variant adds
+#
+#   rw_dir_file(hal_lineage_health_default, sysfs_battery_supply)
+#   rw_dir_file(hal_lineage_health_default, sysfs_usb_supply)
+#
+# but on this platform the QTI vendor policy relabels the battery power_supply
+# subtree to its own type. Checked on the running device rather than assumed:
+#
+#   ls -Z /sys/class/power_supply/battery/input_suspend
+#     -> u:object_r:vendor_sysfs_battery_supply:s0
+#
+# so the upstream grant misses by one type name. input_suspend is the node this
+# HAL toggles; see device.mk for why that node and not the two
+# charge_control_*_threshold ones that look more apt.
+#
+# Deliberately narrower than onyx, which grants `sysfs:file rw_file_perms` --
+# read and write over every unlabelled sysfs file on the device -- to reach the
+# same node.
+rw_dir_file(hal_lineage_health_default, vendor_sysfs_battery_supply)

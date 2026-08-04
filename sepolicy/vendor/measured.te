@@ -81,11 +81,22 @@ allow hal_sensors_default sysfs_product_device_info:file rw_file_perms;
 get_prop(vendor_hal_gatekeeper_qti, vendor_keymint_retry_timer_prop)
 
 #####################################
-# Lenovo battery HAL reading persist.debug.*
+# NOT granted: hal_lenovobattery_default reading persist.debug.*
 #
 #   avc: denied { read open getattr map } scontext=u:r:hal_lenovobattery_default:s0
 #        tcontext=u:object_r:persist_debug_prop:s0 tclass=file
-get_prop(hal_lenovobattery_default, persist_debug_prop)
+#
+# This was written as a get_prop() and the build rejected it outright:
+#
+#   neverallow on line 291 of system/sepolicy/private/property.te violated by
+#   allow hal_lenovobattery_default persist_debug_prop:file { read open }
+#
+# property.te:291 is the { domain -coredomain } form -- no vendor domain may
+# touch this type, and no rule anywhere can grant it. Same shape as the
+# set_prop(prop_init, system_prop) attempt that was rejected in session 12.
+#
+# The cost is nil: persist.debug.* is a debug toggle, and the HAL reads it to
+# decide whether to log more. Leaving it denied means it logs less.
 
 #####################################
 # Face unlock allocating from the system dmabuf heap.

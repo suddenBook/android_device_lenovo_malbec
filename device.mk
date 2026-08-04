@@ -681,6 +681,46 @@ PRODUCT_PACKAGES += \
     SettingsProviderOverlayMalbec \
     WifiOverlayMalbec
 
+# Charging control — "Charging optimisation" in Settings > Battery.
+#
+# Everything except the wiring already exists in this tree:
+# hardware/lineage/interfaces/health/aidl/default/ChargingControl.cpp is a
+# config-driven HAL, and packages/apps/Settings/src/com/android/settings/
+# lineage/health/ChargingControlSettings.java is the UI. The domain, exec label
+# and service_contexts entry come from device/lineage/sepolicy/common, which
+# BOARD_VENDOR_SEPOLICY_DIRS already includes.
+#
+# ⚠️ TOGGLE, not LIMIT, and that is not a shortcut. This device does expose
+# /sys/class/power_supply/battery/charge_control_{start,end}_threshold, which
+# look exactly like the LIMIT-mode pair, and they are read-only in practice:
+# tested on the running unit, writing 60, 70, 75, 90 or 100 to end_threshold
+# leaves it at 80, and start_threshold stays at 70. The charger firmware on the
+# ADSP owns those values and the sysfs writes are ignored, so a LIMIT-mode HAL
+# built on them would report success and do nothing.
+#
+# input_suspend is the node that works. Measured, with the tablet on a charger:
+#     echo 1 -> status "Not charging", usb/online stays 1
+#     echo 0 -> status "Charging"
+# i.e. it stops the input current without dropping the USB connection.
+#
+# Nothing is lost by having only TOGGLE. Toggle.java:237-239 advertises
+# MODE_AUTO, MODE_MANUAL *and* MODE_LIMIT: with TOGGLE the framework watches the
+# battery level itself and calls setChargingEnabled(false) at the target, so
+# "Stop charging at N%" works the same way from the user's side.
+#
+# supports_bypass is false because it is not true here: input_suspend cuts the
+# charger input, so above the limit the tablet runs off its own battery rather
+# than off the wall. That flag is what Toggle.java:91-93 uses to decide whether
+# it must monitor the battery level, and claiming bypass we do not have would
+# make it stop monitoring.
+PRODUCT_PACKAGES += \
+    vendor.lineage.health-service.default
+
+$(call soong_config_set,lineage_health,charging_control_charging_path,/sys/class/power_supply/battery/input_suspend)
+$(call soong_config_set,lineage_health,charging_control_charging_enabled,0)
+$(call soong_config_set,lineage_health,charging_control_charging_disabled,1)
+$(call soong_config_set_bool,lineage_health,charging_control_supports_bypass,false)
+
 # Screen
 TARGET_SCREEN_HEIGHT := 3504
 TARGET_SCREEN_WIDTH := 2190
