@@ -72,3 +72,8 @@ type proc_lenovo_touch, fs_type, proc_type;
 # sysfs and lets the audio HAL read all of sysfs; giving them a type means the
 # grant in hal_audio.te names exactly these.
 type sysfs_awinic, fs_type, sysfs_type;
+
+# /sys/class/qcom-battery — see genfs_contexts. Split out of plain sysfs so the
+# charging-control gate can be opened from init.malbec.rc with a rule that names
+# exactly this class and nothing else.
+type sysfs_qcom_battery, fs_type, sysfs_type;

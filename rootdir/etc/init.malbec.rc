@@ -94,3 +94,29 @@ on property:sys.boot_completed=1
 on post-fs
     mkdir /mnt/vendor/persist/wcn7750 0770 system system
     mkdir /mnt/vendor/persist/bluetooth 0770 system system
+
+# ---------------------------------------------------------------------------
+# Charging control gate.
+#
+# The two nodes Settings' "Charging control" drives,
+#   /sys/class/power_supply/battery/charge_control_{start,end}_threshold
+# are inert until this class attribute is 1. Measured on the running unit:
+# with charge_control_en at 0, writing 60 / 70 / 75 / 90 / 100 to end_threshold
+# all leave it at 80; with it at 1, every one of them takes. The gate is in
+# qti_battery_charger.ko (battery_psy_set_charge_end_threshold), and it is 0 at
+# boot, which is why the feature looked unimplementable at first.
+#
+# ⚠️ The parking values are not cosmetic. The pair boots holding 70/80 -- ZUI's
+# battery-health setting, left behind in the charger firmware's state. The
+# moment the gate opens those become live and the tablet stops charging at 80%
+# with nothing in the UI to explain it. 100/95 is "no limit": end at the top of
+# the driver's [55 100] range, start just under it. The framework re-applies the
+# owner's real choice from Settings when charging control is enabled.
+#
+# `on boot` and not earlier: the charger firmware link (pmic_glink) has to be up
+# for the writes to reach it, and battery_chg probes well before boot but the
+# glink channel is not guaranteed until then.
+on boot
+    write /sys/class/qcom-battery/charge_control_en 1
+    write /sys/class/power_supply/battery/charge_control_end_threshold 100
+    write /sys/class/power_supply/battery/charge_control_start_threshold 95

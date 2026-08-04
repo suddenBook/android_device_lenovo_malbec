@@ -76,3 +76,12 @@ genfscon sysfs /devices/platform/soc/ac0000.qcom,qupv3_1_geni_se/a94000.i2c/i2c-
 # own entry here at probe; see sepolicy/vendor/measured.te for the readout and
 # for why this gets a type instead of the sysfs blanket stock uses.
 genfscon sysfs /devices/platform/product-device-info                          u:object_r:sysfs_product_device_info:s0
+
+# /sys/class/qcom-battery — qti_battery_charger.ko's class attributes, of which
+# charge_control_en is the gate that makes the two
+# power_supply/battery/charge_control_*_threshold nodes writable at all. Stock
+# leaves the whole class as plain sysfs; giving it a type lets init.malbec.rc
+# open the gate at boot without vendor_init needing write access to all of
+# sysfs. The threshold nodes themselves already carry
+# vendor_sysfs_battery_supply from the QTI policy.
+genfscon sysfs /class/qcom-battery                                           u:object_r:sysfs_qcom_battery:s0

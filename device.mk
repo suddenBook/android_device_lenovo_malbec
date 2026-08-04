@@ -690,23 +690,40 @@ PRODUCT_PACKAGES += \
 # and service_contexts entry come from device/lineage/sepolicy/common, which
 # BOARD_VENDOR_SEPOLICY_DIRS already includes.
 #
-# ⚠️ TOGGLE, not LIMIT, and that is not a shortcut. This device does expose
-# /sys/class/power_supply/battery/charge_control_{start,end}_threshold, which
-# look exactly like the LIMIT-mode pair, and they are read-only in practice:
-# tested on the running unit, writing 60, 70, 75, 90 or 100 to end_threshold
-# leaves it at 80, and start_threshold stays at 70. The charger firmware on the
-# ADSP owns those values and the sysfs writes are ignored, so a LIMIT-mode HAL
-# built on them would report success and do nothing.
+# Both LIMIT and TOGGLE are wired, and getting LIMIT to work took finding a gate
+# that is not part of the LineageOS contract at all.
 #
-# input_suspend is the node that works. Measured, with the tablet on a charger:
-#     echo 1 -> status "Not charging", usb/online stays 1
-#     echo 0 -> status "Charging"
-# i.e. it stops the input current without dropping the USB connection.
+# LIMIT drives /sys/class/power_supply/battery/charge_control_{start,end}_threshold.
+# Those two look writable (0644, root, no error on write) and are NOT, until
+# /sys/class/qcom-battery/charge_control_en is 1 -- which it is not at boot.
+# Measured on the running unit:
 #
-# Nothing is lost by having only TOGGLE. Toggle.java:237-239 advertises
-# MODE_AUTO, MODE_MANUAL *and* MODE_LIMIT: with TOGGLE the framework watches the
-# battery level itself and calls setChargingEnabled(false) at the target, so
-# "Stop charging at N%" works the same way from the user's side.
+#     charge_control_en = 0 : writing 60, 70, 75, 90, 100 to end_threshold all
+#                             leave it at 80; start_threshold stays at 70
+#     charge_control_en = 1 : 85, 60, 95 all take; start 50 and 80 take
+#
+# qti_battery_charger.ko is where that comes from: battery_psy_set_charge_end_
+# threshold only forwards to the charger firmware when the class attribute is
+# set, and it range-checks. The driver prints its own bounds, so these are its
+# numbers rather than ours:
+#
+#     end_threshold   [55 100]
+#     start_threshold [50 95]
+#
+# Settings' slider is 70..100 (ChargingLimitPreference.java:50-51) and
+# config_chargingControlBatteryRechargeMargin is 10, so Limit.java asks for
+# max=<target>, min=<target-10>, i.e. 60..90 for start and 70..100 for stop.
+# Every value the UI can produce is inside the driver's range.
+#
+# init.malbec.rc opens the gate and parks the pair at 100/95 -- no cap -- so
+# nothing changes for someone who never turns the feature on. Without that
+# parking the stock 70/80 would become live the moment the gate opened, and the
+# tablet would quietly stop charging at 80%.
+#
+# TOGGLE stays wired alongside it on input_suspend, because the time-based modes
+# ("charge to full by <time>") need to actually pause charging rather than set a
+# ceiling. Measured: echo 1 -> status "Not charging" with usb/online still 1;
+# echo 0 -> "Charging".
 #
 # supports_bypass is false because it is not true here: input_suspend cuts the
 # charger input, so above the limit the tablet runs off its own battery rather
@@ -720,6 +737,9 @@ $(call soong_config_set,lineage_health,charging_control_charging_path,/sys/class
 $(call soong_config_set,lineage_health,charging_control_charging_enabled,0)
 $(call soong_config_set,lineage_health,charging_control_charging_disabled,1)
 $(call soong_config_set_bool,lineage_health,charging_control_supports_bypass,false)
+$(call soong_config_set_bool,lineage_health,charging_control_supports_limit,true)
+$(call soong_config_set,lineage_health,charging_control_limit_start_path,/sys/class/power_supply/battery/charge_control_start_threshold)
+$(call soong_config_set,lineage_health,charging_control_limit_stop_path,/sys/class/power_supply/battery/charge_control_end_threshold)
 
 # Screen
 TARGET_SCREEN_HEIGHT := 3504

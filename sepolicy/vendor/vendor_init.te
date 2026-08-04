@@ -81,3 +81,12 @@ allow vendor_init proc_lenovo_pen:file { open write getattr };
 #      (SetSafetyNetProps(), system/core/init/property_service.cpp:1377-1389).
 #
 # The denial is expected noise, not a defect. Leave it.
+
+# Charging control gate. init.malbec.rc opens /sys/class/qcom-battery/
+# charge_control_en at boot and parks the two threshold nodes at "no limit";
+# the derivation is in the rc file. Without this, Settings' Charging control
+# would appear and silently do nothing under enforcing.
+allow vendor_init sysfs_qcom_battery:dir search;
+allow vendor_init sysfs_qcom_battery:file rw_file_perms;
+allow vendor_init vendor_sysfs_battery_supply:dir search;
+allow vendor_init vendor_sysfs_battery_supply:file rw_file_perms;
