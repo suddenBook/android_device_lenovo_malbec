@@ -232,18 +232,17 @@ blob_fixups: blob_fixups_user_type = {
     ('system_ext/lib64/libwfdnative.so',): blob_fixup()
         .add_needed('libinput_shim.so'),
 
+    # ⚠️ libaodoptfeature / libcamerapoweroptfeature / libgamepoweroptfeature /
+    # liboffscreenpoweroptfeature / libpsmoptfeature / libvideooptfeature used to
+    # be in this tuple. Session 14 removed the whole poweropt cluster (its only
+    # loader, vendor/bin/poweropt-service, went in session 11), so those six
+    # fixups had nothing left to patch.
     (
         'system_ext/lib64/libwfddisplayconfig.so',
         'vendor/bin/qguard',
-        'vendor/lib64/libaodoptfeature.so',
         'vendor/lib64/libapengine.so',
-        'vendor/lib64/libcamerapoweroptfeature.so',
-        'vendor/lib64/libgamepoweroptfeature.so',
-        'vendor/lib64/liboffscreenpoweroptfeature.so',
-        'vendor/lib64/libpsmoptfeature.so',
         'vendor/lib64/libqcodec2_utils.so',
         'vendor/lib64/libqti-perfd.so',
-        'vendor/lib64/libvideooptfeature.so',
         'vendor/lib64/libwfddisplayconfig_vendor.so',
     ): blob_fixup()
         .replace_needed(
@@ -251,8 +250,10 @@ blob_fixups: blob_fixups_user_type = {
             'vendor.qti.hardware.display.config-V12-ndk.so',
         ),
 
+    # ⚠️ vendor/bin/TrustedUISampleTAClient used to be here too. Session 14
+    # removed it: it is a *sample* client with no .rc stanza and no reference
+    # anywhere in the image. trusteduilistener is the real service and stays.
     (
-        'vendor/bin/TrustedUISampleTAClient',
         'vendor/bin/trusteduilistener',
         'vendor/lib64/libTrustedUIAIDL.so',
         'vendor/lib64/liboemcrypto.so',
@@ -489,6 +490,41 @@ blob_fixups: blob_fixups_user_type = {
     ('vendor/etc/init/vendor.qsap.location.rc',): blob_fixup()
         .regex_replace(
             r'(?m)^(service vendor\.qsap\.location\s(?:[^\n]*\\\n)*[^\n]*\n(?:[ \t]+[^\n]*\n)*)',
+            r'\1    disabled\n',
+        ),
+
+    # loc-launcher.rc declares a service whose binary we do not ship.
+    #
+    # Session 13 removed /vendor/bin/loc_launcher (commit 20acb4f, which also
+    # dropped its configs/config.fs stanza) but left the stanza:
+    #
+    #     service loc_launcher /vendor/bin/loc_launcher
+    #         class late_start
+    #         user gps
+    #         group gps
+    #
+    # `class late_start` with no `disabled` means class_start late_start calls
+    # Service::Start(), which stats argv[0], fails, logs
+    # "Cannot find '/vendor/bin/loc_launcher'" and sets SVC_DISABLED. One error
+    # per boot rather than a respawn loop — but a self-inflicted one, and the
+    # only one of its kind left. Measured: a sweep of every `service` stanza in
+    # all 222 shipped .rc files finds 55 whose binary is absent from our image,
+    # of which 50 are absent from the factory image too (stock boilerplate, and
+    # never started there either). That leaves FIVE we actually dropped —
+    # qsap_location, mmi, mmi_diag, and BOTH copies of loc_launcher — and four
+    # of those five already carry `disabled`. This one is the exception.
+    #
+    # The FILE must stay. Its `on post-fs-data` block is what creates
+    # /data/vendor/location{,/mq,/xtwifi,/hmac}, and those serve the LOWI
+    # Wi-Fi-location stack we deliberately keep (lowi-server is still in
+    # config.fs and still installed). Dropping the file to kill the stanza would
+    # take the mkdirs with it.
+    #
+    # Note vendor/etc/qspa/nav_disabled.rc already has the identical stanza with
+    # `override` + `disabled`, so this only closes the gap between the two copies.
+    ('vendor/etc/init/loc-launcher.rc',): blob_fixup()
+        .regex_replace(
+            r'(?m)^(service loc_launcher\s(?:[^\n]*\\\n)*[^\n]*\n(?:[ \t]+[^\n]*\n)*)',
             r'\1    disabled\n',
         ),
 

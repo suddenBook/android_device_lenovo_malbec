@@ -179,6 +179,120 @@ vendor/priv-app/pasrservice/pasrservice.apk
 # without first finding what selects the file. sku_tuna is chosen by a property
 # here; elsewhere the selector may be a build variable or a DT lookup.
 
+# ⚠️ 157 more entries are deliberately absent, removed in session 14. Each was
+# re-verified three ways before deletion, because the previous rounds were burned
+# by exactly the checks that get skipped: a DT_NEEDED index over all 3043 ELFs in
+# the built image, a raw byte-string scan of the whole image tree for the
+# basename AND for the soname with `.so` stripped (this is what finds a dlopen /
+# System.loadLibrary that the link graph cannot show — libsdmextension.so was
+# missed that way once), and a service/reference sweep over all 222 shipped .rc
+# files. Evidence per line is in work/analysis/S14-cleanup.md.
+#
+#   64  Telephony / RIL / IMS / UIM / LPA / CNE interface libraries, plus
+#       vendor/bin/nicmd + nicmd.rc + libnicm_modemproxy.so. ro.baseband=apq,
+#       no modem, zero radio HALs. Session 13 removed the implementations and
+#       left the interface libraries; the cluster is closed — every one of them
+#       has either no DT_NEEDED consumer at all or only consumers inside the
+#       set. nicmd is Qualcomm's Network Interface Configuration Manager
+#       (rmnet/cellular data plumbing): it was `class main`, no `disabled`,
+#       running as root on every boot, and it is the ONLY consumer of
+#       libnicm_modemproxy.so. The other libnicm* libraries stay — libnicm.so
+#       is still pulled in by libdsi_netctrl.so / libnicm_dsi.so / libnicm_vh.so.
+#
+#   54  vendor/etc/sensors/config/{eliza,pakala}_*.json — two other boards'
+#       sensor registries. This board is the `bonito_` family: dumpsys
+#       sensorservice on the running unit reports exactly lsm6dsv (STMicro),
+#       gs6155 (goodix), aw963xx0 (awinic SAR) and bu52053nvx (ROHM hall), and
+#       only bonito_* has a config for the first three. eliza/pakala carry
+#       lsm6dso, icm4x6xx, mmc56x3x, tmd3765/tmd2755, sx932x, sht4x, lps22df —
+#       none of which the device has ever registered.
+#       json.lst still names them, and that is fine: the registry loader
+#       tolerates missing entries. Stock's OWN json.lst names 4 files that do
+#       not exist in stock's own config dir (qsh_camera_imx688_4.json,
+#       sns_amd_sw_disabled.json, sns_presence_detect.json,
+#       sns_tilt_sw_disabled.json) and stock's sensors work.
+#
+#   14  The poweropt cluster: six /vendor/etc/pwr/*.xml and seven .so
+#       (libpowercore + lib{aod,camera,game,offscreen,psm,video}optfeature +
+#       libstandbyfeature). Session 11 already dropped its only loader,
+#       vendor/bin/poweropt-service — that binary is the sole DT_NEEDED consumer
+#       of libpowercore.so in the FACTORY image, and nothing in ours consumes any
+#       of the seven. PowerFeatureConfig.xml is named by libpowercore.so and by
+#       nothing else. This also retires one of the seven live tinyxml2 hazards
+#       listed above for free.
+#       ⚠️ libstandbyfeature.so is in this list even though it is not an
+#       "optfeature": it DT_NEEDEDs libpowercore.so, so removing libpowercore
+#       without it would leave a dangling dependency and 33-blob-linkcheck.py
+#       would go red.
+#
+#   10  Sample / test artefacts with 0 .rc stanzas and 0 references anywhere:
+#       drm_sample_app, TrustedUISampleTAClient, smcinvoke_{example,skeleton,
+#       skeleton_cpp}, GPTEE_Sample_client, qmi_test_mt_client_init_instance,
+#       libvpptestutils.so, and vendor/etc/perf/test{common,target}resourceconfigs.xml
+#       (libqti-perfd.so names commonresourceconfigs.xml and
+#       targetresourceconfigs.xml, never the test* pair).
+#       ⚠️ vendor/lib64/libtestutils.so is NOT one of these — despite the name it
+#       is a DT_NEEDED of libsdmextension.so. vendor/bin/mm-audio-ftm is not
+#       either; it has one .rc reference and two binary references.
+#
+#    8  Foreign camera sensors. The four modules on this board are named in the
+#       sensormodule/tuned pairs below: malbec_{ofilm_ov08f10,qtech_ov13b10,
+#       sunwin_gc08a8,txd_ov13b10}. Removed: the IMX688 and OV32C4C qsh JSONs and
+#       .pb tuning blobs (the three .pb files in vendor/lib64/camera were the
+#       ONLY .pb files there — this board ships none), and
+#       com.qti.eeprom.gt24p128e2csli_s5kjn1.so (Samsung S5KJN1; none of the four
+#       sensormodule .bin files names gt24p128e2csli or s5kjn1 — they name
+#       malbec_ov13b10_eeprom and malbec_txd_ov13b10_eeprom).
+#
+#    2  Fingerprint residue on a device with no fingerprint sensor:
+#       vendor.qti.hardware.fingerprint@1.0.so (0 consumers) and
+#       vendor/etc/permissions/qti_fingerprint_interface.xml, which declared a
+#       shared library at /system/framework/vendor.qti.hardware.fingerprint-V1-java.jar
+#       — a jar this build does not contain.
+#
+#    2  XR eye-tracking stubs the session-12 XR purge missed:
+#       vendor/lib/rfsa/adsp/libeye_tracking_dsp_sample_skel.so and
+#       vendor/lib64/libeye_tracking_dsp_sample_stub.so. 0 consumers each; a
+#       headset feature, on a tablet, and by name a *sample*.
+#
+#    2  GNSS residue: libslimclient.so (0 consumers; slim_daemon went in s13) and
+#       vendor/etc/sap.conf (SLIM/SAP sensor-assisted positioning). sap.conf is
+#       named only by libgps.utils.so, in a table of eleven /vendor/etc/*.conf
+#       paths of which FOUR are already absent from this image (gps.conf,
+#       izat.conf, xtwifi.conf, gnss_antenna_info.conf) while the LOWI Wi-Fi
+#       location stack keeps working — loc_read_conf falls back to defaults.
+#
+#    1  vendor/etc/permissions/noRil/apq_excluded_telephony_features.xml. It is
+#       inert where it sits: SystemConfig.readPermissions(parser, dir, flags)
+#       does `for (File f : libraryDir.listFiles()) if (!f.isFile()) continue;`
+#       (frameworks/base/.../SystemConfig.java:797+), and the only subdirectories
+#       it descends into are sku_$(ro.boot.product.vendor.sku) and
+#       sku_$(ro.boot.product.hardware.sku). `noRil` is neither, so its twelve
+#       <unavailable-feature android.hardware.telephony*> lines were never read.
+#       Removing it changes nothing at runtime: nothing in this image declares
+#       any android.hardware.telephony feature in the first place (the only other
+#       hit for that string is two comment lines in handheld_core_hardware.xml).
+#
+# ⚠️ Two entries the session-14 audit proposed and this list DELIBERATELY KEEPS:
+#
+#   vendor/etc/media_codecs_google_telephony.xml
+#     It has two live consumers, both of them files we also ship:
+#     vendor/etc/media_codecs.xml:113 and vendor/etc/media_codecs_tuna_v0.xml:110
+#     each carry <Include href="media_codecs_google_telephony.xml" />. The parse
+#     failure would be benign (MediaCodecsXmlParser.cpp:528-533 sets
+#     NAME_NOT_FOUND, and combineStatus() at :113-118 explicitly folds
+#     NAME_NOT_FOUND into OK), but deleting the target of an <Include> we ship
+#     without also patching the two includes is half a change for 900 bytes.
+#
+#   vendor/lib64/camera/bitmlconfig_sm7550.bin
+#     It names another SoC, but the retained and heavily consumed
+#     vendor/lib64/libbitmlenginev2.so contains the literal string
+#     "bitmlconfig_sm7550.bin" next to "bitmlconfig.bin", and picks between them
+#     through SocUtils::GetSocId() / OverrideSocId. Which SoC ids map to which
+#     file is inside generated code (g_bitml/camxbitmlconfig.cpp) that we cannot
+#     read. 620 bytes is not worth guessing at the camera. See the warning above
+#     about "another SoC's name in it".
+
 # Firmware
 vendor/firmware/CAMERA_ICP.b00
 vendor/firmware/CAMERA_ICP.b01
@@ -375,7 +489,6 @@ vendor/etc/init/ipacm-diag.rc
 vendor/etc/init/lenovo.hardware.ai-service.rc
 vendor/etc/init/loc-launcher.rc
 vendor/etc/init/memtrack_qti.rc
-vendor/etc/init/nicmd.rc
 vendor/etc/init/port-bridge.rc
 vendor/etc/init/prop_init.rc
 vendor/etc/init/qconfig.rc
@@ -549,9 +662,7 @@ vendor/etc/permissions/android.software.sip.voip.xml
 vendor/etc/permissions/android.software.verified_boot.xml
 vendor/etc/permissions/android.software.vulkan.deqp.level.xml
 vendor/etc/permissions/handheld_core_hardware.xml
-vendor/etc/permissions/noRil/apq_excluded_telephony_features.xml
 vendor/etc/permissions/privapp-permissions-qti-vendor.xml
-vendor/etc/permissions/qti_fingerprint_interface.xml
 vendor/etc/permissions/sku_tuna/android.hardware.sensor.accelerometer.xml
 vendor/etc/permissions/sku_tuna/android.hardware.sensor.dynamic.head_tracker.xml
 vendor/etc/permissions/sku_tuna/android.hardware.sensor.gyroscope.xml
@@ -965,7 +1076,6 @@ vendor/lib/rfsa/adsp/libDspIOProxy_skel.so
 vendor/lib/rfsa/adsp/libQnnHtpV73Skel.so
 vendor/lib/rfsa/adsp/libadsp_jpege_skel.so
 vendor/lib/rfsa/adsp/libdsp_streamer_binning.so
-vendor/lib/rfsa/adsp/libeye_tracking_dsp_sample_skel.so
 vendor/lib/rfsa/adsp/libhalide_hexagon_remote_skel.so
 vendor/lib/rfsa/adsp/libhme_dsp_skel.so
 vendor/lib/rfsa/adsp/libmctfengine_skel.so
@@ -1092,13 +1202,8 @@ vendor/etc/eva/facelandmark/weight_2.dat
 vendor/etc/eva/facelandmark/weight_3_1.dat
 vendor/etc/eva/facelandmark/weight_3_2.dat
 vendor/etc/eva/itof/tuning_params_sensor_type_1.json
-vendor/etc/pwr/CameraPowerOptFeature.xml
 vendor/etc/sensors/config/qsh_camera_common.json
 vendor/etc/sensors/config/qsh_camera_common_sm8735.json
-vendor/etc/sensors/config/qsh_camera_imx688_6.json
-vendor/etc/sensors/config/qsh_camera_imx688_6_actuator.json
-vendor/etc/sensors/config/qsh_camera_ov32c4c_4.json
-vendor/etc/sensors/config/qsh_camera_ov32c4c_4_sm8735.json
 vendor/etc/thermal-engine-malbec-camera.conf
 vendor/lib64/camera/bitmlconfig.bin
 vendor/lib64/camera/bitmlconfig_sm7550.bin
@@ -1108,7 +1213,6 @@ vendor/lib64/camera/camxfl300v2indices.bin
 vendor/lib64/camera/camxflcustom300indices.bin
 vendor/lib64/camera/chifdnodeconfig.bin
 vendor/lib64/camera/com.qti.chi.featurecompatibilityspecification.sm8750.bin
-vendor/lib64/camera/com.qti.eeprom.gt24p128e2csli_s5kjn1.so
 vendor/lib64/camera/com.qti.eeprom.malbec_gc08a8.so
 vendor/lib64/camera/com.qti.eeprom.malbec_ov08f10.so
 vendor/lib64/camera/com.qti.eeprom.malbec_ov13b10.so
@@ -1229,9 +1333,6 @@ vendor/lib64/camera/fdconfigpreviewlite.bin
 vendor/lib64/camera/fdconfigsecure.bin
 vendor/lib64/camera/fdconfigvideo.bin
 vendor/lib64/camera/fdconfigvideolite.bin
-vendor/lib64/camera/imx688_6.pb
-vendor/lib64/camera/ov32c4c_4.pb
-vendor/lib64/camera/ov32c4c_4_sm8735.pb
 vendor/lib64/camera/qfdserviceconfig.bin
 vendor/lib64/camx.device-impl.so
 vendor/lib64/camx.provider-impl.so
@@ -1242,7 +1343,6 @@ vendor/lib64/hw/com.qti.chi.offline.so
 vendor/lib64/hw/com.qti.chi.override.so
 vendor/lib64/libaidenoiser.so
 vendor/lib64/libaidenoiserv2.so
-vendor/lib64/libcamerapoweroptfeature.so
 vendor/lib64/libcamxcommonutils.so
 vendor/lib64/libcamxcoreutils.so
 vendor/lib64/libcamxcsl.so
@@ -1430,7 +1530,6 @@ vendor/lib64/vendor.qti.hardware.wifidisplaysessionl@1.0-halimpl.so
 vendor/persist/display/dolby_vision.cfg
 
 # DRM
-vendor/bin/drm_sample_app
 vendor/lib64/libdrmfs.so
 vendor/lib64/libdrmtime.so
 vendor/lib64/liboemcrypto.so
@@ -1490,14 +1589,7 @@ vendor/etc/perf/targetavcsysnodesconfigs.xml
 vendor/etc/perf/targetconfig.xml
 vendor/etc/perf/targetresourceconfigs.xml
 vendor/etc/perf/targetsysnodesconfigs.xml
-vendor/etc/perf/testcommonresourceconfigs.xml
-vendor/etc/perf/testtargetresourceconfigs.xml
 vendor/etc/powerhint.xml
-vendor/etc/pwr/GamePowerOptFeature.xml
-vendor/etc/pwr/OffScreenPowerOptFeature.xml
-vendor/etc/pwr/PSMPowerOptFeature.xml
-vendor/etc/pwr/PowerFeatureConfig.xml
-vendor/etc/pwr/VideoPowerOptFeature.xml
 vendor/etc/sensors/config/bonito_power_0.json
 vendor/etc/sensors/config/eliza_power_0.json
 vendor/etc/sensors/config/pakala_power_0.json
@@ -1507,15 +1599,12 @@ vendor/etc/thermal-engine-malbec-normal.conf
 vendor/etc/thermal-engine-malbec-off.conf
 vendor/etc/thermal-engine-malbec-skynet.conf
 vendor/etc/thermal-engine.conf
-vendor/lib64/libgamepoweroptfeature.so
 vendor/lib64/liblmthermallistner.so
 vendor/lib64/libmemperfd.so
 vendor/lib64/libnspschedulerservice.so
-vendor/lib64/liboffscreenpoweroptfeature.so
 vendor/lib64/libperfconfig.so
 vendor/lib64/libperfdb.so
 vendor/lib64/libperfioctl.so
-vendor/lib64/libpowercore.so
 vendor/lib64/libq-perflog.so
 vendor/lib64/libqti-perfd-client.so
 vendor/lib64/libqti-perfd.so
@@ -1567,61 +1656,7 @@ vendor/etc/sensors/config/bonito_tmd3765_0.json
 vendor/etc/sensors/config/bonito_vertigo_lsm6dso_0.json
 vendor/etc/sensors/config/bonito_vertigo_lsm6dso_1.json
 vendor/etc/sensors/config/bonito_vertigo_mmc56x3x_0.json
-vendor/etc/sensors/config/eliza_bu52053nvx_0.json
-vendor/etc/sensors/config/eliza_ccd_base.json
-vendor/etc/sensors/config/eliza_default_sensors.json
-vendor/etc/sensors/config/eliza_dynamic_sensors.json
-vendor/etc/sensors/config/eliza_dynamic_sensors_template.json
-vendor/etc/sensors/config/eliza_fcal_mmc56x3x_0.json
-vendor/etc/sensors/config/eliza_hdk_lsm6dso_0.json
-vendor/etc/sensors/config/eliza_hdk_lsm6dso_1.json
-vendor/etc/sensors/config/eliza_irq.json
-vendor/etc/sensors/config/eliza_lps22df_0.json
-vendor/etc/sensors/config/eliza_lsm6dso_0.json
-vendor/etc/sensors/config/eliza_lsm6dso_1.json
-vendor/etc/sensors/config/eliza_mmc56x3x_0.json
-vendor/etc/sensors/config/eliza_mtp_lsm6dso_0.json
-vendor/etc/sensors/config/eliza_mtp_lsm6dso_1.json
-vendor/etc/sensors/config/eliza_mtp_mmc56x3x_0.json
-vendor/etc/sensors/config/eliza_qrd_default_sensors.json
-vendor/etc/sensors/config/eliza_qrd_icm4x6xx_0.json
-vendor/etc/sensors/config/eliza_qrd_mmc56x3x_0.json
-vendor/etc/sensors/config/eliza_qrd_tmd2755_0.json
-vendor/etc/sensors/config/eliza_qsh_ble_0.json
-vendor/etc/sensors/config/eliza_sht4x_0.json
-vendor/etc/sensors/config/eliza_sx932x_0.json
-vendor/etc/sensors/config/eliza_tmd2755_0.json
-vendor/etc/sensors/config/eliza_vertigo_lsm6dso_0.json
-vendor/etc/sensors/config/eliza_vertigo_lsm6dso_1.json
-vendor/etc/sensors/config/eliza_vertigo_mmc56x3x_0.json
 vendor/etc/sensors/config/json.lst
-vendor/etc/sensors/config/pakala_bu52053nvx_0.json
-vendor/etc/sensors/config/pakala_ccd_base.json
-vendor/etc/sensors/config/pakala_default_sensors.json
-vendor/etc/sensors/config/pakala_dynamic_sensors.json
-vendor/etc/sensors/config/pakala_dynamic_sensors_template.json
-vendor/etc/sensors/config/pakala_fcal_mmc56x3x_0.json
-vendor/etc/sensors/config/pakala_hdk_lsm6dso_0.json
-vendor/etc/sensors/config/pakala_hdk_lsm6dso_1.json
-vendor/etc/sensors/config/pakala_irq.json
-vendor/etc/sensors/config/pakala_lps22df_0.json
-vendor/etc/sensors/config/pakala_lsm6dso_0.json
-vendor/etc/sensors/config/pakala_lsm6dso_1.json
-vendor/etc/sensors/config/pakala_mmc56x3x_0.json
-vendor/etc/sensors/config/pakala_mtp_lsm6dso_0.json
-vendor/etc/sensors/config/pakala_mtp_lsm6dso_1.json
-vendor/etc/sensors/config/pakala_mtp_mmc56x3x_0.json
-vendor/etc/sensors/config/pakala_qrd_default_sensors.json
-vendor/etc/sensors/config/pakala_qrd_icm4x6xx_0.json
-vendor/etc/sensors/config/pakala_qrd_mmc56x3x_0.json
-vendor/etc/sensors/config/pakala_qrd_tmd3765_0.json
-vendor/etc/sensors/config/pakala_qsh_ble_0.json
-vendor/etc/sensors/config/pakala_sht4x_0.json
-vendor/etc/sensors/config/pakala_sx932x_0.json
-vendor/etc/sensors/config/pakala_tmd3765_0.json
-vendor/etc/sensors/config/pakala_vertigo_lsm6dso_0.json
-vendor/etc/sensors/config/pakala_vertigo_lsm6dso_1.json
-vendor/etc/sensors/config/pakala_vertigo_mmc56x3x_0.json
 vendor/etc/sensors/config/qsh_ble.json
 vendor/etc/sensors/config/sns_amd.json
 vendor/etc/sensors/config/sns_amd_sw_enabled.json
@@ -1682,71 +1717,20 @@ vendor/lib64/sensors.qsh.so
 vendor/lib64/vendor.qti.hardware.sensorscalibrate-V1-ndk.so
 
 # Telephony
+#
+# Three survivors of the session-14 sweep, and none of them is telephony:
+#   media_codecs_google_telephony.xml is <Include>d by media_codecs.xml and
+#     media_codecs_tuna_v0.xml (see the header note).
+#   libqcrilNrLogger.so / libqcrilNrQtiMutex.so are named "qcril" but are
+#     generic logging and mutex helpers: their DT_NEEDED consumers are
+#     vendor/lib64/qtiwakelock.so and vendor/lib64/qtiPeripheralMgr.so, which
+#     have nothing to do with the modem. Session 13 already retracted these two
+#     once for the same reason; do not "finish the job" on them.
 vendor/etc/media_codecs_google_telephony.xml
-vendor/lib64/libnicm_modemproxy.so
 vendor/lib64/libqcrilNrLogger.so
 vendor/lib64/libqcrilNrQtiMutex.so
-vendor/lib64/vendor.qti.ImsRtpService-V1-ndk.so
-vendor/lib64/vendor.qti.ImsRtpService-aidl-Impl.so
-vendor/lib64/vendor.qti.hardware.data.cneaidlservice.internal.api-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.data.cneaidlservice.internal.constants-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.data.cneaidlservice.internal.server-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.radio.am-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.radio.am@1.0.so
-vendor/lib64/vendor.qti.hardware.radio.atcmdfwd@1.0.so
-vendor/lib64/vendor.qti.hardware.radio.atfwd-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.radio.common-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.radio.ims-V16-ndk.so
-vendor/lib64/vendor.qti.hardware.radio.ims@1.0.so
-vendor/lib64/vendor.qti.hardware.radio.ims@1.1.so
-vendor/lib64/vendor.qti.hardware.radio.ims@1.2.so
-vendor/lib64/vendor.qti.hardware.radio.ims@1.3.so
-vendor/lib64/vendor.qti.hardware.radio.ims@1.4.so
-vendor/lib64/vendor.qti.hardware.radio.ims@1.5.so
-vendor/lib64/vendor.qti.hardware.radio.ims@1.6.so
-vendor/lib64/vendor.qti.hardware.radio.ims@1.7.so
-vendor/lib64/vendor.qti.hardware.radio.ims@1.8.so
-vendor/lib64/vendor.qti.hardware.radio.lpa-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.radio.lpa@1.0.so
-vendor/lib64/vendor.qti.hardware.radio.lpa@1.1.so
-vendor/lib64/vendor.qti.hardware.radio.lpa@1.2.so
-vendor/lib64/vendor.qti.hardware.radio.qtiradio-V16-ndk.so
-vendor/lib64/vendor.qti.hardware.radio.qtiradio@1.0.so
-vendor/lib64/vendor.qti.hardware.radio.qtiradio@2.0.so
-vendor/lib64/vendor.qti.hardware.radio.qtiradio@2.1.so
-vendor/lib64/vendor.qti.hardware.radio.qtiradio@2.2.so
-vendor/lib64/vendor.qti.hardware.radio.qtiradio@2.3.so
-vendor/lib64/vendor.qti.hardware.radio.qtiradio@2.4.so
-vendor/lib64/vendor.qti.hardware.radio.qtiradio@2.5.so
-vendor/lib64/vendor.qti.hardware.radio.qtiradio@2.6.so
-vendor/lib64/vendor.qti.hardware.radio.qtiradioconfig-V6-ndk.so
-vendor/lib64/vendor.qti.hardware.radio.uim-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.radio.uim@1.0.so
-vendor/lib64/vendor.qti.hardware.radio.uim@1.1.so
-vendor/lib64/vendor.qti.hardware.radio.uim@1.2.so
-vendor/lib64/vendor.qti.hardware.radio.uim_remote_client-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.radio.uim_remote_client@1.0.so
-vendor/lib64/vendor.qti.hardware.radio.uim_remote_client@1.1.so
-vendor/lib64/vendor.qti.hardware.radio.uim_remote_client@1.2.so
-vendor/lib64/vendor.qti.hardware.radio.uim_remote_server-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.radio.uim_remote_server@1.0.so
-vendor/lib64/vendor.qti.ims.callcapability@1.0.so
-vendor/lib64/vendor.qti.ims.callcapabilityaidlservice-V1-ndk.so
-vendor/lib64/vendor.qti.ims.callinfo@1.0.so
-vendor/lib64/vendor.qti.ims.configaidlservice-V1-ndk.so
-vendor/lib64/vendor.qti.ims.connectionaidlservice-V1-ndk.so
-vendor/lib64/vendor.qti.ims.factoryaidlservice-V1-ndk.so
-vendor/lib64/vendor.qti.ims.imscmaidlservice-V1-ndk.so
-vendor/lib64/vendor.qti.ims.rcsconfig@1.0.so
-vendor/lib64/vendor.qti.ims.rcsconfig@1.1.so
-vendor/lib64/vendor.qti.ims.rcsconfig@2.0.so
-vendor/lib64/vendor.qti.ims.rcsconfig@2.1.so
-vendor/lib64/vendor.qti.ims.rcssipaidlservice-V1-ndk.so
-vendor/lib64/vendor.qti.ims.rcsuceaidlservice-V1-ndk.so
-vendor/lib64/vendor.qti.ims.uceaidlservice-V1-ndk.so
 
 # TEE / Keystore
-vendor/bin/TrustedUISampleTAClient
 vendor/bin/hw/android.hardware.gatekeeper-service-qti
 vendor/bin/hw/android.hardware.security.keymint-service-qti
 vendor/bin/hw/vendor.microtrust.hardware.afw-service
@@ -1754,9 +1738,6 @@ vendor/bin/hw/vendor.qti.hardware.qseecom@1.0-service
 vendor/bin/hw/vendor.qti.hardware.trustedui-aidl-service-qti
 vendor/bin/init.qti.keymaster.sh
 vendor/bin/qseecomd
-vendor/bin/smcinvoke_example
-vendor/bin/smcinvoke_skeleton
-vendor/bin/smcinvoke_skeleton_cpp
 vendor/lib64/hw/libqtigatekeeper.so
 vendor/lib64/hw/vendor.qti.hardware.qseecom@1.0-impl.so
 vendor/lib64/libQSEEComAPI.so
@@ -1848,7 +1829,6 @@ system_ext/priv-app/WfdService/WfdService.apk
 
 # Misc
 vendor/bin/C2PAInternetService
-vendor/bin/GPTEE_Sample_client
 vendor/bin/KmInstallKeybox
 vendor/bin/StoreKeybox
 vendor/bin/adpl
@@ -1950,7 +1930,6 @@ vendor/bin/loadalgo
 vendor/bin/loopback.sh
 vendor/bin/lowi-server
 vendor/bin/mlid
-vendor/bin/nicmd
 vendor/bin/pd-mapper
 vendor/bin/pm-proxy
 vendor/bin/pm-service
@@ -1964,7 +1943,6 @@ vendor/bin/qesdk-manager
 vendor/bin/qesdk-secmanager
 vendor/bin/qguard
 vendor/bin/qlm-service
-vendor/bin/qmi-framework-tests/qmi_test_mt_client_init_instance
 vendor/bin/qmipriod
 vendor/bin/qrtr-cfg
 vendor/bin/qrtr-lookup
@@ -2078,7 +2056,6 @@ vendor/etc/qspa/nav_disabled.rc
 vendor/etc/qspa/nsp_disabled.rc
 vendor/etc/qvirtmgr-vndr.json
 vendor/etc/recovery-resource.dat
-vendor/etc/sap.conf
 vendor/etc/sec_config
 vendor/etc/smomo_setting.xml
 vendor/etc/ssg/c2pa_enroll_config.json
@@ -2151,7 +2128,6 @@ vendor/lib64/hw/vendor.qti.hardware.servicetrackeraidl-impl.so
 vendor/lib64/hw/vendor.qti.hardware.soter-impl.so
 vendor/lib64/hw/vendor.qti.memory.pasrmanager-impl.so
 vendor/lib64/lenovo.hardware.ai-V1-ndk.so
-vendor/lib64/libATFWD.so
 vendor/lib64/libAlacSwDec.so
 vendor/lib64/libApeSwDec.so
 vendor/lib64/libCB.so
@@ -2174,14 +2150,12 @@ vendor/lib64/libQnnHtpNetRunExtensions.so
 vendor/lib64/libQnnHtpPrepare.so
 vendor/lib64/libQnnHtpProfilingReader.so
 vendor/lib64/libQnnHtpV73Stub.so
-vendor/lib64/libQtiSocket.so
 vendor/lib64/libScenescape.so
 vendor/lib64/libStereoRectifyWrapper.so
 vendor/lib64/libTxPwrJni.so
 vendor/lib64/libVoiceSdk.so
 vendor/lib64/libadm.so
 vendor/lib64/libaipriv.so
-vendor/lib64/libaodoptfeature.so
 vendor/lib64/libapengine.so
 vendor/lib64/libappclassifier.so
 vendor/lib64/libarcsoft_face_biometric.so
@@ -2243,7 +2217,6 @@ vendor/lib64/libeai_fixed.so
 vendor/lib64/libeai_float.so
 vendor/lib64/libeepromcutter.so
 vendor/lib64/libengineplugin.so
-vendor/lib64/libeye_tracking_dsp_sample_stub.so
 vendor/lib64/libfaceid_ca_proxy.arcsoft.so
 vendor/lib64/libfastcrc.so
 vendor/lib64/libfastcvdsp_stub.so
@@ -2356,7 +2329,6 @@ vendor/lib64/libprekill.so
 vendor/lib64/libprocomp.so
 vendor/lib64/libproj_qmot_tracker.so
 vendor/lib64/libproj_sot.so
-vendor/lib64/libpsmoptfeature.so
 vendor/lib64/libptq_uint8.so
 vendor/lib64/libqape_oem_ext.so
 vendor/lib64/libqapesdk.so
@@ -2432,7 +2404,6 @@ vendor/lib64/libsi.so
 vendor/lib64/libsilkyscrolls.so
 vendor/lib64/libsiminputgenutil.so
 vendor/lib64/libskewknob.so
-vendor/lib64/libslimclient.so
 vendor/lib64/libsmemlog.so
 vendor/lib64/libsnapdragoncolor-manager.so
 vendor/lib64/libsndcardparser.so
@@ -2453,7 +2424,6 @@ vendor/lib64/libspl.so
 vendor/lib64/libsrc_jni_getPasrService.so
 vendor/lib64/libssd.so
 vendor/lib64/libstagefrighthw.so
-vendor/lib64/libstandbyfeature.so
 vendor/lib64/libstcMotoColor.so
 vendor/lib64/libstreamparser.so
 vendor/lib64/libstreamprocessor.so
@@ -2478,7 +2448,6 @@ vendor/lib64/libubifocus.so
 vendor/lib64/libubwcp.so
 vendor/lib64/libuwb-aidlclient.so
 vendor/lib64/libvideoml.so
-vendor/lib64/libvideooptfeature.so
 vendor/lib64/libvideotxr.so
 vendor/lib64/libvideoutils.so
 vendor/lib64/libvmfilexfer.so
@@ -2488,7 +2457,6 @@ vendor/lib64/libvpphcp.so
 vendor/lib64/libvpphvx.so
 vendor/lib64/libvppimmotion.so
 vendor/lib64/libvpplibrary.so
-vendor/lib64/libvpptestutils.so
 vendor/lib64/libvui_dmgr.so
 vendor/lib64/libvui_dmgr_client.so
 vendor/lib64/libvui_intf.so
@@ -2564,7 +2532,6 @@ vendor/lib64/vendor.lenovo.hardware.keyboard-V3-ndk_platform.so
 vendor/lib64/vendor.lenovo.hardware.misc-V1-ndk.so
 vendor/lib64/vendor.lenovo.hardware.touchscreen-V5-ndk.so
 vendor/lib64/vendor.qti.MemHal-V1-ndk.so
-vendor/lib64/vendor.qti.data.factoryservice-V1-ndk.so
 vendor/lib64/vendor.qti.data.mwqem@1.0.so
 vendor/lib64/vendor.qti.data.mwqemaidlservice-V1-ndk.so
 vendor/lib64/vendor.qti.data.slm@1.0.so
@@ -2593,7 +2560,6 @@ vendor/lib64/vendor.qti.hardware.data.lce@1.0.so
 vendor/lib64/vendor.qti.hardware.data.lceaidlservice-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.data.qmiaidlservice-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.dsp-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.fingerprint@1.0.so
 vendor/lib64/vendor.qti.hardware.fm-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.fm@1.0.so
 vendor/lib64/vendor.qti.hardware.hexlp-V1-ndk.so
