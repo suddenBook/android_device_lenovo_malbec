@@ -253,7 +253,6 @@ blob_fixups: blob_fixups_user_type = {
 
     (
         'vendor/bin/TrustedUISampleTAClient',
-        'vendor/bin/TrustedUISampleTestAIDL',
         'vendor/bin/trusteduilistener',
         'vendor/lib64/libTrustedUIAIDL.so',
         'vendor/lib64/liboemcrypto.so',
@@ -536,17 +535,11 @@ blob_fixups: blob_fixups_user_type = {
     # Only files under etc/init/ are verified by the build -- vendor/etc/ueventd.rc
     # and vendor/etc/qspa/*.rc also fail a standalone run, but they use different
     # syntax and are never fed to the verifier, so they are left alone.
-    ('vendor/etc/init/qms.rc',): blob_fixup()
-        .regex_replace(
-            r'(?m)^(service vendor\.qms\s(?:[^\n]*\\\n)*[^\n]*\n)',
-            r'\1    user root\n',
-        ),
-
-    ('vendor/etc/init/vendor.dpmd.rc',): blob_fixup()
-        .regex_replace(
-            r'(?m)^(service vendor\.dpmd\s(?:[^\n]*\\\n)*[^\n]*\n)',
-            r'\1    user root\n',
-        ),
+    # ⚠️ qms.rc and vendor.dpmd.rc used to get `user root` here for the same
+    # reason. Session 13 removed both services outright -- QMS is Qualcomm's
+    # telemetry/upload pipeline and DPM is the cellular data power manager, and
+    # this is a Wi-Fi-only tablet -- so the fixups had nothing left to patch.
+    # 19-verify-device-tree.py item 11 is what caught them.
 
 }  # fmt: skip
 

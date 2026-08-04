@@ -29,12 +29,12 @@ PRODUCT_PACKAGES += \
     malbec_wlan_mac_qca6750_symlink \
     malbec_wlan_mac_wcn7750_symlink \
 
-# CneApp expects libvndfwk_detect_jni.qti_vendor.so under its own lib/arm64/,
-# where stock puts a symlink to /vendor/lib64. Without this the app hits an
-# UnsatisfiedLinkError. The module also carries required: on the library itself,
-# which is not otherwise installed here.
-PRODUCT_PACKAGES += \
-    CneApp.libvndfwk_detect_jni.qti_vendor_symlink
+# ⚠️ There used to be a CneApp.libvndfwk_detect_jni.qti_vendor_symlink here,
+# working around an UnsatisfiedLinkError in CneApp. Session 13 removed CneApp
+# itself along with the rest of the cellular stack: CNE is Qualcomm's
+# Connectivity Engine, which arbitrates between cellular and Wi-Fi, and this is
+# a Wi-Fi-only tablet (ro.baseband=apq, no RIL running, lshal reports zero
+# radio/ims interfaces). With the app gone the symlink has nothing to satisfy.
 
 # Generic ramdisk allow list
 $(call inherit-product, $(SRC_TARGET_DIR)/product/generic_ramdisk.mk)

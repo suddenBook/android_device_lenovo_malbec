@@ -75,30 +75,6 @@ value:2917
 # The prefix is only correct on a device where vendor is a directory inside
 # system (TARGET_COPY_OUT_VENDOR := system/vendor). Do not re-add them.
 
-[vendor/bin/cnd]
-mode: 0755
-user: AID_SYSTEM
-group: AID_SYSTEM
-caps: NET_BIND_SERVICE NET_ADMIN BLOCK_SUSPEND
-
-[vendor/bin/ims_rtp_daemon]
-mode: 0755
-user: AID_RADIO
-group: AID_RADIO
-caps: NET_BIND_SERVICE
-
-[vendor/bin/imsdaemon]
-mode: 0755
-user: AID_RADIO
-group: AID_RADIO
-caps: NET_BIND_SERVICE WAKE_ALARM BLOCK_SUSPEND
-
-[vendor/bin/loc_launcher]
-mode: 0755
-user: AID_GPS
-group: AID_GPS
-caps: SETGID SETUID
-
 [vendor/bin/lowi-server]
 mode: 0755
 user: AID_GPS
@@ -122,18 +98,6 @@ mode: 0755
 user: AID_SYSTEM
 group: AID_SYSTEM
 caps: NET_BIND_SERVICE
-
-[vendor/bin/slim_daemon]
-mode: 0755
-user: AID_GPS
-group: AID_GPS
-caps: NET_BIND_SERVICE
-
-[vendor/bin/xtwifi-client]
-mode: 0755
-user: AID_GPS
-group: AID_GPS
-caps: 0
 
 [vendor/firmware_mnt/image/*]
 mode: 0771
