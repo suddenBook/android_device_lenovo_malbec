@@ -28,36 +28,21 @@ install_symlink {
 // file in /vendor/etc/wifi/<chip>/ and the MAC to the persist partition, which
 // is where the per-unit address actually lives.
 //
-// This device runs wcn7750 (lsmod shows qca_cld3_wcn7750 bound), but the stock
-// vendor image ships all five chip directories because it is one image across
-// several SKUs. Keeping all five costs nothing and matches stock exactly.
-install_symlink {
-    name: "malbec_wlan_cfg_kiwi_v2_symlink",
-    vendor: true,
-    installed_location: "firmware/wlan/qca_cld/kiwi_v2/WCNSS_qcom_cfg.ini",
-    symlink_target: "/vendor/etc/wifi/kiwi_v2/WCNSS_qcom_cfg.ini",
-}
+// ★ Exactly one chip, not five. This device runs wcn7750 -- lsmod shows
+// qca_cld3_wcn7750 bound -- and the stock vendor image ships all five chip
+// directories only because it is one image across several SKUs.
+//
+// An earlier revision of this comment said keeping all five "costs nothing and
+// matches stock exactly". Both halves were wrong. It does not match stock,
+// because we extract exactly one of the five targets
+// (proprietary-files.txt: vendor/etc/wifi/wcn7750/WCNSS_qcom_cfg.ini) while the
+// factory image has all five -- so four of the config symlinks pointed at
+// nothing. And it is not free: init.malbec.rc creates only
+// /mnt/vendor/persist/wcn7750, so the other four MAC symlinks dangle as well.
+// Eight symlinks into empty space is not parity with anything.
 
-install_symlink {
-    name: "malbec_wlan_cfg_peach_symlink",
-    vendor: true,
-    installed_location: "firmware/wlan/qca_cld/peach/WCNSS_qcom_cfg.ini",
-    symlink_target: "/vendor/etc/wifi/peach/WCNSS_qcom_cfg.ini",
-}
 
-install_symlink {
-    name: "malbec_wlan_cfg_peach_v2_symlink",
-    vendor: true,
-    installed_location: "firmware/wlan/qca_cld/peach_v2/WCNSS_qcom_cfg.ini",
-    symlink_target: "/vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini",
-}
 
-install_symlink {
-    name: "malbec_wlan_cfg_qca6750_symlink",
-    vendor: true,
-    installed_location: "firmware/wlan/qca_cld/qca6750/WCNSS_qcom_cfg.ini",
-    symlink_target: "/vendor/etc/wifi/qca6750/WCNSS_qcom_cfg.ini",
-}
 
 install_symlink {
     name: "malbec_wlan_cfg_wcn7750_symlink",
@@ -66,33 +51,9 @@ install_symlink {
     symlink_target: "/vendor/etc/wifi/wcn7750/WCNSS_qcom_cfg.ini",
 }
 
-install_symlink {
-    name: "malbec_wlan_mac_kiwi_v2_symlink",
-    vendor: true,
-    installed_location: "firmware/wlan/qca_cld/kiwi_v2/wlan_mac.bin",
-    symlink_target: "/mnt/vendor/persist/kiwi_v2/wlan_mac.bin",
-}
 
-install_symlink {
-    name: "malbec_wlan_mac_peach_symlink",
-    vendor: true,
-    installed_location: "firmware/wlan/qca_cld/peach/wlan_mac.bin",
-    symlink_target: "/mnt/vendor/persist/peach/wlan_mac.bin",
-}
 
-install_symlink {
-    name: "malbec_wlan_mac_peach_v2_symlink",
-    vendor: true,
-    installed_location: "firmware/wlan/qca_cld/peach_v2/wlan_mac.bin",
-    symlink_target: "/mnt/vendor/persist/peach_v2/wlan_mac.bin",
-}
 
-install_symlink {
-    name: "malbec_wlan_mac_qca6750_symlink",
-    vendor: true,
-    installed_location: "firmware/wlan/qca_cld/qca6750/wlan_mac.bin",
-    symlink_target: "/mnt/vendor/persist/qca6750/wlan_mac.bin",
-}
 
 install_symlink {
     name: "malbec_wlan_mac_wcn7750_symlink",

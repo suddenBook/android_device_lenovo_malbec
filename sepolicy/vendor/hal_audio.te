@@ -64,6 +64,27 @@ allow hal_audio_default sysfs_awinic:file r_file_perms;
 binder_call(hal_audio_default, hal_aidl_dms_default)
 binder_call(hal_aidl_dms_default, hal_audio_default)
 
+# ★ And the half that was missing: permission to LOOK THE SERVICE UP.
+#
+# binder_call (system/sepolicy/public/te_macros:459-466) grants
+# `binder { call transfer }`, the reverse `binder transfer`, and `fd use`. It
+# does NOT grant `service_manager find`. So the two rules above described an
+# edge the audio HAL could never reach -- it cannot get the binder to call in
+# the first place. Measured on this build (work/s16/boot0/logcat-all.txt):
+#
+#   avc: denied { find } for pid=1544 uid=1041 name=vendor.dolby.dms.IDms/default
+#        scontext=u:r:hal_audio_default:s0 tcontext=u:object_r:hal_aidl_dms_service:s0
+#        tclass=service_manager permissive=1
+#
+# pid 1544 is audiohalservice.qti. Under permissive the lookup succeeds anyway,
+# which is exactly why this survived: the feature works today and would have
+# broken the moment SELinux went enforcing, with Dolby silently falling back to
+# defaults rather than failing loudly.
+#
+# This is the shape of bug the tree's own note at :58-63 says it exists to
+# prevent, so the note was right and the rule set was one line short.
+allow hal_audio_default hal_aidl_dms_service:service_manager find;
+
 #####################################
 # Not granted, deliberately:
 #

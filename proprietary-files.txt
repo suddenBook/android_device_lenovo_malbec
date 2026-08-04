@@ -343,6 +343,17 @@ vendor/firmware/CAMERA_ICP_1.elf
 vendor/firmware/CAMERA_ICP_1.mbn
 vendor/firmware/CAMERA_ICP_1.mdt
 vendor/firmware/aw882xx_acf.bin
+# ★ BOTH panel suppliers. This panel is dual sourced -- BOE nt36536e and
+# CSOT nt36536 -- and nvt_touch.ko builds the firmware filename from the
+# panel name it reads at probe. Our own boot log, on a CSOT unit:
+#     [NVT-ts] nvt_update_tp_module_info: fw name = csot_novatek_ts_fw.bin
+# so on a BOE unit it asks for boe_novatek_ts_fw.bin instead. Session 15
+# dropped the BOE pair as "another panel"; it is not another panel, it is
+# the same panel from the other supplier, and without these two files a BOE
+# unit gets no touch firmware update at all. 0.5 MB for a whole hardware
+# variant of this exact model.
+vendor/firmware/boe_novatek_ts_fw.bin
+vendor/firmware/boe_novatek_ts_mp.bin
 vendor/firmware/csot_novatek_ts_fw.bin
 vendor/firmware/csot_novatek_ts_mp.bin
 vendor/firmware/evass.b00
@@ -431,7 +442,6 @@ vendor/etc/init/trusteduilistener.rc
 vendor/etc/init/vendor.dolby.media.c2-default-service-dax.rc
 vendor/etc/init/vendor.lenovo.hardware.battery-service.rc
 vendor/etc/init/vendor.lenovo.hardware.display-service.rc
-vendor/etc/init/vendor.lenovo.hardware.factory-service.rc
 vendor/etc/init/vendor.lenovo.hardware.hyperschedule-service.rc
 vendor/etc/init/vendor.lenovo.hardware.keyboard.rc
 vendor/etc/init/vendor.lenovo.hardware.misc-service.rc
@@ -1360,6 +1370,9 @@ vendor/etc/display/formats.json
 vendor/etc/display/graphics_alignments.json
 vendor/etc/display/moto_stc_profile.xml
 vendor/etc/display/pipe_config_DPU11__.xml
+# Same reason as the touch firmware above: colour calibration for both
+# suppliers of this one panel. SDM picks the file by panel name.
+vendor/etc/display/qdcm_calib_data_boe_nt36536e_144hz_vid.json
 vendor/etc/display/qdcm_calib_data_csot_af_nt36536_144hz_vid.json
 vendor/etc/display/qdcm_calib_data_csot_nt36536_144hz_vid.json
 vendor/etc/display/sdm_display_resolution_extn.xml

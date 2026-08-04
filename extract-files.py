@@ -455,7 +455,26 @@ blob_fixups: blob_fixups_user_type = {
 
     # Two edits to init.target.rc:
     #
-    #  * vendor.mdm_launcher gets `user root`, same class of problem as above.
+    #  * vendor.mdm_launcher gets `user root` AND `disabled`.
+    #
+    #    `user root` is not optional and is not a privilege grant: it is what
+    #    host_init_verifier demands. Without it the build fails outright with
+    #      "No user specified for service 'vendor.mdm_launcher', so it would
+    #       have been root."
+    #    i.e. the line only writes down what init would do anyway. Session 16
+    #    tried replacing it with `disabled` alone and got exactly that error.
+    #
+    #    `disabled` is the part that matters. This service exists to exec
+    #    /vendor/bin/init.mdm.sh, and session 15 stopped extracting that script,
+    #    so on this modem-less device (ro.baseband=apq) it could only ever fail
+    #    exec, once per boot, with a log line. Not starting it is the right
+    #    answer; the `user root` above just keeps the verifier happy while it
+    #    sits there switched off.
+    #
+    #    `disabled` rather than deleting the stanza, for the same reason as
+    #    vendor.cnss_diag below: the stanza is inside the shared init.target.rc,
+    #    and a regex that deletes a multi-line service block is far easier to get
+    #    subtly wrong than one that appends a line to it.
     #
     #  * vendor.cnss_diag gets `disabled`. It is Qualcomm's WLAN firmware DIAG
     #    log decoder, and on this build it burns ~2% of one core continuously
@@ -483,7 +502,7 @@ blob_fixups: blob_fixups_user_type = {
     ('vendor/etc/init/hw/init.target.rc',): blob_fixup()
         .regex_replace(
             r'(?m)^(service vendor\.mdm_launcher\s(?:[^\n]*\\\n)*[^\n]*\n)',
-            r'\1    user root\n',
+            r'\1    user root\n    disabled\n',
         )
         .regex_replace(
             r'(?m)^(service vendor\.cnss_diag\s(?:[^\n]*\\\n)*[^\n]*\n(?:[ \t]+[^\n]*\n)*)',
