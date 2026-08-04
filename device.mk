@@ -480,3 +480,47 @@ PRODUCT_PACKAGES += \
     wpa_cli \
     wpa_supplicant \
     wpa_supplicant.conf
+
+# ⚠️ BRING-UP ONLY — root shell on first boot, gated on MALBEC_BRINGUP.
+#
+# `adb root` does NOT work on this ROM, and the reason is not what the build
+# script's comment used to say. PixelOS patches init: SetSafetyNetProps()
+# (system/core/init/property_service.cpp:1377-1389) hard-codes ro.debuggable=0,
+# ro.build.type=user and ro.build.tags=release-keys before bootconfig is even
+# parsed, and ro.* is write-once, so the userdebug values from build.prop are
+# silently rejected. That is deliberate upstream behaviour for app-facing root
+# detection, and PixelOS patched the consumers to compensate: adbd is compiled
+# with ANDROID_DEBUGGABLE=1 on userdebug (packages/modules/adb/Android.bp:47-56),
+# so it ignores ro.debuggable entirely.
+#
+# What actually gates root is packages/modules/adb/daemon/main.cpp:66-96:
+#
+#     bool ro_debuggable = ANDROID_DEBUGGABLE || __android_log_is_debuggable();
+#     std::string prop = GetProperty("service.adb.root", "");
+#     bool adb_root = (prop == "1");
+#     if (ro_debuggable && adb_root) { drop = false; }
+#
+# The normal way to set that property is the Developer Options "Rooted debugging"
+# toggle, which writes /data/adbroot/enabled -- fine once there is a UI, useless
+# during a bring-up where the screen may never come up.
+#
+# Setting it here instead means adbd starts as root from the very first boot,
+# and -- this is the part that matters -- WITHOUT an adbd restart. Running
+# `adb root` on the looping first-flash build knocked the device off USB
+# entirely: it issues `ctl.restart adbd`, and USB re-enumeration on this device
+# goes through vendor.usbgadget-hal / usb_hal_service, both of which were in the
+# crash cascade. The device had to be physically re-plugged.
+#
+# It goes in PRODUCT_SYSTEM_PROPERTIES rather than vendor.prop because
+# service.adb.root is not in the vendor property namespace (it is labelled
+# shell_prop in system/sepolicy/private/property_contexts:52), and vendor
+# build.prop entries are namespace-checked at build time.
+#
+# MALBEC_BRINGUP is read from the environment here -- product config is parsed
+# before BoardConfig.mk, so the `?=` default there is not visible yet.
+# work/scripts/40-build.sh exports it; a bare `m` leaves it unset and gets no
+# root, which is the correct default for anything shipped.
+ifeq ($(MALBEC_BRINGUP),true)
+PRODUCT_SYSTEM_PROPERTIES += \
+    service.adb.root=1
+endif
