@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- Default for Settings.Global.DEVICE_NAME, $1 = MODEL.
+         Stock reports the marketing name rather than the model code; the model
+         code TB390FU is what ro.product.model already carries. -->
+    <string name="def_device_name_simple">Idea Tab Pro Gen 2</string>
+
+    <!-- Default for Settings.System.USER_ROTATION. AOSP ships 0
+         (packages/SettingsProvider/res/values/defaults.xml:118).
+
+         This is the second half of "default to landscape"; the first half is
+         ro.bootanim.set_orientation_logical_0 in properties/system.prop. Both
+         are needed, and neither is sufficient alone:
+
+           - The sysprop sets DisplayRotation.mRotation at construction
+             (DisplayRotation.java:271-272 via readDefaultDisplayRotation),
+             which is what the boot animation and the very first frames use.
+           - But auto-rotate ships OFF (def_accelerometer_rotation is false,
+             defaults.xml:33), and with it off DisplayRotation takes the
+             USER_ROTATION_LOCKED branch (:1219-1233) and returns mUserRotation.
+             That is loaded from def_user_rotation by
+             DatabaseHelper.java:802-803 on first boot, so a 0 there overwrites
+             the sysprop's 90 the moment the settings database is read.
+
+         1 = Surface.ROTATION_90, which with the panel's install orientation of
+         270 composes to identity into the 3504x2190 framebuffer
+         (DisplayDevice.cpp:242 adds the WM rotation and the physical
+         orientation), i.e. the natural landscape scanout.
+
+         This covers Setup Wizard and the lock screen too: both end up on the
+         same DisplayRotation path. Turning auto-rotate on later makes the
+         sensor take over, as usual — this only decides where the device starts
+         and where it returns to when rotation is locked. -->
+    <integer name="def_user_rotation">1</integer>
+</resources>

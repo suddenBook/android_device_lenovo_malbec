@@ -66,9 +66,21 @@
          :202 mOverrideDisplayInfo density 306. So the radius Lenovo dimensioned
          the glass against is 45 px, and 38 was an artefact of one user setting.
 
-         Note this is independent of our TARGET_SCREEN_DENSITY := 320, which is a
-         deliberate owner preference (320 lands exactly on the xhdpi bucket). A px
-         value does not scale with it; that is the point of using px. -->
+         Confirmed directly rather than inferred: aapt2 dump of the stock vendor
+         RRO reports
+             work/unpacked/parts/vendor/overlay/FrameworksResTarget_Vendor.apk
+             -> dimen/rounded_corner_radius  20dp
+         and stock's own framework-res.apk leaves it at 0dp, so the RRO is where
+         it comes from.
+
+         TARGET_SCREEN_DENSITY is now 360, the same as stock, so 45px and 20dp
+         are the same number here. Keep the unit as px anyway: the radius is a
+         property of the glass and must not move if the density is ever
+         retuned. That is the whole point of expressing it in px.
+
+         ⚠️ Not 156px, which is what work/reference/hirero-malbec-device puts
+         here. At 320 real ppi that would be 12.4 mm of corner masking on a
+         panel whose vendor RRO says 3.6 mm. -->
     <dimen name="rounded_corner_radius">45px</dimen>
 
     <!-- ★ 0.0 here was a black screen waiting to happen.
@@ -309,6 +321,31 @@
     <integer name="config_screenBrightnessDoze">17</integer>
 
     <!-- ================================================================== -->
+    <!-- Folio cover: close to sleep, open to wake                          -->
+    <!-- ================================================================== -->
+
+    <!-- Paired with configs/device_state_configuration.xml, which defines
+         state 0 = OPENED and state 1 = CLOSED from the BU52053NVX hall sensor.
+         That file carries the evidence for the mapping and the polarity.
+
+         Both these arrays AND the PROPERTY_POWER_CONFIGURATION_TRIGGER_*
+         properties in the XML are required, because LogicalDisplayMapper
+         branches on a feature flag and reads a different one on each side:
+         shouldDeviceBeWoken / shouldDeviceBePutToSleep (:642-700) use the
+         properties when mDeviceStateManagerFlags.deviceStatePropertyMigration()
+         is on and these arrays when it is not. Setting only one half works
+         until the flag flips.
+
+         AOSP's defaults are both empty (core/res/res/values/config.xml:731,740),
+         which is why the folio does nothing today. -->
+    <integer-array name="config_deviceStatesOnWhichToWakeUp">
+        <item>0</item>
+    </integer-array>
+    <integer-array name="config_deviceStatesOnWhichToSleep">
+        <item>1</item>
+    </integer-array>
+
+    <!-- ================================================================== -->
     <!-- NEW: PinnerService                                                 -->
     <!-- ================================================================== -->
 
@@ -362,24 +399,47 @@
     <!-- AOSP's default is an EMPTY array (core/res/res/values/config.xml:1079-1085),
          which makes ColorDisplayService.isColorModeAvailable() always false and
          leaves colorMode at NOT_SET — so Settings > Display > Colors vanishes
-         and the ten vendor colour modes the retained QTI SDM HAL provides are
-         unreachable. Values are stock's. 0/1/3 are the AOSP
-         COLOR_MODE_{NATURAL,BOOST,AUTOMATIC} constants; 256-265 are the
-         vendor-range modes (VENDOR_COLOR_MODE_BASE = 256). -->
+         entirely. So an override is needed; the question is which values.
+
+         The four AOSP modes, and only those:
+             0 NATURAL   1 BOOSTED   2 SATURATED   3 AUTOMATIC (shown as "Adaptive")
+
+         ⚠️ This used to also list the ten vendor-range modes 256-265
+         (VENDOR_COLOR_MODE_RANGE_MIN = 256), copied from stock. The owner
+         reported the symptom precisely: those entries appear in Settings with
+         NO NAME, and selecting one does nothing. Both halves are explained, and
+         neither is fixable from a device overlay:
+
+           - No name. Settings takes the list of modes from
+             com.android.internal.R.array.config_availableColorModes
+             (ColorModeUtils.kt:66) but takes the NAMES from its own
+             Settings/res/values/config.xml:625-640, which defines exactly four
+             values: 0,1,2,3. getColorModeMapping() returns a map built from
+             those, so colorModesToSummaries.get(256) is null and
+             ColorModePreferenceFragment.getCandidates() adds a candidate with a
+             null title.
+           - No effect. DisplayTransformManager.java:282-286 passes a vendor
+             mode straight through to setDisplayColor(colorMode), which is
+             SurfaceFlinger binder transaction 1023, and
+             SurfaceFlinger.cpp:7255-7256 does
+                 mDisplayColorSetting = static_cast<DisplayColorSetting>(value)
+             DisplayColorSetting only has MANAGED/UNMANAGED/ENHANCED, so 256-265
+             cast to an out-of-range value that no branch matches. These modes
+             exist only in QTI's SurfaceFlinger fork
+             (libsurfaceflingerextension), and PixelOS builds AOSP's.
+             Independently confirmed on the running device: SurfaceFlinger
+             reports exactly three supported colour modes — NATIVE, SRGB,
+             DISPLAY_P3 — with no vendor entries at all.
+
+         2 (SATURATED) is ADDED, having been missing before. It is the one mode
+         with a guaranteed visible effect: DisplayTransformManager maps it to
+         DISPLAY_COLOR_UNMANAGED, i.e. render straight to the panel's native
+         gamut with no colour management. -->
     <integer-array name="config_availableColorModes">
         <item>0</item>
         <item>1</item>
+        <item>2</item>
         <item>3</item>
-        <item>256</item>
-        <item>257</item>
-        <item>258</item>
-        <item>259</item>
-        <item>260</item>
-        <item>261</item>
-        <item>262</item>
-        <item>263</item>
-        <item>264</item>
-        <item>265</item>
     </integer-array>
 
     <!-- Three values the factory ROM sets through RROs on the *product*

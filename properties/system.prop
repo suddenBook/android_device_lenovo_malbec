@@ -26,6 +26,51 @@ ro.surface_flinger.set_touch_timer_ms=3000
 ro.surface_flinger.supports_background_blur=0
 ro.surface_flinger.use_content_detection_for_refresh_rate=true
 
+# Default display orientation
+#
+# This is a 13" landscape tablet in a keyboard folio, but its *natural*
+# orientation is portrait and has to stay that way. The panel scans out
+# 3504x2190 (landscape) -- confirmed on the live device from the DRM connector
+# (/sys/class/drm/card0-DSI-1/modes) and from SurfaceFlinger's HWC mode list --
+# and ro.surface_flinger.primary_display_orientation=ORIENTATION_270 in
+# vendor.prop rotates it so every framework client sees a 2190x3504 portrait
+# display. Stock does exactly the same (dumpsys-display.txt:101,
+# installOrientation=3). Do NOT "fix" that by removing the property: the touch
+# digitizer, the pen digitizer and the QTI device_orientation sensor are all
+# defined in the portrait frame, and while TouchInputMapper can be compensated
+# with touch.orientation in an IDC (TouchInputMapper.cpp:366-380), nothing in
+# the framework can rotate a *sensor* frame, so auto-rotate would break.
+#
+# AOSP has a first-class mechanism for exactly this shape, and its comment at
+# DisplayRotation.java:316-327 describes this device almost word for word:
+# "on tablets that may want to keep natural orientation portrait for
+#  applications compatibility but have landscape orientation as a default
+#  choice from the UX perspective."
+#
+# One property, two readers:
+#   - BootAnimation.cpp:644-659 -- the boot animation surface and projection.
+#   - DisplayRotation.readDefaultDisplayRotation() (:328-350), whose result
+#     becomes the initial mRotation at :271-272 -- so Setup Wizard and the lock
+#     screen come up landscape too.
+# Four values are accepted: ORIENTATION_{0,90,180,270}; 0 or unset is a no-op.
+#
+# ORIENTATION_90, not 270: DisplayDevice.cpp:242 composes the WindowManager
+# rotation with the physical orientation, so 90 + 270 = 0, i.e. identity into
+# the native 3504x2190 framebuffer with no extra rotation work.
+#
+# ⚠️ Must live on system, not vendor. system/sepolicy/private/property_contexts
+# only labels ro.bootanim.quiescent.enabled; ro.bootanim.set_orientation_* falls
+# through to default_prop, which vendor_init is not allowed to set -- the same
+# trap vendor.prop already documents. It is also read by the boot animation,
+# which is a system component.
+#
+# The other half of this is def_user_rotation=1 in
+# overlay/SettingsProviderOverlayMalbec: auto-rotate ships off
+# (def_accelerometer_rotation is false), and the rotation-locked branch of
+# DisplayRotation returns USER_ROTATION, which would otherwise put it back to 0
+# as soon as the settings database is created. Neither half works alone.
+ro.bootanim.set_orientation_logical_0=ORIENTATION_90
+
 # Media
 ro.media.recorder-max-base-layer-fps=60
 

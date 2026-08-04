@@ -16,20 +16,59 @@
 #   ZUI_SETTING        -> SETTINGS        SPLIT_SCREEN  -> RECENT_APPS
 #   APP1               -> MACRO_1         APP2          -> MACRO_2
 #
-# Folio open and close are the two important ones. The folio does not signal
-# through the hall sensor — hall_irq stays silent through a full open/close
-# cycle. The keyboard itself reports it, on this same device:
+# ★★ 655 -> SLEEP works. 654 -> WAKEUP CANNOT, and no keylayout change can fix
+# that. This was measured on THIS build with the owner working the cover, three
+# channels on one timeline (work/s13/folio.log; GPIO 135 is the cover magnet's
+# hall switch, read straight out of /sys/kernel/debug/gpio, so it is independent
+# of every layer of software):
 #
-#   scancode 655 (KEYBOARD_REVERSE) fires as the folio is closed or folded
-#   back, and kb_enable_status drops to 0 immediately after.
-#   scancode 654 (KEYBOARD_RESTORE) fires as it is opened, and
-#   kb_enable_status returns to 1.
+#     t= 0.00  gpio135=HIGH  Awake     cover open, screen on
+#     t=34.83  gpio135=LOW   Awake     COVER CLOSED
+#     t=34.84  event8 028f (655) DOWN  keyboard reports it 10 ms later
+#     t=35.12  gpio135=LOW   Dozing    screen off  <- 655 -> SLEEP did this
+#     t=51.32  gpio135=HIGH  Dozing    COVER OPENED - and NO event at all
+#     t=68.96  gpio135=LOW   Dozing    closed again - still no event
+#     t=88.95  gpio135=HIGH  Dozing    opened again - still no event
 #
-# Measured over five consecutive cycles with no exceptions, so they are mapped
-# to SLEEP and WAKEUP to get AOSP's native close-to-sleep and open-to-wake.
-# WAKEUP carries the WAKE flag (POLICY_FLAG_WAKE); without it the event cannot
-# reach the policy while the device is asleep, and opening the folio would do
-# nothing.
+# So: while the display is off the keyboard node is completely silent. Not just
+# 654 - the second close does not even produce a 655. The MCU gates the UART on
+# the display/suspend state, so an input event can never be what wakes this
+# device. (The device was not even deep-suspended during that capture: the probe
+# script was polling at 5 Hz. It still delivered nothing.)
+#
+# Both lines are kept anyway:
+#   - 655 SLEEP is the mechanism that demonstrably closes the lid today. It is
+#     also the fast one - it lands ~300 ms before the sensor path could.
+#   - 654 WAKEUP WAKE is harmless. It has never been observed to fire, but if a
+#     future keyboard firmware does emit it while the device is awake, waking is
+#     the right response. The WAKE flag is required for POLICY_FLAG_WAKE
+#     regardless.
+#
+# The wake half is done in configs/device_state_configuration.xml, off the
+# BU52053NVX hall sensor, which is a wakeup sensor on the sensor DSP and is the
+# only thing in the system that still reports while the AP is asleep. That file
+# has the full derivation.
+#
+# ⚠️ An earlier revision of this comment claimed 655 also fires when the
+# keyboard is folded back to a stand angle, citing
+# work/stock-harvest/20260804-012130/getevent-folio.txt. That reading was wrong
+# on both counts: the owner has since confirmed this folio has no stand
+# position - it is fully open or fully closed, nothing between - so the "step 3"
+# events in that capture were just a mistimed close/open pair.
+#
+# Stock's own layout for this VID/PID:
+#     work/unpacked/parts/system/usr/keylayout/Vendor_17ef_Product_62b2.kl:457
+#     key 654   KEYBOARD_RESTORE
+#     key 655   KEYBOARD_REVERSE
+# Emitted by the keyboard MCU over UART through lenovo_kb_analyze ->
+# lenovo_kb_cuskey_report.
+#
+# The cover magnet is a completely separate part: a ROHM BU52053NVX hall switch
+# on GPIO 135, owned by the sensor DSP and visible only as an Android Sensor
+# (`qti.sensor.hall_effect`). Nothing about it reaches /dev/input. It is handled
+# in configs/device_state_configuration.xml, which is the AOSP-supported way to
+# get close-to-sleep / open-to-wake without patching the framework; that file
+# documents the evidence, including how the polarity was measured.
 #
 # Dropped, with no sensible AOSP equivalent:
 #   FN_LOCK           handled inside the keyboard firmware
@@ -179,10 +218,11 @@ key 139   MENU
 key 140   CALCULATOR
 # key 141 "KEY_SETUP"
 key 142   SLEEP
-# WAKE, matching key 654 below. The folio keyboard really does advertise
-# KEY_WAKEUP (getevent -pl), and without the flag PhoneWindowManager drops the
-# event while the screen is off (isWakeKey is computed from FLAG_WAKE), which
-# makes the key do nothing in the only situation it exists for.
+# WAKE. This is the real KEY_WAKEUP (143), which the folio keyboard genuinely
+# advertises (getevent -pl), not the 654/655 pair. Without the flag
+# PhoneWindowManager drops the event while the screen is off (isWakeKey is
+# computed from FLAG_WAKE), which makes the key do nothing in the only situation
+# it exists for.
 key 143   WAKEUP    WAKE
 # key 144 "KEY_FILE"
 # key 145 "KEY_SENDFILE"
@@ -472,6 +512,9 @@ key usage 0x0c0395 RECENT_APPS
 key usage 0x0c0398 MACRO_1
 key usage 0x0c0399 MACRO_2
 key usage 0x0c039b SETTINGS
+# Cover closed / opened. Stock names these KEYBOARD_RESTORE / KEYBOARD_REVERSE.
+# See the header for the measurement: 655 is the only half that can ever work,
+# and configs/device_state_configuration.xml carries the other half.
 key 654   WAKEUP    WAKE
 key 655   SLEEP
 

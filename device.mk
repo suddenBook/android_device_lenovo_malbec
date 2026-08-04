@@ -548,6 +548,22 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/keylayout/Vendor_17ef_Product_617f.kl:$(TARGET_COPY_OUT_VENDOR)/usr/keylayout/Vendor_17ef_Product_617f.kl \
     $(LOCAL_PATH)/idc/Vendor_17ef_Product_62b2.idc:$(TARGET_COPY_OUT_VENDOR)/usr/idc/Vendor_17ef_Product_62b2.idc
 
+# Device state — folio cover close-to-sleep / open-to-wake.
+#
+# DeviceStateProviderImpl.java:104-106,818-830 looks for this file at
+# /data/system/devicestate/device_state_configuration.xml first and falls back
+# to /vendor/etc/devicestate/, so the vendor path is the one to install to.
+# Without the file the provider synthesises a single DEFAULT state and the
+# sleep/wake plumbing in LogicalDisplayMapper never has two states to move
+# between.
+#
+# The cover magnet is a sensor, not an input device — the file itself carries
+# the full derivation, including how the polarity was measured rather than
+# guessed. The paired resources are config_deviceStatesOnWhichToSleep and
+# config_deviceStatesOnWhichToWakeUp in FrameworkOverlayMalbec.
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/configs/device_state_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/devicestate/device_state_configuration.xml
+
 # Rootdir
 # fstab.qcom is the one vendor config this port has to change, so the device
 # tree owns it and proprietary-files.txt skips the stock copy.
@@ -585,6 +601,7 @@ PRODUCT_COPY_FILES += \
 # deliberately left out because their RROs are gated on vendor.sku=sun.
 PRODUCT_PACKAGES += \
     FrameworkOverlayMalbec \
+    SettingsProviderOverlayMalbec \
     WifiOverlayMalbec
 
 # Screen

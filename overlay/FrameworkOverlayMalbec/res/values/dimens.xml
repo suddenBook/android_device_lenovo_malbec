@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- Status bar height.
+         This is the ONLY status bar dimension worth overriding on Android 16.
+         SystemBarUtils.getStatusBarHeight() (frameworks/base/core/java/com/
+         android/internal/policy/SystemBarUtils.java:47-55) reads exactly one
+         resource, status_bar_height_default, and takes
+             max(cutout safe inset top, default + waterfall top).
+         This panel has no cutout (config_mainBuiltInDisplayCutout is unset and
+         the live device reports DisplayCutout insets 0,0,0,0), so the max() is
+         inert and the default is the height, verbatim.
+         status_bar_height / _portrait / _landscape still exist in
+         core/res/res/values/dimens.xml:44-56 but nothing outside that file
+         reads them any more, so overriding them would be noise.
+
+         39dp is what Lenovo dimensioned for this panel. Read out of the factory
+         image rather than guessed:
+             aapt2 dump resources \
+               work/unpacked/parts/system/framework/framework-res.apk
+             -> dimen/status_bar_height_default   39dp
+                dimen/status_bar_height_landscape 39dp
+                dimen/status_bar_height_portrait  39dp
+                dimen/status_bar_icon_size        22dp
+
+         Without this override the build ships 28dp, from
+         vendor/lineage/overlay/no-rro/frameworks/base/core/res/res/values/
+         dimens.xml:21 (AOSP's own default is 24dp). Both of those are phone
+         values, where the camera cutout normally dominates the max() above and
+         the resource is only a floor. On a cutout-free tablet the resource IS
+         the height, and 28dp is visibly thin: the framework also ships
+         status_bar_icon_size 22dp, so a 28dp bar leaves 3dp of total vertical
+         padding around the icons. 39dp leaves 17dp. The device owner reported
+         the bar as too small on the 28dp build, which is the same observation.
+
+         Interaction with TARGET_SCREEN_DENSITY (BoardConfig.mk): this is dp, so
+         it tracks density. At the 360 set there it is 88px, and at the owner's
+         restored 0.85 display-size step (306) it is 75px — byte for byte what
+         they had on the factory ROM.
+
+         ⚠️ Not copied from work/reference/hirero-malbec-device, which puts 52dp
+         here. That is 33% above what Lenovo ships and has no derivation in that
+         tree; the factory APK is the better evidence. -->
+    <dimen name="status_bar_height_default">39dp</dimen>
+</resources>

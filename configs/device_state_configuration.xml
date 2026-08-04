@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+
+     Folio-case close-to-sleep / open-to-wake.
+
+     WHY THIS FILE AND NOT AN SW_LID KEYLAYOUT
+     ─────────────────────────────────────────
+     There is no SW_LID on this device and there is none on stock either. The
+     cover magnet is a ROHM BU52053NVX hall switch wired to GPIO 135 and owned
+     by the Qualcomm sensor DSP, so it surfaces only as an Android Sensor:
+
+       dumpsys sensorservice
+       0x3fd) bu52053nvx Hall Effect Sensor Non-wakeup | ROHM | qti.sensor.hall_effect(33171002)
+       0x3fe) bu52053nvx Hall Effect Sensor Wakeup     | ROHM | qti.sensor.hall_effect(33171002)
+
+     Nothing in /dev/input carries it. The three decoys were each ruled out by
+     disassembling the shipped modules (their md5s match the factory image):
+
+       - hall_irq (event5, key codes 750-757). pen1/2/3_hall_irq_func contain
+         no input_event call at all — they drive lenovo_qi_update_hall, i.e.
+         pen wireless charging. Only pogo_hall_irq_func emits, codes 756/757,
+         and that is keyboard *dock* attach/detach. /proc/interrupts shows the
+         pen IRQs fired once each at probe and no pogo IRQ is even registered.
+       - novatek,hall-gpio (the same GPIO 135). nvt_hall_check_func polls only
+         while suspended and on change does a single CTP_SPI_WRITE(0x1150);
+         it is touch/gesture suppression, and reports no input event.
+       - keyboard scancodes 654/655. Stock's own keylayout names these
+         KEYBOARD_RESTORE / KEYBOARD_REVERSE — the keyboard slab folding back,
+         not the cover. See keylayout/Vendor_17ef_Product_62b2.kl.
+
+     Stock consumes the sensor from com.zui.server.policy.ZuiPhoneWindowManager
+     inside its patched services.jar and feeds the result straight into AOSP's
+     own InputManagerService.notifyLidSwitchChanged(). We cannot patch the
+     framework, but AOSP already exposes the same behaviour declaratively:
+     DeviceStateProviderImpl reads this file from /vendor/etc/devicestate/
+     (VENDOR_CONFIG_FILE_PATH, DeviceStateProviderImpl.java:104-106) and
+     LogicalDisplayMapper turns the resulting states into sleep/wake
+     (shouldDeviceBeWoken / shouldDeviceBePutToSleep, :642-700).
+
+     POLARITY — MEASURED, NOT ASSUMED
+     ─────────────────────────────────
+     Three independent confirmations that value 1 = open, 0 = closed:
+
+       1. ZuiPhoneWindowManager.mHallSensorListener, decompiled from the
+          factory system/framework/services.jar:
+              int i = (int) sensorEvent.values[0];
+              if (i == 1) farTriggerLidSwitch();   // far  -> cover open
+              else        nearTriggerLidSwitch();  // near -> cover closed
+       2. It is an active-low hall switch, so magnet present pulls the line low.
+       3. The owner worked the cover through two full cycles while GPIO 135 was
+          polled at 5 Hz (work/s13/folio.log). It tracked all four transitions
+          with no misses and no bounce:
+              t= 0.00  HIGH  cover open
+              t=34.83  LOW   closed
+              t=51.32  HIGH  opened
+              t=68.96  LOW   closed
+              t=88.95  HIGH  opened
+
+     WHY THE SENSOR PATH IS REQUIRED FOR *WAKE* SPECIFICALLY
+     ───────────────────────────────────────────────────────
+     The same capture shows keyboard scancode 655 arriving 10 ms after the first
+     close, which is what puts the device to sleep today via the keylayout. But
+     after the display goes off the keyboard node emits NOTHING — no 654 on
+     open, and not even a 655 on the second close. The MCU gates its UART on the
+     display/suspend state, so an input event can never be what wakes this
+     device. The hall sensor is a *wakeup* sensor on the sensor DSP and is the
+     only thing still reporting at that point.
+
+     The keylayout keeps 655 -> SLEEP as the fast path for closing (it lands
+     ~300 ms before this could); this file is what makes opening work at all.
+
+     The Wakeup instance is deliberate: a non-wakeup sensor's events are only
+     delivered once the AP is already awake, so opening the cover could never
+     wake the device.
+
+     Both the properties and the config_deviceStatesOnWhichTo{Sleep,WakeUp}
+     arrays in FrameworkOverlayMalbec are needed — LogicalDisplayMapper
+     branches on the deviceStatePropertyMigration() feature flag and reads a
+     different one on each side.
+
+     No PROPERTY_FOLDABLE_* here on purpose: this is a lid, not a fold. Adding
+     them would make Jetpack WindowManager report a FoldingFeature to apps.
+-->
+<device-state-config>
+    <device-state>
+        <identifier>0</identifier>
+        <name>OPENED</name>
+        <properties>
+            <property>com.android.server.policy.PROPERTY_POWER_CONFIGURATION_TRIGGER_WAKE</property>
+        </properties>
+        <flags/>
+        <conditions>
+            <sensor>
+                <type>qti.sensor.hall_effect</type>
+                <name>bu52053nvx Hall Effect Sensor Wakeup</name>
+                <value>
+                    <min-inclusive>0.5</min-inclusive>
+                </value>
+            </sensor>
+        </conditions>
+    </device-state>
+
+    <device-state>
+        <identifier>1</identifier>
+        <name>CLOSED</name>
+        <properties>
+            <property>com.android.server.policy.PROPERTY_POWER_CONFIGURATION_TRIGGER_SLEEP</property>
+        </properties>
+        <flags/>
+        <conditions>
+            <sensor>
+                <type>qti.sensor.hall_effect</type>
+                <name>bu52053nvx Hall Effect Sensor Wakeup</name>
+                <value>
+                    <max>0.5</max>
+                </value>
+            </sensor>
+        </conditions>
+    </device-state>
+</device-state-config>

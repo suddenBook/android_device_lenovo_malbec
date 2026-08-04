@@ -131,23 +131,64 @@ TARGET_BOOTLOADER_BOARD_NAME := sun
 TARGET_USES_VULKAN := true
 
 # Display
-# 320, not stock's 360. This feeds ro.sf.lcd_density (build/make/core/
-# sysprop_config.mk:136) and it is purely the dp->px factor: the panel always
-# scans out its 2190x3504 real pixels either way, nothing is resampled.
+# 360, same as stock. Feeds ro.sf.lcd_density (build/make/core/
+# sysprop_config.mk:136). Purely the dp->px factor: the panel always scans out
+# its 2190x3504 real pixels either way, nothing is resampled.
 #
-# 320 is the measured physical density — dumpsys reports 319.69 x 320.14 dpi —
-# so a dp lands at Android's defined 1/160 inch instead of 12.5% oversized, and
-# it falls exactly on the xhdpi resource bucket, meaning bitmap drawables are
-# used 1:1. Stock's 360 sits between xhdpi and xxhdpi, so Android picks xxhdpi
-# assets and scales them to 0.75. Net effect of 320: ~27% more content on
-# screen, and slightly better bitmap fidelity, not worse.
+# ⚠️ This was 320 for one round, with the rationale "320 is the measured
+# physical density (dumpsys: 319.69 x 320.14 dpi), so a dp lands at Android's
+# defined 1/160 inch instead of 12.5% oversized". The premise is true and the
+# conclusion is wrong, and the owner felt it directly: on the 320 build the
+# report was "status bar is far too small, UI elements look wrong".
 #
-# No packaging cost: PRODUCT_AAPT_PREF_CONFIG is unset and PRODUCT_AAPT_CONFIG
-# carries no density qualifiers, so every APK keeps all buckets and the choice
-# is made at runtime. vendor/lineage/config/BoardConfigSoong.mk:44-49 derives
-# the same "xhdpi" bucket name for both 320 and 360, so nothing else shifts.
-# Window size class is unaffected (973dp vs 1095dp, both >= 840dp expanded).
-# Users can still adjust via Settings > Display > Display size.
+# Why density == physical dpi is the wrong target:
+#
+#   dp is a *nominal* unit. Its purpose is that a given dp count occupies
+#   roughly the same physical size across devices, and the size Android
+#   actually targets is set by what shipping devices do, not by the 1/160"
+#   definition. Every Google large-screen device runs density well ABOVE
+#   physical dpi. Pixel Tablet: 2560x1600 over 10.95" = 275.6 real dpi, ships
+#   ro.sf.lcd_density 320 -- 16% above physical.
+#
+#   The metric that matters is dp per physical inch, because Material's 48dp
+#   minimum touch target is meant to land at ~9 mm:
+#
+#     device                 real dpi   density   dp/inch   48dp
+#     Pixel Tablet 10.95"      275.6      320      137.8    8.85 mm
+#     malbec 13.0" @ 320       319.9      320      160.0    7.62 mm   <- too small
+#     malbec 13.0" @ 360       319.9      360      142.2    8.57 mm   <- stock
+#
+#   Panel is 2190/319.69 = 6.85" x 3504/320.15 = 10.94", diagonal 12.91",
+#   i.e. the advertised 13.0". So 320 puts this 13" tablet 16% denser than
+#   Google's own 11" tablet -- the wrong direction for a device this size.
+#
+# Second, independent reason: logical workspace. At 320 the display is
+# 1752 x 1095 dp -- 1.9x the *area* of the Pixel Tablet's 1280 x 800 dp, and
+# beyond anything Google's SystemUI / Launcher / Settings layouts are tuned
+# for. At 360 it is 1557 x 973 dp, much closer. Verified on the running device
+# that the split-shade QS and the 2-pane Settings both leave large dead zones
+# at the wider size.
+#
+# Third: it makes a restored settings backup land where the owner expects.
+# Settings backs up display size as a *scale index*, not a px value
+# (DisplayDensityUtils; MIN_SCALE 0.85). The owner runs the smallest step. On
+# stock that is 360 * 0.85 = 306; restored onto a 320 build it becomes
+# 320 * 0.85 = 272 -- 11% below the density they had been living with, which
+# is exactly the complaint. With 360 the same restore reproduces 306.
+#
+# The one real cost of 360 is resource buckets: 360 sits between xhdpi (320)
+# and xxhdpi (480), and ResTable_config::isBetterThan prefers the nearest
+# bucket >= requested, so bitmap drawables come from xxhdpi and are scaled by
+# 0.75. That is downscaling, which is the benign direction, and modern Material
+# UI is overwhelmingly vector drawables, which are unaffected. Paying that to
+# fix a 13%-too-small UI is clearly the right trade.
+#
+# No packaging cost either way: PRODUCT_AAPT_PREF_CONFIG is unset and
+# PRODUCT_AAPT_CONFIG carries no density qualifiers, so every APK keeps all
+# buckets and the choice is made at runtime.
+# vendor/lineage/config/BoardConfigSoong.mk:44-49 derives the same "xhdpi"
+# bucket name for both 320 and 360, so nothing else shifts. Window size class
+# is expanded either way (973dp vs 1095dp, both >= 840dp).
 #
 # ⚠️ About the 306 that keeps coming up, because this comment has been wrong in
 # both directions and the value 306 also underpins the rounded_corner_radius in
@@ -164,11 +205,9 @@ TARGET_USES_VULKAN := true
 #     and dumpsys-display.txt:201/:202 shows mBaseDisplayInfo density 360 versus
 #     mOverrideDisplayInfo density 306.
 #
-# What 306 actually was: the owner had set it by hand in Settings > Display size
-# before that dump was taken (confirmed by the owner). It is a user setting on
-# one unit, not a property of the device, and nothing should be derived from it.
-#
-# 320 here is a deliberate owner preference, not a correction of stock.
+# 306 is the owner's Settings > Display size choice on stock (the 0.85 step),
+# not a device property. Nothing is derived from it here; it is only used above
+# to show that 360 is the base that reproduces it.
 #
 # Panel is dual sourced (BOE nt36536e / CSOT nt36536), 144 Hz. The bootloader
 # names the panel on the kernel command line

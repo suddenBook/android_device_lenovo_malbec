@@ -440,10 +440,95 @@ blob_fixups: blob_fixups_user_type = {
             r'\1    user root\n',
         ),
 
+    # Two edits to init.target.rc:
+    #
+    #  * vendor.mdm_launcher gets `user root`, same class of problem as above.
+    #
+    #  * vendor.cnss_diag gets `disabled`. It is Qualcomm's WLAN firmware DIAG
+    #    log decoder, and on this build it burns ~2% of one core continuously
+    #    and throws every byte away. Measured on the running device: 1m07s of
+    #    CPU in 67 min of uptime, and `ls /proc/<pid>/fd` shows stdout/stderr on
+    #    /dev/null with no regular file open at all -- its hardcoded output
+    #    directory /data/vendor/newlog/wlan_logs never gets created. It is also
+    #    the single chattiest process in the main log buffer. Stock ships the
+    #    identical binary and .rc and does start it, but stock is not a reason
+    #    to burn battery for logs nobody can read. `disabled` only removes it
+    #    from `class_start main`; `start vendor.cnss_diag` still works if the
+    #    logs are ever wanted for WLAN firmware debugging. This is diagnostics
+    #    only -- WLAN itself is driven by the separate cnss-daemon, which is
+    #    untouched.
     ('vendor/etc/init/hw/init.target.rc',): blob_fixup()
         .regex_replace(
             r'(?m)^(service vendor\.mdm_launcher\s(?:[^\n]*\\\n)*[^\n]*\n)',
             r'\1    user root\n',
+        )
+        .regex_replace(
+            r'(?m)^(service vendor\.cnss_diag\s(?:[^\n]*\\\n)*[^\n]*\n(?:[ \t]+[^\n]*\n)*)',
+            r'\1   disabled\n',
+        ),
+
+    # qsap_location is Qualcomm's QESDK precise-positioning service. It cannot
+    # work here and it never stops trying: measured on the running device, init
+    # respawns it every 5.00 s forever (12/min, ~17k/day), each instance dying
+    # in ~12 ms on SIGSYS. libminijail rejects it on `sched_get_priority_min`,
+    # and the seccomp policy it is handed is visibly an ARM32-era file being
+    # applied to ARM64 (it also warns that chown/lchown/mmap2/fstat64/fstatat64/
+    # _llseek are "nonexistent syscall").
+    #
+    # ⚠️ OPEN-ISSUES.md #11 named `rseq` as the blocked syscall. That was wrong;
+    # the log line says sched_get_priority_min.
+    #
+    # We disable rather than fix the policy because there is nothing for it to
+    # do: this tablet has no GNSS receiver. ro.boot.vendor.qspa.nav=disabled,
+    # ro.baseband=apq, and `pm list features` has no
+    # android.hardware.location.gps. Network location (which the device does
+    # have) is served by GMS's fused provider, not by this.
+    #
+    # The cost of leaving it is not the ~0.5% CPU, it is that 12 forced wakeups
+    # a minute keep the SoC out of deep idle, and it makes uid gps the single
+    # chattiest uid in the log buffer.
+    ('vendor/etc/init/vendor.qsap.location.rc',): blob_fixup()
+        .regex_replace(
+            r'(?m)^(service vendor\.qsap\.location\s(?:[^\n]*\\\n)*[^\n]*\n(?:[ \t]+[^\n]*\n)*)',
+            r'\1    disabled\n',
+        ),
+
+    # Thermal: stop the second, config-less daemon.
+    #
+    # Lenovo's MALBECW-799 patch (init.qcom.rc:516-528) adds
+    # `thermal-switch-engine`, which is the same binary but with
+    # `-c /vendor/etc/thermal-engine-malbec-${vendor.thermal.mode}.conf`, and
+    # switches to it whenever vendor.thermal.mode is written:
+    #
+    #     on property:vendor.thermal.mode=*
+    #        stop thermal-engine
+    #        stop thermal-switch-engine
+    #        start thermal-switch-engine
+    #
+    # On stock that property is written from system_ext AFTER boot, so the
+    # ordering works out and stock settles with thermal-engine STOPPED and
+    # thermal-switch-engine RUNNING. We set vendor.thermal.mode=normal as a
+    # static build property (vendor.prop), so init queues that trigger before
+    # `class_start main` has started anything: all three commands are no-ops
+    # except the last, class main then starts the config-less `thermal-engine`
+    # anyway, and this file's `restart thermal-engine` at boot_completed makes
+    # sure it stays up. Measured on the running device -- two daemons:
+    #     1887  thermal-engine-v2 -c /vendor/etc/thermal-engine-malbec-normal.conf
+    #     4890  thermal-engine-v2                       <- no config at all
+    #
+    # Turning `restart` into `stop` reproduces stock's end state exactly, and is
+    # deliberately preferred over marking thermal-engine `disabled`:
+    #   - `disabled` would not help by itself, because an explicit `restart`
+    #     starts a disabled service anyway.
+    #   - thermal-engine is the service that DECLARES the four
+    #     /dev/socket/thermal-* sockets the thermal HAL talks over, and init
+    #     creates those in Service::Start(). Never starting it would mean the
+    #     sockets are never created. Letting it start, then stopping it, leaves
+    #     the sockets in place -- which is precisely what stock does.
+    ('vendor/etc/init/init_thermal-engine-v2.rc',): blob_fixup()
+        .regex_replace(
+            r'(?m)^(on property:sys\.boot_completed=1\n)\s*restart thermal-engine\n',
+            r'\1\tstop thermal-engine\n',
         ),
 
     # Same class, found by running host_init_verifier over all 134 shipped .rc

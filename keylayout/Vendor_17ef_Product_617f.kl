@@ -25,14 +25,57 @@
 # KeyLayoutMap::load() returns BAD_VALUE and discards the ENTIRE file on the
 # first unknown label. One bad label would kill every mapping below it.
 #
-# Only three of the six have an honest AOSP equivalent. The remaining three are
-# deliberately left unmapped rather than forced onto a keycode that means
-# something else: an unmapped usage is simply ignored, which is the correct
-# behaviour for a gesture Android has no concept of.
-#   PEN_THREE_CLICK   — no AOSP equivalent; STYLUS_BUTTON_TAIL means the eraser
-#                       end of the pen, not a third click.
-#   PEN_PRESS_CLICK   — press-and-hold; belongs in a gesture layer, not a keycode.
+# ★★ ALL SIX ARE DELIBERATELY LEFT UNMAPPED. Do not "improve" this by mapping
+# them to STYLUS_BUTTON_PRIMARY / _SECONDARY / _TERTIARY / _TAIL. That is what
+# this file used to do, and it broke tapping with the pen. The chain, every link
+# confirmed on the running device:
+#
+#   1. EventHub.cpp:2601-2607 — a device that is not TOUCH/TOUCH_MT, is not
+#      ALPHAKEY, and has ANY keycode from STYLUS_BUTTON_KEYCODES
+#      (KeyCodeClassifications.h:48-53, which is exactly those four) is
+#      classified EXTERNAL_STYLUS. The Consumer Control node matches all three
+#      tests. Measured: `Classes: KEYBOARD | EXTERNAL_STYLUS | EXTERNAL`.
+#   2. That creates an ExternalStylusInputMapper (InputDevice.cpp:622-625) and
+#      flips BOTH Novatek nodes to `ExternalStylusPresence: BUTTON_FUSION`
+#      (TouchInputMapper::resolveExternalStylusPresence, :338-354). Measured on
+#      the touchscreen and the pen.
+#   3. TouchButtonAccumulator::processMappedKey (:118-131) returns early when
+#      mapKey() fails and never clears mBtnStylus, so the button state LATCHES.
+#      Measured: `External Stylus State: Button State: 0x00000020` — a barrel
+#      button reported as held for ~50 minutes while nobody was touching the
+#      device.
+#   4. applyExternalStylusButtonState() ORs that bit into every touch frame, and
+#      the dispatch order at TouchInputMapper.cpp:1487-1491 emits
+#      ACTION_BUTTON_RELEASE immediately before ACTION_UP.
+#   5. View.java:17011-17015 sets mIgnoreNextUpEvent on ACTION_BUTTON_RELEASE,
+#      and :18323 then skips performClickInternal(). ACTION_MOVE is untouched.
+#
+#   Net effect, and it matches the owner's report word for word: dragging works,
+#   tapping intermittently does nothing.
+#
+# There is no functional loss from leaving these unmapped. The pen's two real
+# barrel buttons are reported by the DIGITIZER, not over Bluetooth, as
+# BTN_STYLUS / BTN_STYLUS2, and Generic.kl:307-308 already maps those to
+# STYLUS_BUTTON_PRIMARY / _SECONDARY. The digitizer node is TOUCH-classified so
+# it is exempt from the rule in step 1.
+#
+# What the six usages actually are, and why none of them has an honest AOSP
+# keycode — an unmapped usage is simply ignored, which is the correct behaviour
+# for a gesture Android has no concept of:
+#   PEN_ONE_CLICK     — a click of the BT button, not a barrel-button press;
+#                       stock routes it to PenService's radial menu.
+#   PEN_TWO_CLICK     — double click, same.
+#   PEN_THREE_CLICK   — STYLUS_BUTTON_TAIL means the eraser end, not a 3rd click.
+#   PEN_LONG_CLICK    — press-and-hold; belongs in a gesture layer.
+#   PEN_PRESS_CLICK   — same.
 #   PEN_BT_DISCONNECT — a pairing-state signal, not an input event at all.
+#
+# Stock reaches the same end state by accident rather than on purpose: its file
+# uses the six Lenovo-private labels, KeyLayoutMap::load() rejects the first one
+# and discards the whole file, so on stock this node has no layout either.
+#
+# The file itself must stay — device.mk copies it by name — and an empty
+# keylayout is valid.
 #
 # The stock `.idc` for this device is deliberately NOT carried over. It sets
 # `touch.orientationAware` and `touch.deviceType = touchScreen`, and both keys
@@ -43,6 +86,4 @@
 # instead. The stock file is inert on this hardware; carrying it would only add
 # a config whose keys nothing reads.
 
-key usage 0x0c0600    STYLUS_BUTTON_PRIMARY
-key usage 0x0c0601    STYLUS_BUTTON_SECONDARY
-key usage 0x0c0603    STYLUS_BUTTON_TERTIARY
+# Intentionally no mappings. See above.
