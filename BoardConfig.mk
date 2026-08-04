@@ -613,6 +613,62 @@ include vendor/lenovo/malbec/BoardConfigVendor.mk
 # components, and the stock copies were compiled against an Android 15 vendor
 # while the framework here is Android 16. proprietary-files.txt excludes them
 # for that reason; only the per-device tuning files stay as blobs.
+#
+# ⚠️ BOARD_WLAN_CHIP is load-bearing and it needs BOTH halves below.
+#
+# hardware/qcom/wlan carries three generations of the vendor HAL and picks one
+# per chip. The Make side (hardware/qcom/wlan/Android.mk:3-9) switches on
+# BOARD_WLAN_CHIP; the Soong side (hardware/qcom/wlan/Android.bp:65-125) switches
+# on soong_config_variable("qcom_wifi", "board_wlan_chip") -- a *separate*
+# namespace that nothing populates automatically. Setting only BOARD_WLAN_CHIP
+# leaves the Soong side on conditions_default, so this needs the explicit
+# add_soong_config_var_value calls too.
+#
+# Leaving both unset is what this tree did until session 11, and the cost was
+# invisible: conditions_default whole-static-links
+# //hardware/qcom/wlan/legacy:libwifi-hal-qcom, i.e. the pre-Wi-Fi-7 HAL, into
+# libwifi-hal.so. It builds, the service starts, wlan0 comes up -- and every
+# Wi-Fi 7 capability silently reports NOT_SUPPORTED because the function
+# pointers are never populated. Measured on the first build:
+#
+#   strings out/.../vendor/lib64/libwifi-hal.so | grep -ic 'mlo|11be|eht'  -> 0
+#   same command on the factory libwifi-hal.so                             -> 13
+#   find out/soong/.intermediates/hardware/qcom/wlan -maxdepth 1 -type d   -> legacy only
+#   readelf -d out/.../vendor/lib64/libwifi-hal.so | grep libpasn          -> absent
+#
+# and the legacy tree has no twt.cpp, no nan_pairing*, no
+# wifi_cached_scan_result, no nud_stats -- so no TWT, no Wi-Fi Aware secure
+# pairing, no cached scan results, no PASN, on a Wi-Fi-ONLY tablet.
+#
+# The part is WCN7750 (vendor_dlkm ships qca_cld3_wcn7750.ko and lsmod on the
+# device shows it bound). wcn7760 is the WCN77xx Wi-Fi-7 generation HAL and the
+# closest in-tree match; wcn7850 routes to hardware/qcom/ar1-la3 which is not
+# checked out here.
+#
+# Do NOT also set qcom_wifi/libpasn_support. It looks like the right thing to do
+# -- the variable is documented as mirroring $(wildcard
+# external/wpa_supplicant_8/src/pasn/pasn_common.c), and that file is present --
+# but hardware/qcom/wlan/Android.bp declares it as a soong_config_string_variable
+# (:56-62, values "true"/"false") while writing its select branches at :86-90 as
+# unquoted true:/false:, i.e. bool literals. Setting it makes Soong type-check
+# the branches and fail:
+#
+#   error: frameworks/opt/net/wifi/libwifi_hal/Android.bp:234:16:
+#     module "libwifi-hal" ... shared_libs: Expected all branches of a select on
+#     condition soong_config_variable("qcom_wifi", "libpasn_support") to have
+#     type string, found bool
+#
+# Leaving it unset takes the `default: ["libpasn"]` branch, which is what we
+# want anyway -- verified: libpasn.so is in libwifi-hal.so's DT_NEEDED.
+#
+# Verified after this change: .intermediates/hardware/qcom/wlan/wcn7760/qcwcn/
+# wifi_hal exists, libwifi-hal.so grew 472016 -> 687392 bytes, and its MLO
+# symbols (_ZN14LLStatsCommand5isMloEv, copyMloStats, copyMloPeerStats,
+# "No link id for peer in MLO connection") now match the factory library exactly.
+BOARD_WLAN_CHIP := wcn7760
+$(call add_soong_config_namespace,qcom_wifi)
+$(call add_soong_config_var_value,qcom_wifi,board_wlan_chip,$(BOARD_WLAN_CHIP))
+
 BOARD_WLAN_DEVICE := qcwcn
 BOARD_HOSTAPD_DRIVER := NL80211
 BOARD_HOSTAPD_PRIVATE_LIB := lib_driver_cmd_$(BOARD_WLAN_DEVICE)
