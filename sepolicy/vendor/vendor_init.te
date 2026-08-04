@@ -90,3 +90,26 @@ allow vendor_init sysfs_qcom_battery:dir search;
 allow vendor_init sysfs_qcom_battery:file rw_file_perms;
 allow vendor_init vendor_sysfs_battery_supply:dir search;
 allow vendor_init vendor_sysfs_battery_supply:file rw_file_perms;
+
+# Touch mode. rootdir/etc/init.malbec.rc writes /proc/HighReportRate from
+# `on property:persist.sys.malbec.touch_mode=*`, which MalbecParts sets when the
+# owner picks stylus or game mode.
+#
+# Same reasoning as the proc_lenovo_pen grant above, and the same domain: the rc
+# file is under /vendor/etc/init, so its commands run in the vendor_init
+# subcontext (system/core/init/subcontext.cpp), not in init. `open` is required
+# as well as `write` because init's `write` builtin is
+# open(O_WRONLY|O_CREAT|O_TRUNC) followed by write(), so a write-only rule denies
+# at open().
+#
+# The node is labelled proc_lenovo_touch by our own genfs_contexts, and the
+# Lenovo touchscreen HAL already holds rw_file_perms on that type
+# (hal_lenovo.te). This is the second writer, not a new privilege class.
+#
+# ⚠️ Why the write is here and not in the app: proc_lenovo_touch is a vendor
+# type. Granting system_app write access to it would be a coredomain reaching
+# into vendor storage — exactly the boundary the rest of this policy avoids —
+# and it would have to be added to BOARD_PLAT_PRIVATE_SEPOLICY_DIR, which this
+# device does not otherwise need. Routing through a property that system_app can
+# already set costs one trigger block and no new policy at all.
+allow vendor_init proc_lenovo_touch:file { open write getattr };

@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.pixelos.malbec.parts"
+    android:sharedUserId="android.uid.system">
+
+    <!-- MANAGE_KEY_GESTURES is signature (core/res/AndroidManifest.xml:8945).
+         It gates addCustomInputGesture / registerKeyGestureEventHandler,
+         enforced in InputManagerService.java:3180-3229. -->
+    <uses-permission android:name="android.permission.MANAGE_KEY_GESTURES" />
+    <!-- Injecting the concrete keycode in "Smart remote". Signature. -->
+    <uses-permission android:name="android.permission.INJECT_EVENTS" />
+    <!-- Reading the foreground package to pick the remote-control profile. -->
+    <uses-permission android:name="android.permission.REAL_GET_TASKS" />
+    <!-- Pen link state, and setMetadata(DEVICE_TYPE_STYLUS) on the bonded pen. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_PRIVILEGED" />
+    <!-- peak_refresh_rate / min_refresh_rate live in Settings.System. -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <!-- The anti-loss alert. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- The action picker lists every launchable app. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+
+    <application
+        android:allowBackup="false"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.SubSettingsBase.Expressive">
+
+        <receiver
+            android:name=".BootCompletedReceiver"
+            android:exported="true">
+            <intent-filter android:priority="1000">
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- The long-lived half: the key-gesture handler for Smart remote, the
+             pen-link watcher for the out-of-range alert, and the observer that
+             keeps the touch report rate paired with the refresh rate.
+             Started from BootCompletedReceiver and from each settings screen.
+
+             Deliberately NOT android:persistent — DolbyAtmos is persistent and
+             that is a reasonable choice for an audio effect that must survive
+             every process death, but pinning a process into memory forever for
+             three callbacks is exactly what makes a port feel heavier than
+             stock. START_STICKY plus the boot receiver covers it. -->
+        <service
+            android:name=".MalbecPartsService"
+            android:exported="false" />
+
+        <!-- Settings > Connected devices > "Stylus and folio keyboard".
+             The category constant is SettingsLib's CategoryKey.CATEGORY_CONNECT
+             ("com.android.settings.category.ia.connect"), which is what puts the
+             tile on the Connected devices page with no Settings source change.
+             Stock ZUI uses a private category (…ia.stylus_keyboard) that only
+             its own Settings build knows about. -->
+        <activity
+            android:name=".stylus.StylusSettingsActivity"
+            android:label="@string/stylus_title"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.android.settings.action.IA_SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.connect" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_stylus" />
+            <meta-data
+                android:name="com.android.settings.summary"
+                android:value="@string/stylus_summary" />
+        </activity>
+
+        <!-- Settings > System > Keyboard > Physical keyboard >
+             "Advanced keyboard settings". The hook is already in AOSP:
+             packages/apps/Settings/res/xml/physical_keyboard_settings.xml:83-89
+             declares a RemotePreference with
+             settings:requiresAction="org.lineageos.settings.device.ADVANCED_KEYBOARD_SETTINGS"
+             and hides itself when nothing answers. Nothing to patch. -->
+        <activity
+            android:name=".keyboard.KeyboardSettingsActivity"
+            android:label="@string/keyboard_title"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="org.lineageos.settings.device.ADVANCED_KEYBOARD_SETTINGS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Shared "what should this key do?" picker, used by both screens. -->
+        <activity
+            android:name=".gesture.ActionPickerActivity"
+            android:label="@string/action_picker_title"
+            android:exported="false" />
+
+        <!-- Quick Settings tile for the stylus/game mode switch. Reachable from
+             inside a full-screen game, which a home-screen widget is not. -->
+        <service
+            android:name=".display.PenModeTileService"
+            android:icon="@drawable/ic_stylus"
+            android:label="@string/pen_mode_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+        </service>
+
+        <!-- Home-screen widget for the same switch, because the owner asked for
+             one-tap-from-the-desktop specifically. -->
+        <receiver
+            android:name=".display.PenModeWidgetProvider"
+            android:label="@string/pen_mode_widget_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/pen_mode_widget_info" />
+        </receiver>
+
+    </application>
+</manifest>

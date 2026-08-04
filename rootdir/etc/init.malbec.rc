@@ -60,6 +60,60 @@ on property:sys.boot_completed=1
     write /proc/support_pen 1
 
 # ---------------------------------------------------------------------------
+# Touch mode: the panel rate and the touch controller's scan mode, which are one
+# hardware knob with two coherent settings.
+#
+# Measured on this unit, both directions:
+#
+#   panel 144 Hz      the controller cannot detect the pen AT ALL -- not "no
+#                     pressure", zero events, /proc/Pen_ID back to 255;255
+#   panel 120 Hz      pen fully working; finger reports at 120 Hz
+#   HighReportRate 1  finger reports at 360 Hz (3x)
+#
+# So stock has exactly two states and no others, switched from its framework
+# patch (DisplayModeDirector.supportPen(true/false)):
+#
+#   stylus:  120 Hz + support_pen 1 + HighReportRate 0
+#   game:    144 Hz + support_pen 0 + HighReportRate 1
+#
+# The panel half lives in Settings.System peak_refresh_rate and is written by
+# MalbecParts. This is the /proc half. It is done here rather than in the app
+# because both nodes are labelled proc_lenovo_touch / proc_lenovo_pen -- vendor
+# types -- and giving a core domain write access to them would cross the Treble
+# boundary the rest of this tree's sepolicy is careful about. vendor_init
+# already writes proc_lenovo_pen for the block above; sepolicy/vendor/
+# vendor_init.te adds proc_lenovo_touch for the same reason.
+#
+# `persist.sys.` is not an arbitrary namespace: it is already
+# u:object_r:system_prop:s0 (system/sepolicy/private/property_contexts:79) and
+# system_app already holds set_prop for it (private/system_app.te:43), so this
+# needs no new property type and no new rule.
+#
+# ⚠️ ORDER MATTERS, and it is load-bearing. Both this and the plain
+# `on property:sys.boot_completed=1` block above fire on the same event, and
+# init runs same-trigger actions in parse order (ActionManager iterates its list
+# in insertion order, and the parser inserts in file order). So the block above
+# sets the stylus default and this one overrides it when the owner chose game
+# mode. Reordering these two silently breaks game mode across a reboot.
+#
+# Why also gate on boot_completed rather than on the property alone: persist
+# properties are loaded in second-stage init, long before nvt_touch.ko's
+# Boot_Update_Firmware delayed work fires at ~7.3 s and sends {0x50,0x7B,0x00}.
+# Anything written before that is overwritten. The bare property triggers below
+# handle the runtime case, where the driver is long past that point.
+on property:sys.boot_completed=1 && property:persist.sys.malbec.touch_mode=game
+    write /proc/support_pen 0
+    write /proc/HighReportRate 1
+
+on property:persist.sys.malbec.touch_mode=game
+    write /proc/support_pen 0
+    write /proc/HighReportRate 1
+
+on property:persist.sys.malbec.touch_mode=stylus
+    write /proc/support_pen 1
+    write /proc/HighReportRate 0
+
+# ---------------------------------------------------------------------------
 # Per-unit Bluetooth / Wi-Fi MAC address storage.
 #
 # These two directories are where this unit's hardware identity lives:

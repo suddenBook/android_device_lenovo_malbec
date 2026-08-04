@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:title="@string/keyboard_title">
+
+    <PreferenceCategory
+        android:key="cat_keyboard_keys"
+        android:title="@string/keyboard_keys_category">
+
+        <Preference
+            android:key="keyboard_app1"
+            android:title="@string/keyboard_app1"
+            android:persistent="false" />
+
+        <Preference
+            android:key="keyboard_app2"
+            android:title="@string/keyboard_app2"
+            android:persistent="false" />
+
+        <com.android.settingslib.widget.FooterPreference
+            android:key="keyboard_footer"
+            android:title="@string/keyboard_footer"
+            android:selectable="false" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

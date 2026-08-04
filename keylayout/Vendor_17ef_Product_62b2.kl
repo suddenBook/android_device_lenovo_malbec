@@ -14,7 +14,44 @@
 #   LENOVO_VOLUME_MUTE -> VOLUME_MUTE     SCREEN_LOCK   -> LOCK
 #   GLOBAL_SEARCH      -> SEARCH          FULL_SCREEN   -> FULLSCREEN
 #   ZUI_SETTING        -> SETTINGS        SPLIT_SCREEN  -> RECENT_APPS
-#   APP1               -> MACRO_1         APP2          -> MACRO_2
+#   APP1               -> F19             APP2          -> F20
+#
+# ★★ APP1/APP2 were MACRO_1/MACRO_2 until session 16, and that was a dead end.
+# PhoneWindowManager.java:5124-5129 clears ACTION_PASS_TO_USER for MACRO_1..4 in
+# interceptKeyBeforeQueueing; InputDispatcher.cpp:1860-1873 then skips the whole
+# interceptKeyBeforeDispatching stage, which is the only place custom input
+# gestures are evaluated (KeyGestureController.java:1057-1070). A MACRO key can
+# therefore never reach a user-configurable action — the two keys were
+# structurally unbindable, not merely unbound.
+#
+# F19/F20 survive that gate: PhoneWindowManager.java:5130-5148 strips F13..F24
+# only `if (!enableNew25q2Keycodes())`, and that flag is ENABLED in both release
+# configs this tree builds. Confirmed on the running device rather than
+# inferred:  `adb shell device_config list input` reports
+#   com.android.hardware.input.enable_new_25q2_keycodes=true
+#   com.android.hardware.input.enable_customizable_input_gestures=true
+# The full derivation, including the three keycode families that were rejected,
+# is in keylayout/Vendor_17ef_Product_617f.kl — it is the same argument and is
+# not repeated here.
+#
+# What the keys DO is not decided here. MalbecParts binds them at runtime with
+# InputManager#addCustomInputGesture (per-user, persisted by the framework in
+# /data/system/users/<id>/input_gestures.xml), and exposes them under
+# Settings > System > Keyboard > Physical keyboard > Advanced keyboard settings.
+#
+# ⚠️ Custom input gestures are keyed on (keycode, modifierState) ONLY — NOT per
+# device (InputGestureManager.getCustomGestureForKeyEvent, :499-513). The F-key
+# range is therefore allocated across BOTH input devices, and the two files must
+# stay disjoint:
+#     F13..F18  Bluetooth pen (Vendor_17ef_Product_617f.kl)
+#     F19, F20  this keyboard, APP1 / APP2
+#     F21..F24  unallocated
+#
+# Stock says exactly three keys on this folio are user-customisable — APP1, APP2
+# and an "AI" key — from work/unpacked/parts/system/usr/kb-type-config/
+# lenovo_keyboard.xml (`support_diy_app1/app2/ai = true`; everything else in the
+# function row is fixed). The AI key has no usage in stock's own keylayout, so
+# it is not mapped here; if `getevent -lt` ever shows one, it gets F21.
 #
 # ★★ 655 -> SLEEP works. 654 -> WAKEUP CANNOT, and no keylayout change can fix
 # that. This was measured on THIS build with the owner working the cover, three
@@ -263,18 +300,14 @@ key 179   NUMPAD_LEFT_PAREN
 key 180   NUMPAD_RIGHT_PAREN
 # key 181 "KEY_NEW"
 # key 182 "KEY_REDO"
-key 183   F13
-key 184   F14
-key 185   F15
-key 186   F16
-key 187   F17
-key 188   F18
-key 189   F19
-key 190   F20
-key 191   F21
-key 192   F22
-key 193   F23
-key 194   F24
+# Scancodes 183..194 (KEY_F13..KEY_F24) are DELIBERATELY unmapped, unlike
+# AOSP's Generic.kl. This folio has no F13-F24 keys — stock ZUI's own layout for
+# 17ef:62b2 has these twelve lines commented out — and custom input gestures are
+# matched on keycode alone, with no device filter
+# (InputGestureManager.getCustomGestureForKeyEvent, :499-513). Leaving them in
+# would mean a firmware that ever emitted scancode 183 would silently fire the
+# pen's one-click action. Removing them costs nothing and closes that aliasing
+# hazard. See the F-key allocation table in the header.
 # key 195 (undefined)
 # key 196 (undefined)
 # key 197 (undefined)
@@ -485,10 +518,17 @@ key 580   APP_SWITCH
 key 582   VOICE_ASSIST
 # Linux KEY_ASSISTANT
 key 583   ASSIST
-key 656   MACRO_1
-key 657   MACRO_2
-key 658   MACRO_3
-key 659   MACRO_4
+# Scancodes 656..659 mapped to MACRO_1..4 in stock's file and here until
+# session 16. Dropped for two independent reasons: MACRO keys are swallowed by
+# PhoneWindowManager before any user-configurable layer can see them (see the
+# header), and this folio was never observed to emit 656/657 — stock reaches
+# APP1/APP2 through the HID usages 0x0c0398/0x0c0399 below, which is the form
+# the kernel actually produces for a HID-over-UART consumer page.
+#
+# ⚠️ If `getevent -lt` on the folio ever shows scancode 656/657 instead of
+# MSC_SCAN 000c0398/000c0399, add `key 656 F19` / `key 657 F20` here — stock
+# maps BOTH forms, and mapping both is harmless because they resolve to the
+# same keycode.
 
 # Keys defined by HID usages
 key usage 0x0c0067 WINDOW
@@ -509,8 +549,10 @@ key usage 0x0c0391 MUTE
 key usage 0x0c0393 SEARCH
 key usage 0x0c0394 FULLSCREEN
 key usage 0x0c0395 RECENT_APPS
-key usage 0x0c0398 MACRO_1
-key usage 0x0c0399 MACRO_2
+# The two user-customisable app keys. F19/F20 rather than MACRO_1/MACRO_2 — see
+# the header for why MACRO is structurally unbindable on this ROM.
+key usage 0x0c0398 F19
+key usage 0x0c0399 F20
 key usage 0x0c039b SETTINGS
 # Cover closed / opened. Stock names these KEYBOARD_RESTORE / KEYBOARD_REVERSE.
 # See the header for the measurement: 655 is the only half that can ever work,

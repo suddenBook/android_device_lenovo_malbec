@@ -18,15 +18,7 @@ $(call inherit-product, vendor/lenovo/malbec/malbec-vendor.mk)
 # extract-utils cannot generate them. See Android.bp for what each one is for.
 PRODUCT_PACKAGES += \
     malbec_wlanmdsp_otaupdate_symlink \
-    malbec_wlan_cfg_kiwi_v2_symlink \
-    malbec_wlan_cfg_peach_symlink \
-    malbec_wlan_cfg_peach_v2_symlink \
-    malbec_wlan_cfg_qca6750_symlink \
     malbec_wlan_cfg_wcn7750_symlink \
-    malbec_wlan_mac_kiwi_v2_symlink \
-    malbec_wlan_mac_peach_symlink \
-    malbec_wlan_mac_peach_v2_symlink \
-    malbec_wlan_mac_qca6750_symlink \
     malbec_wlan_mac_wcn7750_symlink \
 
 # ⚠️ There used to be a CneApp.libvndfwk_detect_jni.qti_vendor_symlink here,
@@ -372,6 +364,42 @@ PRODUCT_PACKAGES += \
 # 参数，而 daxService 是 persistent=true，会互相打架。
 PRODUCT_PACKAGES += \
     DolbyAtmos
+
+# ── MalbecParts: the device's own settings surface ──────────────────────────
+#
+# Same shape as the DolbyAtmos decision above, for the same reason: this device
+# has hardware AOSP has no UI for, and the answer is one small platform-signed
+# app injected through Settings' own extension points, not a ported ZUI app.
+#
+# What it covers, and why each one needs an app at all:
+#
+#   Pen buttons        The five side-button gestures reach the framework as
+#                      F13..F17 (keylayout/Vendor_17ef_Product_617f.kl). AOSP has
+#                      the binding mechanism — InputManager#addCustomInputGesture,
+#                      per-user and persisted by the framework itself — but the
+#                      only UI that drives it is the touchpad three-finger-tap
+#                      page. Nothing binds a single key.
+#   Keyboard app keys  Same mechanism, F19/F20. ⚠️ These were mapped to
+#                      MACRO_1/MACRO_2 until session 16, which is
+#                      *structurally* dead: PhoneWindowManager.java:5124-5128
+#                      strips MACRO before the gesture layer ever runs. The two
+#                      keys did nothing at all.
+#   Out-of-range alert The stock feature is much smaller than its name: HID link
+#                      dropped, not locally initiated, did not come back. All of
+#                      it is public Bluetooth API.
+#   Touch mode         The panel rate and the touch controller's report rate are
+#                      one hardware knob with two coherent settings, and the
+#                      owner asked for a manual switch rather than automatic
+#                      switching. Also carries the ContentObserver that stops
+#                      Settings > Display > Refresh rate from silently killing
+#                      the stylus by choosing 144 Hz.
+#
+# It adds NO sepolicy of its own: it runs as system_app via
+# sharedUserId=android.uid.system, and the one vendor node it needs written is
+# written by init.malbec.rc off a persist.sys.* property instead, which
+# system_app can already set. See app/MalbecParts/README.md.
+PRODUCT_PACKAGES += \
+    MalbecParts
 
 # Miracast: the compat shim that gives libwfdnative.so the pre-Android-16
 # MotionEvent::initialize symbol. See the blob_fixup in extract-files.py for why

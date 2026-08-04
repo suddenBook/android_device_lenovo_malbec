@@ -1,0 +1,18 @@
+<!--
+     SPDX-FileCopyrightText: The Android Open Source Project
+     SPDX-License-Identifier: Apache-2.0
+
+     Material Symbols "stylus", the same glyph AOSP Settings uses for its own
+     stylus preferences, so the tile does not stand out on the Connected devices
+     page.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960"
+    android:tint="?android:attr/colorControlNormal">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M120,840L120,680L240,680L240,278Q240,265 245,252.5Q250,240 260,230L390,100Q399,91 411,86.5Q423,82 435,82Q447,82 459,86.5Q471,91 480,100L610,230Q620,240 625,252.5Q630,265 630,278L630,680L840,680L840,840L120,840ZM320,440L550,440L550,311L435,196L320,311L320,440ZM320,680L550,680L550,520L320,520L320,680Z" />
+</vector>

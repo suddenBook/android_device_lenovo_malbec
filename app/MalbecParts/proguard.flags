@@ -1,0 +1,3 @@
+# Preference classes are instantiated by name from res/xml/*.xml, so R8 cannot
+# see the reference and would strip them.
+-keep class org.pixelos.malbec.parts.** { *; }

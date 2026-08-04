@@ -23,67 +23,144 @@
 # labels — PEN_ONE_CLICK, PEN_TWO_CLICK, PEN_THREE_CLICK, PEN_LONG_CLICK,
 # PEN_PRESS_CLICK, PEN_BT_DISCONNECT — none of which exist in AOSP, and
 # KeyLayoutMap::load() returns BAD_VALUE and discards the ENTIRE file on the
-# first unknown label. One bad label would kill every mapping below it.
+# first unknown label. One bad label would kill every mapping below it. (Stock
+# therefore reaches "this node has no layout" by accident: its own file is
+# rejected wholesale on its first line.)
 #
-# ★★ ALL SIX ARE DELIBERATELY LEFT UNMAPPED. Do not "improve" this by mapping
-# them to STYLUS_BUTTON_PRIMARY / _SECONDARY / _TERTIARY / _TAIL. That is what
-# this file used to do, and it broke tapping with the pen. The chain, every link
-# confirmed on the running device:
+# ===========================================================================
+# ★★ WHY F13..F18 AND NOT ANYTHING THAT LOOKS MORE SEMANTIC
+# ===========================================================================
 #
-#   1. EventHub.cpp:2601-2607 — a device that is not TOUCH/TOUCH_MT, is not
-#      ALPHAKEY, and has ANY keycode from STYLUS_BUTTON_KEYCODES
-#      (KeyCodeClassifications.h:48-53, which is exactly those four) is
-#      classified EXTERNAL_STYLUS. The Consumer Control node matches all three
-#      tests. Measured: `Classes: KEYBOARD | EXTERNAL_STYLUS | EXTERNAL`.
-#   2. That creates an ExternalStylusInputMapper (InputDevice.cpp:622-625) and
-#      flips BOTH Novatek nodes to `ExternalStylusPresence: BUTTON_FUSION`
-#      (TouchInputMapper::resolveExternalStylusPresence, :338-354). Measured on
-#      the touchscreen and the pen.
-#   3. TouchButtonAccumulator::processMappedKey (:118-131) returns early when
-#      mapKey() fails and never clears mBtnStylus, so the button state LATCHES.
-#      Measured: `External Stylus State: Button State: 0x00000020` — a barrel
-#      button reported as held for ~50 minutes while nobody was touching the
-#      device.
-#   4. applyExternalStylusButtonState() ORs that bit into every touch frame, and
-#      the dispatch order at TouchInputMapper.cpp:1487-1491 emits
-#      ACTION_BUTTON_RELEASE immediately before ACTION_UP.
-#   5. View.java:17011-17015 sets mIgnoreNextUpEvent on ACTION_BUTTON_RELEASE,
-#      and :18323 then skips performClickInternal(). ACTION_MOVE is untouched.
+# Three keycode families were considered. Two of them are provably dead ends on
+# this ROM, and the reasons are worth keeping because they are not obvious.
 #
-#   Net effect, and it matches the owner's report word for word: dragging works,
-#   tapping intermittently does nothing.
+# 1. STYLUS_BUTTON_PRIMARY / _SECONDARY / _TERTIARY / _TAIL — FORBIDDEN.
+#    This file used to do exactly that, and it broke *tapping with the pen*.
+#    The chain, every link confirmed on the running device:
 #
-# There is no functional loss from leaving these unmapped. The pen's two real
-# barrel buttons are reported by the DIGITIZER, not over Bluetooth, as
-# BTN_STYLUS / BTN_STYLUS2, and Generic.kl:307-308 already maps those to
-# STYLUS_BUTTON_PRIMARY / _SECONDARY. The digitizer node is TOUCH-classified so
-# it is exempt from the rule in step 1.
+#    a. EventHub.cpp:2601-2607 — a device that is not TOUCH/TOUCH_MT, is not
+#       ALPHAKEY, and has ANY keycode from STYLUS_BUTTON_KEYCODES
+#       (KeyCodeClassifications.h:48-53, which is exactly those four) is
+#       classified EXTERNAL_STYLUS. The Consumer Control node matches all three
+#       tests. Measured: `Classes: KEYBOARD | EXTERNAL_STYLUS | EXTERNAL`.
+#    b. That creates an ExternalStylusInputMapper (InputDevice.cpp:622-625) and
+#       flips BOTH Novatek nodes to `ExternalStylusPresence: BUTTON_FUSION`
+#       (TouchInputMapper::resolveExternalStylusPresence, :338-354).
+#    c. TouchButtonAccumulator::processMappedKey (:118-131) returns early when
+#       mapKey() fails and never clears mBtnStylus, so the button state LATCHES.
+#       Measured: `External Stylus State: Button State: 0x00000020` — a barrel
+#       button reported as held for ~50 minutes while nobody touched the device.
+#    d. applyExternalStylusButtonState() ORs that bit into every touch frame,
+#       and TouchInputMapper.cpp:1487-1491 emits ACTION_BUTTON_RELEASE
+#       immediately before ACTION_UP.
+#    e. View.java:17011-17015 sets mIgnoreNextUpEvent on ACTION_BUTTON_RELEASE,
+#       and :18323 then skips performClickInternal().
 #
-# What the six usages actually are, and why none of them has an honest AOSP
-# keycode — an unmapped usage is simply ignored, which is the correct behaviour
-# for a gesture Android has no concept of:
-#   PEN_ONE_CLICK     — a click of the BT button, not a barrel-button press;
-#                       stock routes it to PenService's radial menu.
-#   PEN_TWO_CLICK     — double click, same.
-#   PEN_THREE_CLICK   — STYLUS_BUTTON_TAIL means the eraser end, not a 3rd click.
-#   PEN_LONG_CLICK    — press-and-hold; belongs in a gesture layer.
-#   PEN_PRESS_CLICK   — same.
-#   PEN_BT_DISCONNECT — a pairing-state signal, not an input event at all.
+#    Net effect, and it matched the owner's report word for word: dragging
+#    works, tapping intermittently does nothing.
 #
-# Stock reaches the same end state by accident rather than on purpose: its file
-# uses the six Lenovo-private labels, KeyLayoutMap::load() rejects the first one
-# and discards the whole file, so on stock this node has no layout either.
+#    ⚠️ The lesson is about the *classification side effect*, not the keycode's
+#    meaning. Adding a mapping is never "just adding a mapping".
 #
-# The file itself must stay — device.mk copies it by name — and an empty
-# keylayout is valid.
+# 2. MACRO_1..MACRO_4 — DEAD. PhoneWindowManager.java:5124-5129 clears
+#    ACTION_PASS_TO_USER for all four, inside interceptKeyBeforeQueueing (the
+#    *queueing* stage). InputDispatcher.cpp:1860-1873 then skips the whole
+#    interceptKeyBeforeDispatching stage when POLICY_FLAG_PASS_TO_USER is
+#    absent, and that stage is the only place custom input gestures are
+#    evaluated (KeyGestureController.java:1057-1070). So a MACRO key can never
+#    reach a user-configurable action. An earlier plan in this project was built
+#    on the opposite belief; it would have shipped dead keys.
 #
-# The stock `.idc` for this device is deliberately NOT carried over. It sets
-# `touch.orientationAware` and `touch.deviceType = touchScreen`, and both keys
-# are read only by TouchInputMapper (TouchInputMapper.cpp:362 and its
-# configureParameters). Neither 617f node has any absolute axis, so
-# TouchInputMapper is never instantiated for them — the Mouse node is a relative
-# pointer and goes to CursorInputMapper, which reads `cursor.orientationAware`
-# instead. The stock file is inert on this hardware; carrying it would only add
-# a config whose keys nothing reads.
+# 3. F13..F24 — CORRECT. PhoneWindowManager.java:5130-5148 strips them too, but
+#    only `if (!enableNew25q2Keycodes())`, and
+#    com.android.hardware.input.enable_new_25q2_keycodes is ENABLED in both
+#    release configs this tree can build (build/release/aconfig/{bp2a,
+#    trunk_staging}/com.android.hardware.input/…textproto). Verified on the
+#    running device rather than inferred:
+#        adb shell device_config list input
+#          com.android.hardware.input.enable_new_25q2_keycodes=true
+#          com.android.hardware.input.enable_customizable_input_gestures=true
+#    They pass every other gate too: not isSystemKey(), not isModifierKey(),
+#    not in InputGestureManager's blocklist (:79-93), not a system shortcut
+#    (:104-378 uses only TAB/SPACE/DEL/ENTER/ESCAPE/DPAD_*/H/I/L/N/S/SLASH),
+#    not an app-launch bookmark (bookmarks.xml uses B/P/E/C/M/U/F), and they
+#    change no device class (EventHub.cpp:2576-2607: ALPHAKEY needs Q, DPAD
+#    needs the DPAD set, GAMEPAD needs the gamepad set, EXTERNAL_STYLUS needs
+#    the four STYLUS_BUTTON codes — F-keys are in none of them).
+#
+# The action each F-key performs is NOT decided here. It is bound at runtime by
+# MalbecParts (device/lenovo/malbec/app/MalbecParts) through
+# InputManager#addCustomInputGesture, which is per-user, persisted by the
+# framework in /data/system/users/<id>/input_gestures.xml, and changeable from
+# Settings without a reflash. Keeping the keylayout inert and the meaning
+# configurable is the whole point of the split.
+#
+# ⚠️ Custom input gestures are keyed on (keycode, modifierState) ONLY — they are
+# NOT per-device (InputGestureManager.getCustomGestureForKeyEvent, :499-513).
+# So the pen and the folio keyboard must not share an F-key. The allocation is:
+#     F13..F18  pen  (this file)
+#     F19, F20  folio keyboard APP1 / APP2 (Vendor_17ef_Product_62b2.kl)
+#     F21..F24  unallocated — leave free
+# Vendor_17ef_Product_62b2.kl's inherited `key 183..194 → F13..F24` block was
+# deleted for exactly this reason; see the note there.
+#
+# ===========================================================================
+# The six usages
+# ===========================================================================
+#
+# Names are stock's labels for the same usages
+# (work/unpacked/parts/system/usr/keylayout/Vendor_17ef_Product_617f.kl).
+# ⚠️ Stock's names are a strong hint about which physical action produces which
+# usage, not proof. The gesture → usage mapping has not been measured on this
+# unit; the probe is in work/analysis/S16-pen-keyboard-probes.md, and
+# MalbecParts labels each button by its stock name, so correcting a swap is a
+# one-line change in this file plus a string.
+#
+#   0x0c0600  PEN_ONE_CLICK      single click of the BT side button
+#   0x0c0601  PEN_TWO_CLICK      double click
+#   0x0c0602  PEN_THREE_CLICK    triple click (NOT the eraser end — that would
+#                                be STYLUS_BUTTON_TAIL, which we must not use)
+#   0x0c0603  PEN_LONG_CLICK     press and hold
+#   0x0c0604  PEN_PRESS_CLICK    press
+#   0x0c0605  PEN_BT_DISCONNECT  link-state signal, not an input event
+#
+# ⚠️ All six share scancode KEY_UNKNOWN(240) and differ only in MSC_SCAN. That
+# is fine for KeyboardInputMapper — on key-up it reuses the keycode remembered
+# under the scancode (KeyboardInputMapper.cpp:279, :311-325), so a missing
+# MSC_SCAN on the up edge still releases correctly — but it does mean two
+# gestures cannot OVERLAP: a second DOWN before the first UP is treated as a
+# key-repeat of the first keycode (:287-291). Nothing can be done about that
+# here; it is a property of the pen's HID report descriptor.
+#
+# 0x0c0605 is mapped even though it is not a user-facing gesture. Stock consumes
+# it in BluetoothPenInputPolicy:853-856 purely to suppress a false anti-loss
+# alert when the pen is deliberately powered off, and MalbecParts' anti-loss
+# watcher needs the same signal. F18 is therefore RESERVED: MalbecParts binds it
+# itself and never offers it in the picker. If the pen turns out never to emit
+# it, F18 simply never fires and nothing regresses.
 
-# Intentionally no mappings. See above.
+key usage 0x0c0600    F13
+key usage 0x0c0601    F14
+key usage 0x0c0602    F15
+key usage 0x0c0603    F16
+key usage 0x0c0604    F17
+key usage 0x0c0605    F18
+
+# ===========================================================================
+# Deliberately absent
+# ===========================================================================
+#
+# No `.idc`. The stock one sets `touch.orientationAware` and
+# `touch.deviceType = touchScreen`, and both keys are read only by
+# TouchInputMapper (TouchInputMapper.cpp:362 and its configureParameters).
+# Neither 617f node has any absolute axis, so TouchInputMapper is never
+# instantiated for them — the Mouse node is a relative pointer and goes to
+# CursorInputMapper, which reads `cursor.orientationAware` instead. The stock
+# file is inert on this hardware; carrying it would only add a config whose
+# keys nothing reads.
+#
+# The pen's two REAL barrel buttons are not here either, and must not be: they
+# are reported by the DIGITIZER, not over Bluetooth, as BTN_STYLUS /
+# BTN_STYLUS2, and Generic.kl:307-308 already maps those to
+# STYLUS_BUTTON_PRIMARY / _SECONDARY. The digitizer node is TOUCH-classified so
+# it is exempt from the EXTERNAL_STYLUS rule in note 1 above.

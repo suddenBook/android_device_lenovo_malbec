@@ -1,0 +1,40 @@
+//
+// SPDX-FileCopyrightText: The LineageOS Project
+// SPDX-License-Identifier: Apache-2.0
+//
+// MalbecParts — the device-specific settings surface for the Lenovo TB390FU.
+//
+// Everything this app does is either (a) a call into an AOSP API that already
+// exists but has no UI on a tablet, or (b) a device preference that Settings
+// has no place for. It contains NO ported Lenovo code and no framework patch;
+// that is the whole design constraint. See README.md next to this file.
+//
+// Modelled on packages/apps/DolbyAtmos, which is the precedent this project
+// already accepted for "device feature that needs a Settings page":
+// same certificate, same system_ext_specific, same theme, same injection
+// mechanism (com.android.settings.action.IA_SETTINGS + a category meta-data),
+// so it lands inside Settings rather than beside it.
+
+android_app {
+    name: "MalbecParts",
+
+    srcs: ["src/**/*.kt"],
+    resource_dirs: ["res"],
+
+    // platform_apis rather than an SDK level: every interesting call here is
+    // @hide — InputManager#addCustomInputGesture, InputGestureData,
+    // KeyGestureEvent, BluetoothDevice#setMetadata.
+    platform_apis: true,
+    certificate: "platform",
+    privileged: true,
+    system_ext_specific: true,
+
+    static_libs: [
+        "SettingsLib",
+        "androidx.preference_preference",
+    ],
+
+    optimize: {
+        proguard_flags_files: ["proguard.flags"],
+    },
+}

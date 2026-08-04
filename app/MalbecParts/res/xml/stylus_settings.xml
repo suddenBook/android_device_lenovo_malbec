@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:title="@string/stylus_title">
+
+    <PreferenceCategory
+        android:key="cat_pen_buttons"
+        android:title="@string/pen_buttons_category">
+
+        <Preference
+            android:key="pen_one_click"
+            android:title="@string/pen_one_click"
+            android:persistent="false" />
+
+        <Preference
+            android:key="pen_two_click"
+            android:title="@string/pen_two_click"
+            android:persistent="false" />
+
+        <Preference
+            android:key="pen_three_click"
+            android:title="@string/pen_three_click"
+            android:persistent="false" />
+
+        <Preference
+            android:key="pen_long_click"
+            android:title="@string/pen_long_click"
+            android:persistent="false" />
+
+        <Preference
+            android:key="pen_press_click"
+            android:title="@string/pen_press_click"
+            android:persistent="false" />
+
+        <com.android.settingslib.widget.FooterPreference
+            android:key="pen_buttons_footer"
+            android:title="@string/pen_buttons_footer"
+            android:selectable="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:key="cat_pen_alert"
+        android:title="@string/pen_alert_category">
+
+        <SwitchPreferenceCompat
+            android:key="pen_lost_alert"
+            android:title="@string/pen_lost_alert_title"
+            android:summary="@string/pen_lost_alert_summary"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:key="pen_lost_wake"
+            android:title="@string/pen_lost_wake_title"
+            android:summary="@string/pen_lost_wake_summary"
+            android:dependency="pen_lost_alert"
+            android:defaultValue="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:key="cat_touch_mode"
+        android:title="@string/touch_mode_category">
+
+        <ListPreference
+            android:key="touch_mode"
+            android:title="@string/touch_mode_title"
+            android:entries="@array/touch_mode_entries"
+            android:entryValues="@array/touch_mode_values"
+            android:defaultValue="stylus"
+            android:summary="%s"
+            android:persistent="false" />
+
+        <com.android.settingslib.widget.FooterPreference
+            android:key="touch_mode_footer"
+            android:title="@string/touch_mode_footer"
+            android:selectable="false" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
