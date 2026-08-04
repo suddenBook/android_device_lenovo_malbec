@@ -103,6 +103,87 @@ vendor/app/TxPwrAdmin/TxPwrAdmin.apk
 vendor/app/com.qualcomm.qti.gpudrivers.sun.api35/com.qualcomm.qti.gpudrivers.sun.api35.apk;PRESIGNED
 vendor/priv-app/pasrservice/pasrservice.apk
 
+# ⚠️ The whole QVR / SXR / xrcomm (Qualcomm XR) stack is DELIBERATELY ABSENT.
+# 58 entries were removed in session 12. Do not re-extract them.
+#
+# Two independent reasons:
+#
+#   1. It is an active memory-corruption hazard on Android 16.
+#      frameworks/native df868baf2a "Introduce a dependency monitor for fences"
+#      added mDependencyMonitor to android::GraphicBuffer, taking it from 256 to
+#      3376 bytes (A16 DWARF DW_AT_byte_size = 0x0d30, verified against
+#      out/.../symbols/system/lib64/libui.so). Exactly three shipped blobs import
+#      GraphicBuffer's constructors -- criterion `llvm-nm -D -u | grep
+#      _ZN7android13GraphicBufferC[123]E`, swept over every blob in the image:
+#
+#        vendor/lib64/libqvrservice.so           (4 operator new(256) sites)
+#        vendor/lib64/libsxrservice.so           (14)
+#        vendor/lib64/libxrcommnetworkservice.so (1)
+#
+#      Each one allocates 256 bytes and then runs the A16 constructor, which
+#      writes out to 0xd30 -- a 3120-byte heap overflow per buffer. These are not
+#      dormant: the s12 boot log has "sxrservice: QVRSplitService instantiated"
+#      and "sxrservice: started". libui cannot be pinned to A15 (the whole
+#      graphics stack sits on it) and the XR blobs have no source, so removal is
+#      the only correct fix. Same class as the tinyxml2 break in extract-files.py,
+#      and equally invisible to every symbol-based gate -- GraphicBuffer's
+#      exported symbol set did not change at all.
+#
+#   2. This is a tablet. There is no headset, no 6DoF tracking rig and no XR
+#      display. The only qvr config sets shipped are for other reference boards
+#      (mtpkailua = soc 519, mtplanai = soc 557); this unit is soc 694, and the
+#      log shows exactly that: "QVRServiceConfiguration: opendir failed for
+#      /vendor/etc/qvr/cfg/694/0/65536/".
+#
+# Verified safe before removing: no non-XR file anywhere in the built image has
+# any of the 30 XR .so files in its DT_NEEDED, and no non-XR config names one.
+#
+# Removing the stack also deletes vendor/bin/init.qvrd.usb_mtu_set.sh, which was
+# the single shipped vendor service with no SELinux exec label.
+
+# ⚠️ Four more entries are deliberately absent, all "declared but not
+# implemented" dead weight (removed in session 12):
+#
+#   vendor/etc/vintf/manifest/vendor.qti.hardware.power.powermodule.xml
+#   vendor/lib64/vendor.qti.hardware.power.powermodule-V1-ndk.so
+#   vendor/lib64/libpowercallback.so
+#     Session 11 dropped vendor/bin/poweropt-service (its libpowercore.so
+#     embeds a tinyxml2::XMLDocument by value and SIGSEGV'd), but left the VINTF
+#     fragment behind. The device was therefore ADVERTISING
+#     vendor.qti.hardware.power.powermodule.IPowerModule/default with nothing
+#     implementing it -- confirmed present in the built image with
+#     `debugfs -R "ls -l /etc/vintf/manifest" vendor.img` (313 bytes). Nothing
+#     blocks on it today (libpowercallback.so has zero consumers anywhere in the
+#     image, checked by DT_NEEDED sweep) but a false declaration is a trap.
+#
+#   vendor/bin/hw/android.hardware.keymaster@4.0-service-qti
+#     No .rc anywhere and no VINTF declaration -- on the factory image either.
+#     It has never been started on this device. Pure dead weight.
+
+# ⚠️ vendor/etc/**/sku_kera/** and vendor/etc/**/sku_sun/** (and their _qssi
+# variants) are DELIBERATELY ABSENT. Removed in session 12.
+#
+# The factory vendor image is shared across three SoCs and ships all three SKU
+# trees. This unit is `tuna` and can never read the other two. Proven twice, from
+# both ends:
+#
+#   · the consumers build the path from a property, not from a build-time choice:
+#       strings libar-pal.so            -> "ro.boot.product.vendor.sku", "/vendor/etc/audio/sku_"
+#       strings libaudiocorehal.qti.so  -> same
+#     and the device reports ro.boot.product.vendor.sku=tuna.
+#   · the running device only ever opened the tuna copies -- from the s12 boot
+#     log, /vendor/etc/audio/sku_tuna/{mixer_paths_tuna_qrd,audio_effects_config,
+#     resourcemanager_tuna_qrd,mcs_defs_tuna_qrd}.xml and
+#     /vendor/etc/permissions/sku_tuna/*.xml, with zero hits for kera or sun.
+#
+# Same reasoning already applies to the VINTF manifests: libvintf picks
+# manifest_<ro.boot.product.vendor.sku>.xml, which is why only manifest_tuna.xml
+# is shipped (see the note at the top of this file).
+#
+# ⚠️ Do NOT generalise this to "delete anything with another SoC's name in it"
+# without first finding what selects the file. sku_tuna is chosen by a property
+# here; elsewhere the selector may be a build variable or a DT lookup.
+
 # Firmware
 vendor/firmware/CAMERA_ICP.b00
 vendor/firmware/CAMERA_ICP.b01
@@ -319,12 +400,10 @@ vendor/etc/init/qms.rc
 vendor/etc/init/qseecomd.rc
 vendor/etc/init/qspa_vendor.rc
 vendor/etc/init/qttestservice.rc
-vendor/etc/init/qvrd_vndr.rc
 vendor/etc/init/qwesd.rc
 vendor/etc/init/shsusrd.rc
 vendor/etc/init/snapdragon_services.rc
 vendor/etc/init/ssgtzd.rc
-vendor/etc/init/sxrd.rc
 vendor/etc/init/tlpd.rc
 vendor/etc/init/tn_vendor_performance.rc
 vendor/etc/init/tndiag.rc
@@ -380,8 +459,6 @@ vendor/etc/init/vmmgr.rc
 vendor/etc/init/vppservice.rc
 vendor/etc/init/wfdvndservice.rc
 vendor/etc/init/wifisar.rc
-vendor/etc/init/xrcommservice.rc
-vendor/etc/init/xrcommservicehal.rc
 
 # VINTF
 vendor/etc/vintf/manifest/android.hardware.drm-service.xml
@@ -438,7 +515,6 @@ vendor/etc/vintf/manifest/vendor.qti.hardware.hexlp-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.lights.service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.minkipcbinder-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.perf2.xml
-vendor/etc/vintf/manifest/vendor.qti.hardware.power.powermodule.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.qconfig-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.qseecom@1.0-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.qxr-service.xml
@@ -493,19 +569,6 @@ vendor/etc/permissions/handheld_core_hardware.xml
 vendor/etc/permissions/noRil/apq_excluded_telephony_features.xml
 vendor/etc/permissions/privapp-permissions-qti-vendor.xml
 vendor/etc/permissions/qti_fingerprint_interface.xml
-vendor/etc/permissions/sku_kera/android.hardware.sensor.accelerometer.xml
-vendor/etc/permissions/sku_kera/android.hardware.sensor.dynamic.head_tracker.xml
-vendor/etc/permissions/sku_kera/android.hardware.sensor.gyroscope.xml
-vendor/etc/permissions/sku_kera/android.hardware.sensor.light.xml
-vendor/etc/permissions/sku_kera/android.hardware.sensor.stepcounter.xml
-vendor/etc/permissions/sku_kera/android.hardware.sensor.stepdetector.xml
-vendor/etc/permissions/sku_sun/android.hardware.sensor.accelerometer.xml
-vendor/etc/permissions/sku_sun/android.hardware.sensor.dynamic.head_tracker.xml
-vendor/etc/permissions/sku_sun/android.hardware.sensor.gyroscope.xml
-vendor/etc/permissions/sku_sun/android.hardware.sensor.light.xml
-vendor/etc/permissions/sku_sun/android.hardware.sensor.stepcounter.xml
-vendor/etc/permissions/sku_sun/android.hardware.sensor.stepdetector.xml
-vendor/etc/permissions/sku_sun/android.hardware.strongbox_keystore.xml
 vendor/etc/permissions/sku_tuna/android.hardware.sensor.accelerometer.xml
 vendor/etc/permissions/sku_tuna/android.hardware.sensor.dynamic.head_tracker.xml
 vendor/etc/permissions/sku_tuna/android.hardware.sensor.gyroscope.xml
@@ -540,15 +603,12 @@ vendor/etc/seccomp_policy/qsap_sensors.policy
 vendor/etc/seccomp_policy/qsap_voiceui.policy
 vendor/etc/seccomp_policy/qspm.policy
 vendor/etc/seccomp_policy/qti-systemd.policy
-vendor/etc/seccomp_policy/qvr@2.0.policy
 vendor/etc/seccomp_policy/qwesd@2.0.policy
-vendor/etc/seccomp_policy/sxr@2.0.policy
 vendor/etc/seccomp_policy/syshealthmon.policy
 vendor/etc/seccomp_policy/vendor.qti.hardware.dsp.policy
 vendor/etc/seccomp_policy/wfdhdcphalservice.policy
 vendor/etc/seccomp_policy/wfdvndservice.policy
 vendor/etc/seccomp_policy/wifidisplayhalservice.policy
-vendor/etc/seccomp_policy/xrcommhald@2.0.policy
 
 # Charger
 vendor/etc/res/images/charger/Charging_0.png
@@ -919,36 +979,6 @@ vendor/etc/acdbdata/tuna_qrd_2418yc/QRD_tuna4_workspaceFileXml.qwsp
 vendor/etc/aidl/le_audio/aidl_audio_set_configurations.json
 vendor/etc/aidl/le_audio/aidl_audio_set_scenarios.json
 vendor/etc/audio/audio_module_config_primary.xml
-vendor/etc/audio/sku_kera/audio_effects.conf
-vendor/etc/audio/sku_kera/audio_effects.xml
-vendor/etc/audio/sku_kera/audio_effects_config.xml
-vendor/etc/audio/sku_kera/audio_effects_config_stub.xml
-vendor/etc/audio/sku_kera/audio_policy_configuration.xml
-vendor/etc/audio/sku_kera/mixer_paths_kera_cdp.xml
-vendor/etc/audio/sku_kera/mixer_paths_kera_mtp.xml
-vendor/etc/audio/sku_kera/mixer_paths_kera_mtp_qmp.xml
-vendor/etc/audio/sku_kera/mixer_paths_kera_qrd.xml
-vendor/etc/audio/sku_kera/quasar_config.xml
-vendor/etc/audio/sku_kera/resourcemanager_kera_cdp.xml
-vendor/etc/audio/sku_kera/resourcemanager_kera_mtp.xml
-vendor/etc/audio/sku_kera/resourcemanager_kera_qrd.xml
-vendor/etc/audio/sku_kera_qssi/audio_policy_configuration.xml
-vendor/etc/audio/sku_sun/audio_effects.conf
-vendor/etc/audio/sku_sun/audio_effects.xml
-vendor/etc/audio/sku_sun/audio_effects_config.xml
-vendor/etc/audio/sku_sun/audio_effects_config_stub.xml
-vendor/etc/audio/sku_sun/audio_policy_configuration.xml
-vendor/etc/audio/sku_sun/mixer_paths_sun_cdp.xml
-vendor/etc/audio/sku_sun/mixer_paths_sun_mtp.xml
-vendor/etc/audio/sku_sun/mixer_paths_sun_mtp_wsa883x_qmp.xml
-vendor/etc/audio/sku_sun/mixer_paths_sun_qrd.xml
-vendor/etc/audio/sku_sun/mixer_paths_sun_qrd_sku2.xml
-vendor/etc/audio/sku_sun/quasar_config.xml
-vendor/etc/audio/sku_sun/resourcemanager_sun_cdp.xml
-vendor/etc/audio/sku_sun/resourcemanager_sun_mtp.xml
-vendor/etc/audio/sku_sun/resourcemanager_sun_qrd.xml
-vendor/etc/audio/sku_sun/resourcemanager_sun_qrd_sku2.xml
-vendor/etc/audio/sku_sun_qssi/audio_policy_configuration.xml
 vendor/etc/audio/sku_tuna/audio_effects.conf
 vendor/etc/audio/sku_tuna/audio_effects.xml
 vendor/etc/audio/sku_tuna/audio_effects_config.xml
@@ -985,15 +1015,11 @@ vendor/lib/rfsa/adsp/libDspIOProxy_skel.so
 vendor/lib/rfsa/adsp/libQnnHtpV73Skel.so
 vendor/lib/rfsa/adsp/libadsp_jpege_skel.so
 vendor/lib/rfsa/adsp/libdsp_streamer_binning.so
-vendor/lib/rfsa/adsp/libdsp_streamer_qvrcam_receiver.so
 vendor/lib/rfsa/adsp/libeye_tracking_dsp_sample_skel.so
 vendor/lib/rfsa/adsp/libhalide_hexagon_remote_skel.so
 vendor/lib/rfsa/adsp/libhme_dsp_skel.so
 vendor/lib/rfsa/adsp/libmctfengine_skel.so
 vendor/lib/rfsa/adsp/libmlawbpostproc_dsp_skel.so
-vendor/lib/rfsa/adsp/libqvr_3dof_tracker_skel.so
-vendor/lib/rfsa/adsp/libqvr_cam_dsp_driver_skel.so
-vendor/lib/rfsa/adsp/libqvr_dsp_driver_skel.so
 vendor/lib/rfsa/adsp/libtracker_6dof_skel_8450.so
 vendor/lib64/btaudio_offload_if.so;DISABLE_DEPS
 vendor/lib64/hw/android.hardware.bluetooth.audio-impl-qti.so;DISABLE_DEPS
@@ -1101,7 +1127,6 @@ vendor/lib64/vendor.qti.hardware.bluetooth.xpanprovider-V1-ndk.so
 
 # Camera
 vendor/bin/hw/vendor.qti.camera.provider-service_64
-vendor/bin/qvrcameratest
 vendor/etc/camera/camxoverridesettings.txt
 vendor/etc/camera/thirdappsize.json
 vendor/etc/display/camera_alignments.json
@@ -1302,18 +1327,75 @@ vendor/lib64/libmmcamera_pdpc.so
 vendor/lib64/libois_channel_stub.so
 vendor/lib64/liboischannel.so
 vendor/lib64/libqshcamera.so
-vendor/lib64/libqvrcamera_client.qti.so
-vendor/lib64/libqvrcameraplayback.so
 vendor/lib64/libsynx.so
 vendor/lib64/vendor.qti.hardware.camera.aon-service-impl.so
 vendor/lib64/vendor.qti.hardware.camera.offlinecamera-service-impl.so
 
 # Display
+# ⚠️ The whole SDM cluster below is a BLOB, and reverting that to a source build
+# is what cost session 11 an entire round. Read this before "cleaning it up".
+#
+# The factory SDM is a Lenovo/Motorola private fork. It is not any public CAF
+# tag, and the fork is not published:
+#
+#   nm -D --defined-only work/unpacked/parts/vendor/lib64/libsdmcore.so | c++filt
+#     sdm::DisplayBase::SetMotoColor(unsigned, int, snapdragoncolor::MotoColorParams*)
+#     sdm::DisplayBase::SetRGBASplit(int)
+#     sdm::DPUColorManager::ColorMgrSetMotoColor(...)      libsdmclient: SDMDisplay::*
+#     sdm::HWDeviceDRM::SetMotoPAHsic(...)                 libsdmdal:    HWDeviceDRM::*
+#   grep -rn "SetMotoColor\|RGBASplit" hardware/qcom-caf/sm8750/display/   ->  0 hits
+#
+# The fork changed class layout. Measured with llvm-nm -S -D (symbol sizes) and
+# the non-virtual thunk offsets, factory vs a source build of the same library:
+#
+#   sdm::DisplayBase        161 vtable slots   vs 159   (+2: the two Moto methods)
+#   sdm::DisplayBuiltIn     208                vs 206
+#   sdm::DisplayPluggable   196                vs 194
+#   DisplayBase data        +48 bytes  (thunks 12864/12872/12880 vs 12816/12824/12832)
+#   control: libsdmclient thunk offsets are IDENTICAL in both, so the measurement
+#            detects real differences rather than build noise.
+#
+# libsdmextension.so (2.3 MB, the SDM resource manager and strategy) is closed
+# source and is built from that fork. libsdmcore dlopen()s it -- core_impl.cpp:80,
+# name from extension_interface.h:49 -- so it appears in NO DT_NEEDED and no
+# link-graph tool can see the coupling. DispLayerStack* is handed straight across
+# that boundary (resource_interface.h:75-118, strategy_interface.h:58,72,
+# partial_update_interface.h:49), all pure virtual, implemented in the blob.
+#
+# Building the open half from source against that blob produced 50 tombstones,
+# all in sdm::DispLayerStack::Clear(), in three flavours -- 26 "Pointer tag was
+# truncated" (free() on a garbage pointer), 23 "ubsan: mul-overflow", 1 "Scudo
+# misaligned pointer". Three different aborts in one function is memory
+# corruption, not arithmetic. The corrupted field is HWLayersInfo::layer_exts
+# (hw_info_types.h:1108) -- and `grep -rn layer_exts` over the entire sm8750
+# display tree returns only the declaration. The open source never writes it;
+# only the blob does (sdm::ResourceAlloc::HandleExclRect(DispLayerStack*)).
+#
+# Note what is NOT the reason: sizeof(HWLayersInfo) is 107408 and sizeof(Layer)
+# is 6336 on BOTH sides. The structs crossing the boundary did not change size.
+# This is a behavioural fork mismatch, not a struct-layout ABI break, and the
+# exact instruction where the blob corrupts the vector was never pinned down.
+#
+# Swapping in only libsdmcore.so does not work either: libsdmclient and libsdmdal
+# are forked too, and a source-built libsdmclient makes virtual calls on
+# DisplayInterface* against a vtable that has two extra slots. Symbol closure
+# resolving is NOT the same as vtable slots lining up.
+#
+# The factory ROM is the existence proof that this blob set is correct here: its
+# fingerprint is TB390FU:16/... -- Android 16 framework over a 202404-frozen
+# vendor, exactly the Treble configuration this tree ships. onyx does the same
+# (its proprietary-files.txt:2261,2274-2296,2320 take the entire cluster).
+#
+# device.mk must NOT put any of these back into PRODUCT_PACKAGES.
 system_ext/lib64/libwfddisplayconfig.so
 system_ext/lib64/vendor.qti.hardware.wifidisplaysession@1.0.so
 system_ext/lib64/vendor.qti.hardware.wifidisplaysession_aidl-V1-ndk.so
 vendor/bin/hw/vendor.lenovo.hardware.display-service
+vendor/bin/hw/vendor.qti.hardware.display.allocator-service
 vendor/bin/hw/vendor.qti.hardware.display.color-service
+vendor/bin/hw/vendor.qti.hardware.display.composer-service;DISABLE_DEPS
+vendor/bin/hw/vendor.qti.hardware.display.demura-service
+vendor/bin/init.qti.display_boot.sh
 vendor/bin/qdcmss
 vendor/bin/wifidisplayhalservice
 vendor/etc/display/DPU1010.xml
@@ -1372,18 +1454,45 @@ vendor/etc/display/vtdr6130_amoled_cmd_mode_dsi_visionox_panel_with_DSC.json
 vendor/etc/displayconfig/display_id_4630947039571902850.xml
 vendor/etc/displayconfig/display_id_4630947039571902851.xml
 vendor/etc/displayconfig/display_id_4630947075271898515.xml
+vendor/etc/init/init.qti.display_boot.rc
+vendor/etc/init/vendor.qti.hardware.display.allocator-service.rc
+vendor/etc/init/vendor.qti.hardware.display.composer-service.rc
+vendor/etc/init/vendor.qti.hardware.display.demura-service.rc
 vendor/etc/snapdragon_color_libs_config.xml
+vendor/etc/vintf/manifest/mapper.qti.xml
+vendor/etc/vintf/manifest/vendor.qti.hardware.display.allocator-service.xml
+vendor/etc/vintf/manifest/vendor.qti.hardware.display.composer-service3_v3.xml
+vendor/etc/vintf/manifest/vendor.qti.hardware.display.demura-service.xml
+vendor/lib64/hw/android.hardware.graphics.mapper@4.0-impl-qti-display.so
+vendor/lib64/hw/mapper.qti.so
 vendor/lib64/libdemura_oem_plugin.so
+vendor/lib64/libdisplayconfig.qti.so
+vendor/lib64/libdisplaydebug.so
 vendor/lib64/libdisplayqos.so
 vendor/lib64/libdisplayskuutils.so
+vendor/lib64/libdrmutils.so
+vendor/lib64/libfilefinder.so
+vendor/lib64/libgralloc.qti.so
+vendor/lib64/libgralloccore.so
+vendor/lib64/libgrallocutils.so
+vendor/lib64/libhistogram.so
+vendor/lib64/libmapperutils.so
+vendor/lib64/libqdMetaData.so
 vendor/lib64/libqdcm-algo.so
 vendor/lib64/libqdcm-json-mode-parser.so
 vendor/lib64/libqdcm-mode-parser.so
+vendor/lib64/libqdutils.so
+vendor/lib64/libqservice.so
+vendor/lib64/libsdedrm.so
 vendor/lib64/libsdm-brightnessaware-parser.so
 vendor/lib64/libsdm-color.so
 vendor/lib64/libsdm-colormgr-algo.so
 vendor/lib64/libsdm-disp-vndapis.so
+vendor/lib64/libsdmclient.so
+vendor/lib64/libsdmcore.so
+vendor/lib64/libsdmdal.so
 vendor/lib64/libsdmextension.so
+vendor/lib64/libsdmutils.so
 vendor/lib64/libsnapdragoncolor-qdcm.so
 vendor/lib64/libwfddisplayconfig_vendor.so
 vendor/lib64/vendor.display.color@1.0.so
@@ -1396,6 +1505,7 @@ vendor/lib64/vendor.display.color@1.6.so
 vendor/lib64/vendor.display.color@1.7.so
 vendor/lib64/vendor.display.postproc@1.0.so
 vendor/lib64/vendor.lenovo.hardware.display-V1-ndk.so
+vendor/lib64/vendor.qti.hardware.display.snapalloc-impl.so
 vendor/lib64/vendor.qti.hardware.wifidisplaysession_aidl-V1-ndk.so;MODULE_SUFFIX=_vendor
 vendor/lib64/vendor.qti.hardware.wifidisplaysessionl@1.0-halimpl.so
 vendor/persist/display/dolby_vision.cfg
@@ -1510,7 +1620,6 @@ vendor/lib64/liboffscreenpoweroptfeature.so
 vendor/lib64/libperfconfig.so
 vendor/lib64/libperfdb.so
 vendor/lib64/libperfioctl.so
-vendor/lib64/libpowercallback.so
 vendor/lib64/libpowercore.so
 vendor/lib64/libq-perflog.so
 vendor/lib64/libqti-perfd-client.so
@@ -1521,7 +1630,6 @@ vendor/lib64/vendor.lenovo.hardware.hyperschedule-V2-ndk.so
 vendor/lib64/vendor.lenovo.hardware.performance-V1-ndk.so
 vendor/lib64/vendor.qti.esepowermanager@1.0.so
 vendor/lib64/vendor.qti.hardware.perf2-V1-ndk.so
-vendor/lib64/vendor.qti.hardware.power.powermodule-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.wigig.netperftuner@1.0.so
 vendor/lib64/vendor.qti.power.pasrmanager@1.0.so
 
@@ -1883,7 +1991,6 @@ vendor/lib64/vendor.qti.ims.uceaidlservice-V1-ndk.so
 vendor/bin/TrustedUISampleTAClient
 vendor/bin/TrustedUISampleTestAIDL
 vendor/bin/hw/android.hardware.gatekeeper-service-qti
-vendor/bin/hw/android.hardware.keymaster@4.0-service-qti
 vendor/bin/hw/android.hardware.security.keymint-service-qti
 vendor/bin/hw/vendor.microtrust.hardware.afw-service
 vendor/bin/hw/vendor.qti.hardware.qseecom@1.0-service
@@ -1916,9 +2023,6 @@ vendor/lib64/vendor.qti.hardware.trustedui@1.0.so
 # USB
 vendor/bin/hw/vendor.lenovo.hardware.usb-service
 vendor/bin/init.qcom.usb.sh
-vendor/bin/init.qvrd.usb_mtu_set.sh
-vendor/bin/init.xrcommd.usb_mtu_set.sh
-vendor/etc/qvr/qvr_usb_device_list.txt
 vendor/etc/usb_compositions.conf
 vendor/lib64/vendor.lenovo.hardware.usb-V2-ndk.so
 
@@ -2060,8 +2164,6 @@ vendor/bin/hw/android.hardware.biometrics.face@4.0-service.face
 vendor/bin/hw/android.hardware.identity-service-qti
 vendor/bin/hw/dvs-aidl-service
 vendor/bin/hw/qconfigservice
-vendor/bin/hw/qvrservice
-vendor/bin/hw/sxrservice
 vendor/bin/hw/vendor.dolby.dms.service
 vendor/bin/hw/vendor.dolby.media.c2-default-service-dax
 vendor/bin/hw/vendor.lenovo.hardware.factory-service
@@ -2081,8 +2183,6 @@ vendor/bin/hw/vendor.qti.hardware.soter-service
 vendor/bin/hw/vendor.qti.media.c2@1.0-service
 vendor/bin/hw/vendor.qti.memory.pasrmanager-service
 vendor/bin/hw/vendor.qti.psiclient@1.0-service
-vendor/bin/hw/xrcommservice
-vendor/bin/hw/xrcommservicehal
 vendor/bin/init.class_main.sh
 vendor/bin/init.crda.sh
 vendor/bin/init.kernel.init_boot-memory.sh
@@ -2174,9 +2274,6 @@ vendor/bin/qtigetprop
 vendor/bin/qtisetprop
 vendor/bin/qttestclient
 vendor/bin/qttestservice
-vendor/bin/qvrdatacapture
-vendor/bin/qvrdatalogger
-vendor/bin/qvrservicetest
 vendor/bin/qwes_cli
 vendor/bin/qwesd
 vendor/bin/rmt_storage
@@ -2196,7 +2293,6 @@ vendor/bin/ssgtzd
 vendor/bin/ssr_diag
 vendor/bin/ssr_setup
 vendor/bin/subsystem_ramdump
-vendor/bin/sxrservicetest
 vendor/bin/system_dlkm_modprobe.sh
 vendor/bin/test_diag
 vendor/bin/tftp_server
@@ -2310,15 +2406,6 @@ vendor/etc/qguard.json
 vendor/etc/qspa/nav_disabled.rc
 vendor/etc/qspa/nsp_disabled.rc
 vendor/etc/qvirtmgr-vndr.json
-vendor/etc/qvr/cfg/519/0/65536/mtpkailua.txt
-vendor/etc/qvr/cfg/519/0/65536/mtpkailua_6dof_config.xml
-vendor/etc/qvr/cfg/519/0/65536/mtpkailua_qvr_3dof_tracker_config.txt
-vendor/etc/qvr/cfg/557/0/65536/mtplanai.txt
-vendor/etc/qvr/cfg/557/0/65536/mtplanai_6dof_config.xml
-vendor/etc/qvr/cfg/557/0/65536/mtplanai_qvr_3dof_tracker_config.txt
-vendor/etc/qvr/qvr_hid_device_list.txt
-vendor/etc/qvr/qvrservice_config.txt
-vendor/etc/qvr/xrcommconfig.json
 vendor/etc/recovery-resource.dat
 vendor/etc/sap.conf
 vendor/etc/sec_config
@@ -2678,11 +2765,6 @@ vendor/lib64/libqtjsonhelper.so
 vendor/lib64/libqtnodes.so
 vendor/lib64/libqttestclient.so
 vendor/lib64/libqttestservice.so
-vendor/lib64/libqvr_cam_cdsp_driver_stub.so
-vendor/lib64/libqvr_cdsp_driver_stub.so
-vendor/lib64/libqvr_eyetracking_plugin.so
-vendor/lib64/libqvrservice.so;DISABLE_DEPS
-vendor/lib64/libqvrservice_client.qti.so
 vendor/lib64/libqwes.so
 vendor/lib64/librcc.so
 vendor/lib64/librcmask.so
@@ -2730,9 +2812,6 @@ vendor/lib64/libstreamparser.so
 vendor/lib64/libstreamprocessor.so
 vendor/lib64/libsubsystem_control.so
 vendor/lib64/libswregistrationalgo.so
-vendor/lib64/libsxrcryptoimpl.so
-vendor/lib64/libsxrservice.so;DISABLE_DEPS
-vendor/lib64/libsxrservice_client.qti.so
 vendor/lib64/libsys_info_cache.so
 vendor/lib64/libsysmon_cdsp_skel.so
 vendor/lib64/libsystem_health_mon2.so
@@ -2789,22 +2868,6 @@ vendor/lib64/libwfdutils_proprietary.so
 vendor/lib64/libwms.so
 vendor/lib64/libwqe.so
 vendor/lib64/libxml.so
-vendor/lib64/libxrcommconnection.so
-vendor/lib64/libxrcommcoreutils.so
-vendor/lib64/libxrcommdiscoveryservice.so
-vendor/lib64/libxrcommdiscoveryservice2.so
-vendor/lib64/libxrcommdiscoveryservice2_client.so
-vendor/lib64/libxrcommdiscoveryservice_client.so
-vendor/lib64/libxrcommdpqaservice.so
-vendor/lib64/libxrcommdpqaservice_client.so
-vendor/lib64/libxrcommnetworkservice.so
-vendor/lib64/libxrcommnetworkservice_client.so
-vendor/lib64/libxrcommservice_client.so
-vendor/lib64/libxrcommtimerservice.so
-vendor/lib64/libxrcommtimerservice_client.so
-vendor/lib64/libxrcommtrafficshaperservice.so
-vendor/lib64/libxrcommtrafficshaperservice_client.so
-vendor/lib64/libxrcommwpacliwrapper.so
 vendor/lib64/libxtadapter.so
 vendor/lib64/qsn1nrt430.bin
 vendor/lib64/qsn1nrt43180.bin

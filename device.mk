@@ -62,13 +62,18 @@ $(call inherit-product, frameworks/native/build/phone-xhdpi-6144-dalvik-heap.mk)
 $(call inherit-product, packages/modules/Virtualization/apex/product_packages.mk)
 
 # Qualcomm
-# The symlink target has to be a directory something actually mounts.
-# rootdir/etc/fstab.qcom:83 mounts by-name/modem at /vendor/firmware_mnt, and
-# nothing anywhere mounts /vendor/modem_firmware — so "modem_firmware" produced a
-# dangling /vendor/rfs/msm/mpss/readonly/firmware. Stock points it at
-# firmware_mnt. Inert today (ro.baseband=apq, ro.radio.noril=yes, MPSS never
-# runs) but it is a silent deviation that would break modem RFS on any variant
-# that does have a modem, and it costs nothing to be right.
+# ⚠️ This line is a NO-OP and the story that used to be written here never
+# happened. Kept only because it documents the correct intent; delete it if you
+# would rather have one less lie in the file.
+#
+# The old comment claimed the previous value "modem_firmware" produced a dangling
+# /vendor/rfs/msm/mpss/readonly/firmware symlink. It cannot have:
+# hardware/qcom-caf/common/Android.bp:236-243 offers exactly two branches,
+# "firmware" -> /firmware and "firmware_modem" -> /vendor/firmware-modem, with
+# `default: "/vendor/firmware_mnt"`. Neither "modem_firmware" NOR "firmware_mnt"
+# matches a branch, so both fall to the same default. Setting it changes nothing.
+# Verified on the built image: all 84 vendor/rfs/** symlinks are byte-identical
+# to the factory ones.
 $(call soong_config_set,rfs,mpss_firmware_symlink_target,firmware_mnt)
 $(call inherit-product, hardware/qcom-caf/common/common.mk)
 
@@ -136,30 +141,96 @@ PRODUCT_PACKAGES += \
     android.hardware.usb-service.qti \
     android.hardware.usb.gadget-service.qti \
     audiohalservice.qti \
-    vendor.qti.hardware.display.allocator-service \
-    vendor.qti.hardware.display.demura-service \
     vendor.qti.qspa-service
 
-# Display composer
-# 整条显示栈本树都是从源码构建的：libsdmutils / libqdMetaData / libgralloccore /
-# libdisplaydebug / libsdedrm / libhistogram 全部来自 hardware/qcom-caf/sm8750，
-# blob 一个都没有。composer 必须跟着从源码走 —— 出厂那个 composer 二进制要配
-# 出厂的 libsdmcore.so，而我们不提取它，混用只会两头不着。
+# Display: the whole QTI display stack is a BLOB. Do not move it back to source.
 #
-# 这一条是与 onyx 的有意分歧：onyx 把 composer-service 当 blob 提取
-# （proprietary-files.txt:2261），但它的显示栈组合与本树不同。判据是本树实际
-# 装了什么，不是 onyx 装了什么。
+# ⚠️ 这一段以前写的是「整条显示栈本树都是从源码构建的…… blob 一个都没有，
+# 所以 composer 必须跟着从源码走」。**那个前提是假的**，而且它让第十一轮把
+# 正确答案当成「已排除」，白花了一整轮：
 #
-# composer-service 的 required: 会带上它自己的 .rc 和 VINTF 片段，片段由
-# soong_config_variable("qtidisplay", "composer_version") 选择；
-# hardware/qcom-caf/common/BoardConfigQcom.mk:198 的默认值就是 v3_3，
-# 对应 composer-service3_v3.xml，与出厂一致，不需要另外设。
+#   · libsdmextension.so（2.3 MB）一直就是 blob，而且是耦合最紧的那一个。
+#     它是 dlopen 进来的（core_impl.cpp:80），**不在任何 DT_NEEDED 里**，
+#     所以按链接图找不到它 —— 这就是当初漏看的原因。
+#   · OPEN-ISSUES #9 的「排除项 3」说 onyx 同样从源码构建这套显示栈。
+#     实测 onyx 把**整簇**当 blob：proprietary-files.txt:2261,2274-2296,2320，
+#     device.mk:130-143 只装外围模块。
+#
+# 出厂的 SDM 是 Lenovo/Motorola 私有分支（SetMotoColor / SetRGBASplit /
+# SetMotoPAHsic，公开 CAF 源码里 0 命中），sdm::DisplayBase 的虚表比本树源码
+# **多 2 个槽**（161 vs 159），数据成员多 48 字节。分支源码不公开，
+# libsdmextension 也没有源码 —— **从源码构建这一半在结构上就不可能正确**。
+# 完整判据与实测数据写在 proprietary-files.txt 的 Display 段。
+#
+# 出厂 ROM 就是存在性证明：出厂指纹 TB390FU:16/... 是 Android 16 框架 +
+# 202404 冻结的 vendor，与本树同一个 Treble 配置。
+#
+# 出厂 composer 二进制链 vendor.qti.hardware.display.composer3-V1-ndk.so，
+# 而本树默认只装 V3 —— 这是那 28 个文件的 DT_NEEDED 闭包唯一缺的一个库（实测）。
+#
+# 补法看着简单，实际有两条死路，两条都实测撞过，写下来省得再走一遍：
+#
+#   ✗ 直接 `PRODUCT_PACKAGES += vendor.qti.hardware.display.composer3-V1-ndk`
+#     soong bootstrap 失败。commonsys-intf/display/aidl/composer3/Android.bp:22-25
+#     的 versions_with_info 里版本 1 import 的是 android.hardware.graphics.
+#     composer3-**V4**，而 composer blob 自己直接链 composer3-**V3**-ndk.so ——
+#     同一个 aidl_interface 的两个版本进了同一张依赖图，Soong 拒绝。
+#     （出厂那份 V1 是照 V3 编的：readelf -d 它，NEEDED 里就是 composer3-V3-ndk。
+#      树里 V1→V4 这个 import 是上游后来改的，与出厂二进制对不上。）
+#
+#   ✗ 把出厂的 .so 提取成 blob（含 ;MODULE_SUFFIX=_vendor）
+#     ninja: multiple rules generate .../symbols/vendor/lib64/
+#     vendor.qti.hardware.display.composer3-V1-ndk.so。改模块名躲不开：
+#     ;MODULE_SUFFIX 只改**模块名**，stem 不变，所以安装路径还是同一个；
+#     而源码那个 aidl 模块**本来就有**一条指向该路径的 install 规则
+#     （只是没进 PRODUCT_PACKAGES 所以以前没装进镜像，ninja 的 dupbuild 检查
+#      看的是规则不是打包结果）。这正是 proprietary-files.txt 里那句
+#     「改名只有在树不往那个路径装东西时才成立」的反例。
+#
+# 正解是两步：composer blob 打 ;DISABLE_DEPS 切断它那条 aidl 依赖边（冲突就没了），
+# 然后显式装源码构建的 V1 vendor 变体。`.vendor` 后缀是安装 vendor_available
+# 模块的 vendor 变体的正确写法，QTI 自己在
+# commonsys-intf/display/config/display-interfaces-product.mk:40-43 就是这么写的。
+#
+# ⚠️ `;DISABLE_DEPS` turns off shared_libs generation AND check_elf_file, so the
+# build goes green while the image is missing libraries — the exact failure mode
+# OPEN-ISSUES #3 documents. The safety net is work/scripts/33-blob-linkcheck.py,
+# and it earned its keep here: with only V1 listed it reported
+#
+#   [vendor] android.hardware.graphics.composer3-V3-ndk.so   整个产物里都没有
+#   [vendor] vendor.qti.hardware.display.aiqe-V2-ndk.so      整个产物里都没有
+#   vendor/bin/hw/vendor.qti.hardware.display.composer-service  6 个符号解析不了
+#
+# Both had been installed only as a side effect of the SOURCE composer depending
+# on them; dropping it took them with it. Run 33 after ANY ;DISABLE_DEPS change.
 PRODUCT_PACKAGES += \
-    vendor.qti.hardware.display.composer-service \
-    vendor.qti.hardware.display.snapalloc-impl \
-    android.hardware.graphics.mapper@4.0-impl-qti-display \
-    init.qti.display_boot.rc \
-    init.qti.display_boot.sh
+    vendor.qti.hardware.display.composer3-V1-ndk.vendor \
+    vendor.qti.hardware.display.aiqe-V2-ndk.vendor \
+    android.hardware.graphics.composer3-V3-ndk.vendor
+
+# ⚠️ libgpu_tonemapper is the ONE member of the display cluster that stays on
+# SOURCE, and it must. Blobbing it re-introduced the very bug that got the XR
+# stack deleted:
+#
+#   work/scripts/37-layout-skew.py
+#     ✗ vendor/lib64/libgpu_tonemapper.so: android::GraphicBuffer 分配 256 < A16 3376
+#
+# The factory copy is an Android-15 build that does operator new(256) for a class
+# A16 grew to 3376 bytes (frameworks/native df868baf2a added mDependencyMonitor).
+# It is reached whenever HDR tone mapping runs, so it would corrupt the heap in
+# normal use, not in some corner.
+#
+# Source is safe for this one specifically, and the criterion is not a guess:
+# the full exported-symbol-set diff of every source-built vendor library against
+# its factory counterpart found the Moto fork in exactly five libraries —
+# libsdmcore, libsdmclient, libsdmdal, snapalloc-impl, libgrallocutils.
+# libgpu_tonemapper has ZERO factory-only symbols, i.e. it is not forked, so the
+# tree build and the factory build are the same code.
+#
+# Nothing pulls it in automatically any more: the composer that used to depend on
+# it is now a blob carrying ;DISABLE_DEPS, so it has to be named here.
+PRODUCT_PACKAGES += \
+    libgpu_tonemapper
 
 # Audio HAL 实现库 —— 从源码构建。
 # audiohalservice.qti 是个壳，真正的实现是它 dlopen 的这三个 .so。dlopen 不产生

@@ -301,6 +301,80 @@ blob_fixups: blob_fixups_user_type = {
             'vendor.qti.hardware.display.config-V12-ndk.so',
         ),
 
+    # ⚠️ A LAYOUT break, not a version break. Point these at Qualcomm's own
+    # private tinyxml2 copy instead of the platform one.
+    #
+    # AOSP e26130265cbfe70dd26a22648b1c719406ce2c9e "Upgrade tinyxml2 to 11.0.0"
+    # turned DynArray's and MemPoolT's `int` members into `size_t`:
+    # sizeof(tinyxml2::XMLDocument) went 776 -> 880. Measured twice, two ways:
+    # compiling both header revisions, and diffing the member offsets emitted in
+    # XMLDocument::~XMLDocument (factory 0x108..0x300, ours 0x110..0x368).
+    # The exported symbol sets are identical (231 = 231) because everything that
+    # moved is private, so check_elf_file and 33-blob-linkcheck.py cannot see it.
+    #
+    # These four are Android-15 blobs that construct an XMLDocument BY VALUE
+    # (criterion: `llvm-nm -D -u` shows _ZN8tinyxml211XMLDocumentC[12]E), so each
+    # construction writes 104 bytes past the space they reserved.
+    #
+    # OPEN-ISSUES #10 called this unfixable because Android 16 blocks all three
+    # ways of overriding the platform libtinyxml2.so. That asked the wrong
+    # question: we do not need to override it. Qualcomm ships libtinyxml2_1.so —
+    # a privately renamed Android-15 copy, present in the factory image, extracted
+    # here byte-identical — precisely to solve this, and ten display blobs already
+    # link it. Verified before writing this: all tinyxml2 symbols these four
+    # import (5 / 14 / 6 / 10 respectively) are defined by libtinyxml2_1.so, none
+    # missing. Also verified: the camera provider process never loads the platform
+    # copy (`readelf -d vendor.qti.camera.provider-service_64 | grep tinyxml` is
+    # empty), so there is nothing to interpose on it.
+    #
+    # ⚠️ vendor/lib64/soundfx/libquasar.so is DELIBERATELY NOT in this list even
+    # though it has the same defect. It loads into the audio HAL process, and both
+    # audiohalservice.qti and libaudioeffecthal.qti.so link libtinyxml2.so
+    # directly, so the v11 symbols sit in that process's global lookup scope and
+    # win regardless of what libquasar's DT_NEEDED says. replace_needed would look
+    # like a fix and not be one. Tracked in OPEN-ISSUES as unresolved.
+    (
+        'vendor/lib64/libapengine.so',
+        'vendor/lib64/libcamxcoreutils.so',
+        'vendor/lib64/libcamxods.so',
+        'vendor/lib64/liblearningmodule.so',
+        # ⚠️ These two came in when session 12 moved the display cluster to blobs,
+        # and libsdmclient bit immediately — the composer crashed on every boot
+        # with SIGILL / ILL_ILLOPN, esr 0x72000000 (PAC Exception), lr=0, x29=0,
+        # one frame, in sdm::SDMDisplayResolutionExtn::GetExtendedDisplayResolutions.
+        #
+        # That register signature is a STACK smash, not heap corruption, and the
+        # disassembly says exactly why:
+        #
+        #   98fcc: sub sp, sp, #0x360        864-byte frame
+        #   99054: add x0, sp, #0x48         XMLDocument at sp+0x48 -> 0x318 = 792 free
+        #   99058: bl  memset
+        #   99068: bl  tinyxml2::XMLDocument::XMLDocument(bool, Whitespace)
+        #
+        # 792 bytes reserved. The Android-15 XMLDocument is 776 and fits; the
+        # Android-16 one is 880 and runs 88 bytes past the frame into the saved
+        # x29/x30 stored just above it, so autiasp at return fails PAC.
+        #
+        # Same shape as libaudioeffecthal.qti.so in session 11. Note it is a
+        # BY-VALUE construction, never `new` — which is exactly the blind spot
+        # documented in work/scripts/37-layout-skew.py, so that gate did NOT and
+        # cannot catch this one. It was found by reading the tombstone.
+        #
+        # The composer-service binary is in the list even though it uses ZERO
+        # tinyxml2 symbols (`llvm-nm -D -u` is empty for them): it is the only
+        # other thing in that process pulling libtinyxml2.so in, and while the
+        # A16 copy is loaded it wins symbol lookup over the A15 one regardless of
+        # what libsdmclient's own DT_NEEDED says. Fixing only libsdmclient would
+        # look like a fix and not be one. Verified: those two are the ONLY members
+        # of the composer's 76-library closure that reference libtinyxml2.so.
+        'vendor/lib64/libsdmclient.so',
+        'vendor/bin/hw/vendor.qti.hardware.display.composer-service',
+    ): blob_fixup()
+        .replace_needed(
+            'libtinyxml2.so',
+            'libtinyxml2_1.so',
+        ),
+
     # The tree builds libtensorflowlite_c from external/tensorflow and installs it
     # to /vendor/lib64, but AOSP builds TFLite without the XNNPack delegate, so
     # that copy does not export TfLiteXNNPackDelegate{Create,Delete,OptionsDefault}.
@@ -324,12 +398,6 @@ blob_fixups: blob_fixups_user_type = {
         .replace_needed(
             'libtensorflowlite_c.so',
             'libtensorflowlite_c_vendor.so',
-        ),
-
-    'vendor/lib64/libqvrservice.so': blob_fixup()
-        .replace_needed(
-            'android.hardware.graphics.allocator-V1-ndk.so',
-            'android.hardware.graphics.allocator-V2-ndk.so',
         ),
 
     # host_init_verifier fails the build on every stock service block that has no

@@ -292,6 +292,11 @@ TARGET_NO_KERNEL_OVERRIDE := true
 # tree. The genrule runs `make -C $(TARGET_KERNEL_SOURCE) headers_install`, which
 # with the variable unset defaults to kernel/lenovo/malbec and fails.
 #
+# ⚠️ Session 12 moved the entire QTI display cluster to blobs, so the display
+# half of that list no longer builds. The variable is STILL REQUIRED —
+# audio.primary.sun, hwcomposer.qcom and ipacm still consume the generated
+# headers. Do not remove it on the grounds that the display stack is gone.
+#
 # m nothing cannot catch this class: it generates the build graph but does not
 # execute genrules. To pre-flight it, check that every `-C <dir>` in
 # out/soong/.intermediates/**/*.sbox.textproto points at a directory that exists.
@@ -447,8 +452,21 @@ TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
 TARGET_BOARD_FASTBOOT_INFO_FILE := $(DEVICE_PATH)/fastboot-info.txt
 
 # Filesystems
-# Not a recovery setting despite where it used to sit: /data and /metadata are
-# both f2fs in rootdir/etc/fstab.qcom, matching stock.
+# /data and /metadata are both f2fs in rootdir/etc/fstab.qcom, matching stock.
+#
+# ⚠️ This used to say "not a recovery setting despite where it used to sit".
+# That is INVERTED — it is precisely a recovery setting, and the value is right
+# for that reason. No partition here is *built* as f2fs, so the only two
+# consumers in the tree are:
+#   build/make/core/Makefile:2131            adds MKF2FSUSERIMG to host deps
+#   build/make/core/android_soong_config_vars.mk:59  feeds
+#       bootable/recovery/Android.bp:283-289, which is what pulls
+#       make_f2fs.recovery / fsck.f2fs.recovery / sload_f2fs.recovery into the
+#       recovery ramdisk.
+# Confirmed in out/.../installed-files-recovery.txt:
+#   /root/system/bin/{make_f2fs,fsck.f2fs,sload_f2fs}
+# Recovery needs those to format the f2fs /data and /metadata, so keep it — but
+# keep it for the real reason.
 TARGET_USERIMAGES_USE_F2FS := true
 
 # Sepolicy
