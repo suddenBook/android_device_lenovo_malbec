@@ -44,6 +44,15 @@ bluetooth.profile.pbap.server.enabled=true
 # for another host). Keep parity rather than letting it default on.
 bluetooth.profile.hid.device.enabled=false
 
+# LE Audio is supported but must not be auto-connected, matching stock.
+# PhonePolicy.java:102 reads this with a default of **true**, so leaving it unset is
+# not the same as leaving it alone: we would auto-connect LE Audio where stock
+# deliberately does not. Measured on the running stock ROM:
+#   [ro.bluetooth.leaudio.le_audio_connection_by_default]: [false]
+# The BAP/VCP/CSIP/MCP/CCP/HAP profiles stay enabled (see vendor.prop) — this only
+# governs whether a newly bonded device is put on LE Audio without being asked.
+ro.bluetooth.leaudio.le_audio_connection_by_default=false
+
 # SIG vendor ID reported in the Device ID record. Verbatim from stock.
 bluetooth.device_id.vendor_id=0x001D
 

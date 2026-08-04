@@ -255,9 +255,14 @@ ro.vendor.qspm.enable=true
 # 存储 / USB / 其它板级
 ro.frp.pst=/dev/block/bootdevice/by-name/frp
 ro.crypto.metadata_init_delete_all_keys.enabled=true
-external_storage.casefold.enabled=1
-external_storage.projid.enabled=1
-external_storage.sdcardfs.enabled=0
+# ⚠️ external_storage.{casefold,projid,sdcardfs}.enabled used to be set here and are
+# gone on purpose. device.mk:43 inherits emulated_storage.mk, which puts the same
+# three into PRODUCT_VENDOR_PROPERTIES (build/make/target/product/emulated_storage.mk
+# :19,23,25) — i.e. onto this same partition, with the same values. It built only
+# because post_process_props.py:113-117 tolerates a duplicate when every value
+# agrees; the day AOSP changes one of the three the build stops with "found
+# duplicate sysprop assignments". Same hazard already documented for
+# ro.hwui.use_vulkan and ro.bionic.cpu_variant in this file.
 ro.usb.uvc.enabled=true
 sys.usb.mtp.batchcancel=1
 
