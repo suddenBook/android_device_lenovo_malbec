@@ -273,6 +273,39 @@ PRODUCT_PACKAGES += \
 # libsoundtriggerhal.qti 则必须走 blob —— st-hal-ar/Android.bp:37 明确链 libar-pal。
 # onyx 的分法完全相同。
 
+# ★★ 这一条不装的话，机器**开不到 Launcher** ★★
+#
+# `properties/system_ext.prop:16` 设了 `ro.audio.ihaladaptervendorextension_enabled=true`
+# （理由写在那里，是对的），但**实现服务一直没装**。属性设了、实现没有 ——
+# 又是「声明了但没实现」那一类，而这一类在音频上是**致命**的，不是功能缺失：
+#
+#   frameworks/av/media/libaudiohal/impl/DevicesFactoryHalAidl.cpp:123-136
+#     if (property_get_bool("ro.audio.ihaladaptervendorextension_enabled", false)) {
+#         ... AServiceManager_waitForService(".../IHalAdapterVendorExtension/default")
+#     } else { mVendorExt = nullptr; }
+#
+#   `waitForService` 是**无限等**的。于是实测的调用链是：
+#     audioserver: AudioPolicyService::onFirstRef -> createAudioPolicyManager
+#       -> AudioFlinger::getAudioPolicyConfig -> loadHwModule_ll
+#       -> DeviceHalAidl::initCheck -> parseAndGetVendorParameters
+#       -> HalAdapterVendorExtensionWrapper::getService -> 卡死
+#   audioserver 因此永远不注册 IAudioFlingerService，而 system_server 在
+#     AudioService.<init> -> readUserRestrictions -> setMicrophoneMuteNoCallerCheck
+#     -> AudioSystem::isMicrophoneMuted -> getService<IAudioFlingerService>
+#   上同样无限等 —— `sys.boot_completed` 永远不出现，开机动画一直转。
+#   servicemanager 每秒打一次 "could not be found trying to start it as a lazy
+#   AIDL service ... but was unable to"，那是症状不是原因。
+#
+# 这个服务本树自己就构建（vendor/qcom/opensource/commonsys/audio/hal_adapter/），
+# 它的 .rc 带 `interface aidl android.media.audio.IHalAdapterVendorExtension/default`
+# —— 正是这一行让 servicemanager 的 lazy start 能把它拉起来。
+# 出厂镜像只发了 system_ext/lib64/libaudiohalvendorextn.so，**二进制和 .rc 都没发**
+# （`ls system_ext/bin` 29 个文件里没有它），所以别拿出厂当参照。
+# onyx 是对的：`device.mk:70` 装这个服务，`properties/system_ext.prop:2` 设那个属性
+# —— 两个必须成对。
+PRODUCT_PACKAGES += \
+    qtiaudiohalvendorextn
+
 # ★★ 承重，别精简 ★★
 # 这一段和下面 199 行开始的那一段，是 `;DISABLE_DEPS` 的**补偿**。
 # `;DISABLE_DEPS` 关掉的是 Soong 的依赖生成，也就是说：这些库 Soong **不会替我们
