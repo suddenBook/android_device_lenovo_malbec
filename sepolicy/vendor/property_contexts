@@ -67,3 +67,12 @@ ro.odm.lenovo.attestationkey                        u:object_r:vendor_check_keym
 
 # ArcSoft face unlock — read-only from hal_faceunlock_default.
 persist.vendor.arcsoft.                             u:object_r:vendor_arcsoft_faceunlock:s0
+
+# Userspace thermal mitigation mode. init.qcom.rc:517/:524 uses it to pick which
+# of the seven /vendor/etc/thermal-engine-malbec-*.conf policies
+# thermal-switch-engine loads. Set from properties/vendor.prop, so only init
+# writes it here; the label exists so it does not fall through to
+# vendor_default_prop, whose neverallow in system/sepolicy/private/property.te
+# would permanently block any future runtime writer (the OEM's game/camera modes
+# switch this property at runtime on stock).
+vendor.thermal.mode                                 u:object_r:vendor_thermal_prop:s0

@@ -433,6 +433,40 @@ ro.incremental.enable=yes
 # explicitly rather than leaving remote attestation to a default.
 avf.remote_attestation.enabled=false
 
+# Userspace thermal mitigation. Without this line the entire subsystem is dead.
+#
+# init.qcom.rc:517 defines the real daemon as
+#     service thermal-switch-engine /vendor/bin/thermal-engine-v2 \
+#             -c /vendor/etc/thermal-engine-malbec-${vendor.thermal.mode}.conf
+# and :524 gates it on `on property:vendor.thermal.mode=*`. The plain
+# `thermal-engine` service is *supposed* to exit -- thermal-engine-v2's only
+# config-path string is /vendor/etc/thermal-engine.conf, and it prints
+# "No platform thermal config file, exiting" when that is the only one it gets.
+# That message appeared 249 times in the first boot capture and looked like a
+# missing blob; it is not. The file is byte-identical to the factory's.
+#
+# On stock the property is set by Lenovo's ZUI framework code on system_ext
+# (system_ext_sepolicy.cil:1956 grants system_server set on vendor_thermal_prop,
+# and system_ext_property_contexts:156 labels it). PixelOS replaces that
+# partition, so nothing ever set it, so thermal-switch-engine never started and
+# none of the seven thermal-engine-malbec-{normal,game,camera,audio,floating,
+# skynet,off}.conf policies were ever loaded -- all seven ship in our image.
+#
+# Consequence measured on the first boot: android.hardware.thermal-service.qti
+# reported "sensor: cpu-1-4-0 temperature: 105.1 ... new: 3" to a framework
+# with no daemon behind it to act on the throttle level. Kernel LMH/BCL still
+# work, so the tablet was never at risk, but sustained-load and charge-current
+# mitigation were absent.
+#
+# `normal` is what stock reports (work/stock-harvest/*/getprop-all).
+#
+# Setting it here rather than from an init action is deliberate: properties
+# loaded from build.prop are in place before init runs queue_property_triggers,
+# which happens after wait_for_coldboot_done, so /sys/class/thermal is populated
+# by the time the trigger fires. An `on property:sys.boot_completed=1` action
+# would also work but would leave the device unmitigated for the whole boot.
+vendor.thermal.mode=normal
+
 # Deliberately NOT taken from the factory build.prop, each for a specific reason:
 #
 #   persist.vendor.qcomsysd.enabled=1
