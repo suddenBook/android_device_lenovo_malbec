@@ -31,10 +31,95 @@
          vote (DisplayModeDirector.java:1225-1227) that caps the render frame
          rate globally at 60 — on a 144 Hz panel.
 
-         config_defaultPeakRefreshRate stays 144: it is a ceiling, and the panel
-         cannot exceed it anyway, so 144 and stock's 240 are equivalent here. -->
-    <integer name="config_defaultPeakRefreshRate">144</integer>
-    <integer name="config_defaultRefreshRate">144</integer>
+         ★ Both are 120, not 144, and that is deliberate: THE ACTIVE STYLUS DOES
+         NOT WORK AT 144 Hz. This is measured on this unit, both directions, with
+         the pen in the owner's hand and /proc/support_pen already set to 1:
+
+             peak_refresh_rate = 120.0   ->  6746 pen events, 438 ABS_PRESSURE
+                                             samples over 23 strokes, pressure a
+                                             smooth ramp 0x365 -> 0x8a2 -> back
+                                             down, and /proc/Pen_ID resolving to
+                                             "2;87;..." (pen type 2, battery 87%)
+             peak_refresh_rate = 144.0   ->  0 pen events. Not "no pressure" -
+                                             zero. /proc/Pen_ID falls straight
+                                             back to 255;255;0xffff;0xffff.
+
+         So at 144 Hz the controller cannot even detect the pen, let alone decode
+         its uplink. That also rules out any auto-switching scheme that watches
+         the digitizer for a pen: at 144 Hz the digitizer is blind, so there is
+         nothing to watch. Chicken and egg.
+
+         Stock hits the same wall and solves it in the framework. ZUI patches
+         DisplayModeDirector with judgePenSupport()/supportPen(boolean):
+
+             supportPen(true):   updateGlobalVote(26, forRenderFrameRates(0, 120f))
+                                 setHighReportRate(0)
+             supportPen(false):  updateGlobalVote(26, null)
+                                 setHighReportRate(1)
+
+         i.e. it votes the render rate down to exactly 120 whenever the pen is in
+         use, and swaps the touch controller between two mutually exclusive
+         modes - high finger report rate, or active-pen scanning, never both.
+         judgePenSupport() picks between them from Settings.System
+         auto_refresh_support_pen_switch (a user toggle) and is_pen_attached,
+         the latter fed by BluetoothPenConnectPolicy over the pen's BLE link.
+
+         We have neither that framework patch nor the BLE plumbing, so the choice
+         is between "144 Hz and no stylus" and "120 Hz and a working stylus" -
+         and this device ships with a stylus. 120 vs 144 is a 1.4 ms difference
+         in frame time; a stylus that produces no events at all is not a
+         trade-off. Both states this leaves reachable work with the pen: Smooth
+         Display on gives 120 (config_defaultPeakRefreshRate), off gives 60.
+
+         Consequence worth stating plainly, because it answers "is our touch
+         sampling rate the same as stock": /proc/HighReportRate stays at the
+         driver default 0, and that is now CORRECT rather than an omission - it
+         is exactly the value stock uses in its supportPen(true) state, which is
+         the state this configuration is permanently in. Before this change the
+         device was in neither of stock's two states: HighReportRate 0 (stock's
+         pen mode) at 144 Hz (stock's no-pen mode).
+
+         To trade the stylus back for 144 Hz on a running device:
+             settings put system peak_refresh_rate 144.0
+         The pen stops working immediately, and starts again at 120.
+
+         ★ DO NOT "improve" this into stock's dynamic scheme. That was the
+         obvious next step and the device owner rejected it, with the better
+         argument: switching costs more than the 24 Hz buys. Every transition is
+         a DSI mode change on the panel PLUS a mode change in the touch
+         controller, both of which are visible and both of which cost power, and
+         they would fire every time the pen enters and leaves range. 144 - 120 is
+         1.4 ms of frame time. Paying a mode switch repeatedly to buy that back
+         is a bad trade, and pinning the value also deletes a whole class of
+         state-machine bugs (pen arriving mid-switch, switch racing the idle
+         timer, the chicken-and-egg above). Static is the design, not a stopgap.
+
+         Of the two, config_defaultPeakRefreshRate is the load-bearing one, and
+         it is worth knowing why. It is the default of Settings.System
+         PEAK_REFRESH_RATE, and updateRefreshRateSettingLocked()
+         (DisplayModeDirector.java:1209-1215) turns that into
+             Vote.forPhysicalRefreshRates(0, peak)  @ PRIORITY_USER_SETTING_PEAK_REFRESH_RATE
+         - a ceiling on the PHYSICAL panel mode, which is what the pen actually
+         needs. config_defaultRefreshRate only yields
+             Vote.forRenderFrameRates(0, default)   @ PRIORITY_DEFAULT_RENDER_FRAME_RATE
+         (:1223-1226), the lowest priority, and it bounds the render rate only -
+         it would happily leave the panel in the 144 Hz mode while rendering 120.
+         It is set here for coherence, not because it does the work. Confirmed on
+         the device: with peak at 120, dumpsys SurfaceFlinger reports
+         activeMode={id=2, ... vsyncRate=120.00 Hz}, i.e. the mode really changed.
+
+         Note also that 144 Hz remains in Display > Refresh rate, because that
+         list is built at runtime from Display.getSupportedModes()
+         (RefreshRateUtils.java:45-49) and no RRO can filter it. Deliberate: the
+         alternatives were patching the panel timings in dtbo.img (a partition
+         this port never flashes, precisely because ours is byte-identical to
+         stock) or carrying the tree's only out-of-device-tree source patch. Apps
+         cannot reach 144 regardless - the app-request range only considers votes
+         at priority >= APP_REQUEST_REFRESH_RATE_RANGE_PRIORITY_CUTOFF (5) and
+         the peak setting sits at 9, so it bounds them. Only a human choosing
+         144 in Settings can do it, and the pen starts working again on 120. -->
+    <integer name="config_defaultPeakRefreshRate">120</integer>
+    <integer name="config_defaultRefreshRate">120</integer>
 
     <!-- Rounded display corners. Stock gets this from the same vendor RRO as
          config_defaultRefreshRate above; ro.sf.rounded_corner_radius is unset on
@@ -82,6 +167,57 @@
          here. At 320 real ppi that would be 12.4 mm of corner masking on a
          panel whose vendor RRO says 3.6 mm. -->
     <dimen name="rounded_corner_radius">45px</dimen>
+
+    <!-- ★ The status bar's left and right content insets come from HERE, not
+         from any SystemUI dimension, and leaving it at AOSP's 0dp default is
+         what the device owner saw as "no gap at the left/right edges".
+
+         StatusBarContentInsetsProvider.getCalculatedAreaForRotation()
+         (frameworks/base/packages/SystemUI/src/com/android/systemui/statusbar/
+         layout/StatusBarContentInsetsProvider.kt:334-364) is the only place
+         those insets are computed, and it computes them as
+
+             roundedCornerPadding = rounded_corner_content_padding
+             minLeft  = roundedCornerPadding
+             minRight = max(ongoing_appops_dot_min_padding, roundedCornerPadding)
+
+         Note what is NOT in that expression: status_bar_padding_start /
+         status_bar_padding_end. Those two are commented out in the same file
+         (:100-104, "TODO: Check if this is ever used for devices with no
+         rounded corners") and only survive as view padding inside
+         PhoneStatusBarView.updatePaddings(). So overriding them is not the knob.
+
+         With rounded_corner_content_padding at 0 the two sides come out
+         ASYMMETRIC, because only the right side has a floor:
+
+             left  = 0px
+             right = max(ongoing_appops_dot_min_padding = 20dp = 45px, 0) = 45px
+
+         Measured on the device rather than derived: a screencap of the home
+         screen puts the clock glyphs ~22px from the left edge (the 4dp
+         status_bar_padding_start plus the font's left side bearing) and the
+         battery icon ~55px from the right. That 20dp step is visible, and it is
+         the whole of the complaint.
+
+         45px restores symmetry: minLeft becomes 45px and minRight stays 45px,
+         because 45 == the privacy dot floor. It is also the value the resource
+         is named for - the panel's corner radius is 45px (above), and this
+         resource exists to keep bar content out of the corner arc. AOSP's own
+         device overlays set it equal to the radius on every recent Pixel
+         (device/generic/goldfish/phone/overlay/.../pixel_7/AndroidOverlay/res/
+         values/dimens.xml:25 is 47px radius / 47px padding; pixel_7_pro is
+         50/50), and the PixelOS onyx tree sets 14dp against a 156px radius.
+
+         Keep the unit px for the same reason as the radius above: it tracks the
+         glass, not the density.
+
+         Second consumer, checked before setting this: SystemUI's
+         navigation_layout.xml:22-23 and the framework's
+         input_method_navigation_layout.xml:22-23 use it as the nav bar's
+         start/end margin. On this device the nav bar is gesture mode, so that
+         margin only insets the gesture pill's hit region by 20dp per side on a
+         1557dp-wide bar - proportionally the same as any Pixel. -->
+    <dimen name="rounded_corner_content_padding">45px</dimen>
 
     <!-- ★ 0.0 here was a black screen waiting to happen.
          DisplayDeviceConfig.java:2057-2071 reads this straight into

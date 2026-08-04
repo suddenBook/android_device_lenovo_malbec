@@ -340,6 +340,39 @@ PRODUCT_PACKAGES += \
     libmemunreachable.vendor \
     libaudioutils_shim
 
+# Dolby Atmos 的设置界面。
+#
+# 这台机器的 Dolby vendor 侧本来就**已经全在树里**了，只差一个前端：
+#   vendor/bin/hw/vendor.dolby.dms.service          DMS HAL
+#   vendor/lib64/vendor.dolby.dms-V1-ndk.so         它的 AIDL
+#   vendor/lib64/soundfx/libswdapaidl.so            全局混音效果实现
+#   vendor/etc/dolby/dax-default.xml                调音参数
+#   vendor/etc/audio/sku_tuna/audio_effects_config.xml:21,78
+#       <library name="dap" path="libswdapaidl.so"/>
+#       <effect name="dap" uuid="9d4921da-8225-4f29-aefa-39537a04bcaa" .../>
+# 也就是说效果一直在跑，只是**没有任何 UI 能调它**，所有参数停在默认值。
+#
+# 前端用 PixelOS 自己的 packages/apps/DolbyAtmos（co.aospa.dolby），不从出厂搬。
+# 逐项核对过它确实是同一个东西，不是"看起来像"：
+#   - 效果 UUID 9d4921da-8225-4f29-aefa-39537a04bcaa 与上面那份 config 逐字符相同
+#   - 参数常量（CPDP_VALUES=5 / PROFILE=0xA000000 / SET_PROFILE_PARAMETER=0x1000000）
+#     和 DsParam ID（101–116）与出厂 daxService 反编译出来的完全一致
+#   - 20 段 GEQ 的频点表一致
+#
+# 为什么不搬 ZUI 那份：出厂的 Dolby 设置页**不在** daxService.apk 里
+# （那个 APK 的 manifest 只有一个 bound service，没有任何设置 Activity），
+# 而是 Lenovo 写在 ZuiSettings.apk 的 com.lenovo.settings.sound.dolby.*，
+# 用的是 zui.appcompat.preference.SwitchPreference —— ZUI 私有控件，搬不过来，
+# 硬搬也只会是机主明确否掉的"突兀插入"。而 PixelOS 这份是 Material 3 Expressive，
+# 走 com.android.settings.category.ia.sound 注入，不需要动 Settings 源码，
+# 功能上还是超集（11 项 vs 出厂 4 项，多出扬声器/耳机虚拟化、低音增强、
+# 音量均衡、IEQ 预设、自定义 EQ 预设和一个快捷设置磁贴）。
+#
+# ⚠️ 不要**同时**装出厂的 daxService：两者都往同一个 global-mix 效果写 profile
+# 参数，而 daxService 是 persistent=true，会互相打架。
+PRODUCT_PACKAGES += \
+    DolbyAtmos
+
 # Miracast: the compat shim that gives libwfdnative.so the pre-Android-16
 # MotionEvent::initialize symbol. See the blob_fixup in extract-files.py for why
 # this is the correct fix rather than ;DISABLE_CHECKELF. Installs to
@@ -574,8 +607,14 @@ PRODUCT_COPY_FILES += \
 # module recovery has no bootdevice symlink (most of fstab.qcom then fails) and
 # no USB, i.e. no `adb sideload` and no fastbootd, which is exactly the tooling
 # needed to recover from a bad flash. See rootdir/Android.bp.
+# init.malbec.rc re-enables active-stylus scanning in the touch controller.
+# nvt_touch.ko sends {0x7B, 0x00} ("pen not supported") once at ~7.3 s and never
+# undoes it; on ZUI the framework calls the Lenovo touchscreen HAL to undo it,
+# and PixelOS has no client for that HAL. The rc file carries the full
+# derivation, including the boot-log line that shows the driver doing it.
 PRODUCT_PACKAGES += \
     fstab.qcom \
+    init.malbec.rc \
     init.recovery.qcom.rc
 
 # ⚠️ 上面那个 prebuilt_etc 只产出 /vendor/etc/fstab.qcom，**开不了机**。

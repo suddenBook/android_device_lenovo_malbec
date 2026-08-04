@@ -45,6 +45,24 @@
 set_prop(vendor_init, vendor_thermal_prop)
 set_prop(vendor_init, vendor_lenovotb_init_prop)
 
+# rootdir/etc/init.malbec.rc does `write /proc/support_pen 1` from an
+# `on property:sys.boot_completed=1` block to re-enable active-stylus scanning
+# in the touch controller (the driver disables it at boot -- see that file).
+#
+# Commands in a /vendor/etc/init/*.rc run in the vendor_init subcontext
+# (system/core/init/subcontext.cpp), so this is the domain that needs the write,
+# not init. The node is labelled proc_lenovo_pen by our own genfs_contexts:11-43.
+#
+# open is required as well as write: the `write` builtin is open(O_WRONLY|O_CREAT
+# |O_TRUNC) followed by write(), so a write-only allow rule denies at open().
+#
+# No neverallow stands in the way -- the constraints on vendor_init and proc_type
+# are about /proc/sysrq-trigger and the sysfs/proc *_type attributes used for
+# system-owned tunables; proc_lenovo_pen is a device-tree-local type over a
+# vendor driver's own procfs node, which is exactly the case
+# device/qcom/sepolicy_vndr covers the same way for QTI's touch nodes.
+allow vendor_init proc_lenovo_pen:file { open write getattr };
+
 # ⚠️ NOT granted, deliberately: vendor_init -> build_prop / build_bootimage_prop.
 #
 # Two more property-set denials show up on every boot:

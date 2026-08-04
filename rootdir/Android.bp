@@ -29,6 +29,18 @@ prebuilt_etc {
     vendor: true,
 }
 
+// Device-specific init. Currently just the active-stylus enable; see the file
+// itself for the derivation. It has to be a vendor rc rather than a system one
+// because /proc/support_pen is labelled proc_lenovo_pen by our own
+// genfs_contexts, and only vendor_init is granted write access to it
+// (sepolicy/vendor/vendor_init.te).
+prebuilt_etc {
+    name: "init.malbec.rc",
+    src: "etc/init.malbec.rc",
+    sub_dir: "init",
+    vendor: true,
+}
+
 // Recovery does not mount /vendor, so nothing under vendor/etc/init/ is read
 // there -- in particular init.target.rc, which is what creates
 // /dev/block/bootdevice during a normal boot. Without this file recovery has no

@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: The LineageOS Project
+# SPDX-License-Identifier: Apache-2.0
+#
+# Device-specific init for malbec.
+
+# ---------------------------------------------------------------------------
+# Active stylus: re-enable pen scanning in the touch controller.
+#
+# nvt_touch.ko turns the pen OFF at boot and never turns it back on. This is
+# not inference -- it is in our own boot log:
+#
+#   [7.349807] [NVT-ts] nvt_update_firmware 907: Update firmware success!
+#   [7.349968] [NVT-ts] nvt_get_fw_info 997: fw_ver=0x1F, fw_type=0x01, PID=0x609E
+#   [7.349985] [NVT-ts] nvt_cmd_store 1053: command = 0x7B 0x00      <-- pen off
+#
+# Boot_Update_Firmware() (nvt_touch.ko @ 0x799c) runs once as delayed work after
+# the first firmware update and calls nvt_support_pen_set(0), which emits the
+# host command {0x50, 0x7B, 0x00}. Per the public upstream source this driver is
+# built from (lenovo-basements/android_kernel_lenovo_sm8750-modules,
+# qcom/opensource/touch-drivers/NT36XXX_SPI/nt36xxx_ext_proc.c:41-59):
+#
+#   0x7B 0x00   pen not supported     <-- what we get
+#   0x7B 0x01   pen supported         <-- what we need
+#   0x7B 0x02   enter BLE pairing mode
+#   0x7B 0x03   stop BLE pairing mode
+#
+# There is no other path in the whole module that sends a non-zero 0x7B, so on a
+# stock AOSP userspace the controller stays in "pen not supported" forever. On
+# ZUI the gap is filled from the framework: Lenovo's services.jar patch
+# (com.zui.server.input.styluspen.pen.bluetooth.policy.BluetoothPenConnectPolicy
+# -> TouchscreenServiceManager.setPenMode(true)) calls the vendor HAL, whose
+# setPenMode() is just writeInt("/proc/support_pen", 1). PixelOS ships that HAL
+# binary but has no client for it -- nothing in the tree ever calls ITouchscreen.
+#
+# Writing the node directly is the same operation the HAL performs, without
+# adding a binary or a new SELinux domain for a single integer write.
+#
+# ⚠️ The value is 1, not 2. Session 13 replayed ZUI's captured call sequence and
+# ended up writing 2 via setPenBle(true); 2 is BLE *pairing* mode, not pen-on,
+# which is why that experiment looked like it did nothing.
+#
+# Why sys.boot_completed and not earlier: Boot_Update_Firmware is queued from
+# probe as delayed work and fires at ~7.3 s, so anything written before that is
+# overwritten. boot_completed lands at ~25 s on this device.
+#
+# Once is enough. The driver keeps the requested state in ts->support_pen_state
+# and re-sends it on every resume and after every firmware reset --
+# nvt_restore_cmd_func() @ 0x6174 (scheduled from nvt_panel_notifier_callback)
+# and the FW-reset branch of nvt_ts_work_func() @ 0x54a4 both replay
+# nvt_support_pen_set(), nvt_pen_type_set() and nvt_pen_attached_set() from the
+# stored values. So this does not need a watchdog.
+#
+# NOT set here: /proc/pen_type ({0x7B, 0x04, v}, the pen model/protocol
+# selector). Stock only ever writes it from BluetoothPenInputPolicy, using the
+# model reported by the BLE pen, and leaves it at 0 until a pen has connected --
+# so 0 is the correct default rather than an omission. Hardcoding a model would
+# be a guess about which stylus is paired. See work/analysis/S14-nvt-driver-re.md
+# section 8 (H2) for the sweep that would settle it if pressure is still absent.
+on property:sys.boot_completed=1
+    write /proc/support_pen 1
