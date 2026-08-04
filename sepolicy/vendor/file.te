@@ -53,3 +53,16 @@ type proc_lenovo_pen, fs_type, proc_type;
 # is its feature area. Both it and gesture_mode are root:root 0666 on stock --
 # the .rc never chowns them -- so DAC is not the gate; SELinux is.
 type proc_lenovo_touch, fs_type, proc_type;
+
+# /mnt/vendor/persist/factory/audio/ — the Awinic amplifiers' per-unit
+# calibration blob (aw_cali.bin), written once on the production line and read
+# by PAL inside hal_audio_default at every HAL start. Split out of the generic
+# mnt_vendor_file so the audio HAL can be given this directory and nothing else
+# of persist. Same pattern as vendor_persist_bluetooth_file.
+type vendor_persist_audio_file, file_type, vendor_persist_type;
+
+# /sys/.../aw882xx_chipid — the smart-amplifier chip id nodes exported by
+# aw882xx.ko, one per i2c address (5-0034 .. 5-0037). Stock leaves them as plain
+# sysfs and lets the audio HAL read all of sysfs; giving them a type means the
+# grant in hal_audio.te names exactly these.
+type sysfs_awinic, fs_type, sysfs_type;

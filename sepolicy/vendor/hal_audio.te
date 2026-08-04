@@ -1,0 +1,77 @@
+# Audio HAL — access it needs that neither AOSP nor the QTI vendor policy grants.
+#
+# Every rule here comes from a denial measured on a booted device
+# (work/s15/boot1, 240 s from t=0), not from stock's policy or from guessing.
+# The build is permissive today, so none of these break anything yet; they are
+# written now because a permissive boot is the only place they can be observed,
+# and because "it works, just with a denial" is exactly the state that turns
+# into a silent regression the day enforcing is switched on.
+
+#####################################
+# Awinic smart-amplifier calibration.
+#
+# 51 of the 72 denials in that boot were this one path:
+#
+#   avc: denied { read open } name="aw_cali.bin"
+#        scontext=u:r:hal_audio_default:s0
+#        tcontext=u:object_r:mnt_vendor_file:s0 tclass=file
+#
+# /mnt/vendor/persist/factory/audio/aw_cali.bin is the per-unit Rdc/f0
+# calibration for the four AW88461 amplifiers, written once on the production
+# line by /vendor/bin/aw882xx_cali (an argv tool, not a service — nothing on the
+# device ever rewrites it, which is why the binary itself is not shipped). PAL
+# reads it at HAL start to load speaker-protection parameters. Without it the
+# amplifiers run uncalibrated: the excursion limiter falls back to defaults, and
+# the boot log shows the symptom — `[Awinic]aw_check_dsp_ready: rx topo id is
+# 0x0` and the four `aw882xx_dev_init_cali_re` errors.
+#
+# Rather than granting the whole of mnt_vendor_file (which is every persist
+# subdirectory, including the Bluetooth and Wi-Fi MAC blobs and the RPMB-adjacent
+# secnvm), the directory gets its own type in file_contexts and only that is
+# granted — the same shape the tree already uses for vendor_persist_bluetooth_file.
+#
+# init.target.rc:162-167 creates and chowns the directory, so it exists before
+# the HAL starts; the label has to be in file_contexts before first boot because
+# nothing restorecons it afterwards.
+allow hal_audio_default vendor_persist_audio_file:dir search;
+allow hal_audio_default vendor_persist_audio_file:file r_file_perms;
+
+#####################################
+# Amplifier identification.
+#
+#   avc: denied { read open } name="aw882xx_chipid"
+#        scontext=u:r:hal_audio_default:s0 tcontext=u:object_r:sysfs:s0
+#
+# aw882xx.ko exports the detected chip id per i2c device. PAL reads it to pick
+# the amplifier's parameter set. Same treatment as the calibration file: the
+# node gets its own type via genfs_contexts rather than opening all of sysfs to
+# the audio HAL.
+allow hal_audio_default sysfs_awinic:dir search;
+allow hal_audio_default sysfs_awinic:file r_file_perms;
+
+#####################################
+# Dolby DMS.
+#
+#   avc: denied { call transfer } scontext=u:r:hal_audio_default:s0
+#        tcontext=u:r:hal_aidl_dms_default:s0 tclass=binder    (and the reverse)
+#
+# The audio HAL is the client of vendor.dolby.dms.service: the DAP effect lives
+# inside the audio HAL process and talks to the DMS service for profile and
+# endpoint state. Both directions are needed because the DMS service calls back.
+# hal_aidl_dms_default is declared in hal_third_party.te; this is the missing
+# edge between it and the audio HAL, and it is what makes the Dolby effect
+# reachable at all rather than just registered.
+binder_call(hal_audio_default, hal_aidl_dms_default)
+binder_call(hal_aidl_dms_default, hal_audio_default)
+
+#####################################
+# Not granted, deliberately:
+#
+#   avc: denied { read open } scontext=u:r:hal_audio_default:s0
+#        tcontext=u:object_r:debugfs:s0 tclass=dir
+#
+# That is the HAL opening /sys/kernel/debug to look for ADSP trace nodes. It is
+# a diagnostic path, it fails closed with one log line, and granting a vendor
+# HAL a directory read over all of debugfs to gain nothing is the wrong trade.
+# dontaudit rather than allow, so the noise goes away without the access.
+dontaudit hal_audio_default debugfs:dir { read open search };

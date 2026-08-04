@@ -58,3 +58,21 @@ genfscon proc /support_pen                                     u:object_r:proc_l
 # (platform_app, system_app) access to a vendor-labelled type, which is the
 # direction Treble's neverallows exist to discourage. If a consumer ever ships,
 # add the label and the grant together with it.
+
+# Awinic smart-amplifier nodes (aw882xx_chipid and the driver's other per-device
+# attributes). Four AW88461 on QUP i2c bus 5 at 0x34, 0x35, 0x36 and 0x37.
+# Path read off the running device rather than guessed:
+#   /sys/devices/platform/soc/ac0000.qcom,qupv3_1_geni_se/a94000.i2c/i2c-5/5-0034/aw882xx_chipid
+# The four clients are named one by one rather than labelling the bus: i2c-5
+# also carries 5-003e (AW37504 display bias) and 5-0064 (RTC6226 FM tuner), and
+# genfscon prefix-matches, so a bus-level entry would hand the audio HAL read
+# access to two unrelated devices.
+genfscon sysfs /devices/platform/soc/ac0000.qcom,qupv3_1_geni_se/a94000.i2c/i2c-5/5-0034 u:object_r:sysfs_awinic:s0
+genfscon sysfs /devices/platform/soc/ac0000.qcom,qupv3_1_geni_se/a94000.i2c/i2c-5/5-0035 u:object_r:sysfs_awinic:s0
+genfscon sysfs /devices/platform/soc/ac0000.qcom,qupv3_1_geni_se/a94000.i2c/i2c-5/5-0036 u:object_r:sysfs_awinic:s0
+genfscon sysfs /devices/platform/soc/ac0000.qcom,qupv3_1_geni_se/a94000.i2c/i2c-5/5-0037 u:object_r:sysfs_awinic:s0
+
+# Lenovo/Tinno per-component hardware inventory. hal_sensors_default writes its
+# own entry here at probe; see sepolicy/vendor/measured.te for the readout and
+# for why this gets a type instead of the sysfs blanket stock uses.
+genfscon sysfs /devices/platform/product-device-info                          u:object_r:sysfs_product_device_info:s0

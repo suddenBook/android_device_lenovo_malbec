@@ -55,10 +55,6 @@ vendor.main_front.otp_check                         u:object_r:vendor_cam_prop:s
 persist.vendor.dolbyv.                              u:object_r:vendor_dolbyv_prop:s0
 vendor.dolbyv.                                      u:object_r:vendor_dolbyv_prop:s0
 
-# Lenovo AI HAL state — written by /vendor/bin/lenovo.hardware.ai-service.
-persist.vendor.hw.ai.                               u:object_r:vendor_hw_ai_prop:s0
-vendor.hw.ai.                                       u:object_r:vendor_hw_ai_prop:s0
-
 # Keymaster readiness handshake. /vendor/bin/check_keymaster is not extracted
 # (it is absent from the factory vendor image too), so nothing writes these here;
 # init.target.rc:304 still reads them, so the labels are carried for parity.

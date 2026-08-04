@@ -28,10 +28,8 @@
 # label — a declared HAL with no label is refused by Access.cpp:167-170 before the
 # enforcing check, so clients block on waitForService() forever and permissive does
 # not save them.
-lenovo.hardware.ai.IDevice/default                              u:object_r:hal_lenovo_ai_service:s0
 vendor.lenovo.hardware.battery.IBattery/default                 u:object_r:hal_lenovobattery_service:s0
 vendor.lenovo.hardware.display.IDisplay/default                 u:object_r:hal_lenovodisplay_service:s0
-vendor.lenovo.hardware.factory.IFactory/default                 u:object_r:hal_lenovofactory_service:s0
 vendor.lenovo.hardware.hyperschedule.IHyperschedule/default     u:object_r:hal_lenovohyperschedule_service:s0
 vendor.lenovo.hardware.keyboard.IKeyboard/default               u:object_r:hal_lenovokeyboard_service:s0
 vendor.lenovo.hardware.misc.IMisc/default                       u:object_r:hal_lenovomisc_service:s0

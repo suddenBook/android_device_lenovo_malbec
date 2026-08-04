@@ -3,10 +3,8 @@
 # no service binary in the factory vendor image).
 
 # Lenovo private AIDL HALs
-/(vendor|system/vendor)/bin/lenovo\.hardware\.ai-service                     u:object_r:hal_lenovo_ai_proc_exec:s0
 /(vendor|system/vendor)/bin/hw/vendor\.lenovo\.hardware\.battery-service     u:object_r:hal_lenovobattery_default_exec:s0
 /(vendor|system/vendor)/bin/hw/vendor\.lenovo\.hardware\.display-service     u:object_r:hal_lenovodisplay_default_exec:s0
-/(vendor|system/vendor)/bin/hw/vendor\.lenovo\.hardware\.factory-service     u:object_r:hal_lenovofactory_default_exec:s0
 /(vendor|system/vendor)/bin/hw/vendor\.lenovo\.hardware\.hyperschedule-service u:object_r:hal_lenovohyperschedule_default_exec:s0
 /(vendor|system/vendor)/bin/hw/vendor\.lenovo\.hardware\.keyboard-service    u:object_r:hal_lenovokeyboard_default_exec:s0
 /(vendor|system/vendor)/bin/hw/vendor\.lenovo\.hardware\.misc-service        u:object_r:hal_lenovomisc_default_exec:s0
@@ -40,7 +38,6 @@
 
 # Lenovo daemons — domains in daemons.te
 /(vendor|system/vendor)/bin/prop_init                                        u:object_r:prop_init_exec:s0
-/(vendor|system/vendor)/bin/tndiag                                           u:object_r:tndiag_exec:s0
 
 # Adaptive backlight (CABL) and smart video intelligence (SVI) helper scripts.
 # All seven just exec /vendor/bin/ppd with a different argument. The domain
@@ -94,3 +91,8 @@
 /data/vendor/arcsoft(/.*)?                                                   u:object_r:arcsoft_face_dump_file:s0
 /dev/afw                                                                     u:object_r:afw_device:s0
 /dev/block/platform/soc/1d84000\.ufshc/by-name/proinfo                       u:object_r:vendor_proinfo_block_device:s0
+
+# Awinic smart-amplifier calibration, read by hal_audio_default. Created and
+# chowned from init.target.rc:162-167, never restorecon'd, so this has to be
+# right before first boot. See sepolicy/vendor/hal_audio.te for the derivation.
+/mnt/vendor/persist/factory/audio(/.*)?                                      u:object_r:vendor_persist_audio_file:s0

@@ -25,13 +25,6 @@ init_daemon_domain(hal_lenovodisplay_default)
 binder_use(hal_lenovodisplay_default)
 add_service(hal_lenovodisplay_default, hal_lenovodisplay_service)
 
-# vendor.lenovo.hardware.factory V2 — IFactory/default
-type hal_lenovofactory_default, domain;
-type hal_lenovofactory_default_exec, exec_type, vendor_file_type, file_type;
-init_daemon_domain(hal_lenovofactory_default)
-binder_use(hal_lenovofactory_default)
-add_service(hal_lenovofactory_default, hal_lenovofactory_service)
-
 # vendor.lenovo.hardware.hyperschedule V2 — IHyperschedule/default
 type hal_lenovohyperschedule_default, domain;
 type hal_lenovohyperschedule_default_exec, exec_type, vendor_file_type, file_type;
@@ -87,11 +80,3 @@ init_daemon_domain(hal_lenovousb_default)
 binder_use(hal_lenovousb_default)
 add_service(hal_lenovousb_default, hal_lenovousb_service)
 
-# lenovo.hardware.ai — IDevice/default
-# Note the domain name: stock calls it hal_lenovo_ai_proc, not _default, and the
-# binary sits in /vendor/bin rather than /vendor/bin/hw.
-type hal_lenovo_ai_proc, domain;
-type hal_lenovo_ai_proc_exec, exec_type, vendor_file_type, file_type;
-init_daemon_domain(hal_lenovo_ai_proc)
-binder_use(hal_lenovo_ai_proc)
-add_service(hal_lenovo_ai_proc, hal_lenovo_ai_service)

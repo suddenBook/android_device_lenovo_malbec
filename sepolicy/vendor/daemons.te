@@ -68,26 +68,28 @@ allow prop_init sysfs_dt_firmware_android:dir r_dir_perms;
 allow prop_init sysfs_dt_firmware_android:file r_file_perms;
 
 #####################################
-# /vendor/bin/tndiag — class core, root, started by
-# persist.vendor.diag.tndiag.enabled. tndiag.rc carries an explicit
-# `seclabel u:r:tndiag:s0`, so the domain name here is load-bearing: without the
-# type, init cannot resolve the context and the service never starts.
-type tndiag, domain;
-type tndiag_exec, exec_type, vendor_file_type, file_type;
-
-init_daemon_domain(tndiag)
-
-allow tndiag self:capability { chown fowner };
-allow tndiag block_device:dir search;
-allow tndiag vendor_proinfo_block_device:blk_file rw_file_perms;
-allow tndiag vendor_proinfo_block_device:lnk_file r_file_perms;
-allow tndiag mnt_vendor_file:dir rw_dir_perms;
-allow tndiag mnt_vendor_file:file create_file_perms;
-allow tndiag vendor_persist_bluetooth_file:dir rw_dir_perms;
-allow tndiag vendor_persist_bluetooth_file:file create_file_perms;
-allow tndiag vendor_sysfs_battery_supply:dir search;
-allow tndiag vendor_sysfs_battery_supply:file r_file_perms;
-allow tndiag vendor_diag_device:chr_file rw_file_perms;
+# /vendor/bin/tndiag -- DELIBERATELY ABSENT.
+#
+# tndiag is Tinno's (the ODM's) root-privileged DIAG command handler. It ran
+# as `class core`, `user root` on stock and here, and its command table is a
+# factory-provisioning surface reachable over the DIAG channel:
+# diagtn_sn_write, "diagtn_snwrite, psn=%s gsn=%s", diagtn_wl_mac_write,
+# diagtn_read_bt_mac, diagtn_rpmb_key, diag_tee_key_check,
+# diag_acquire_wechat_key, diagtn_recovery_handler, "diagtn enter qcom
+# flashmode", and a `busybox cp -r /sdcard/autonavidata50 /data/local/test_data`.
+# It shells out to ftmdaemon / fmfactorytest / mm-audio-ftm, all of which are
+# also dropped.
+#
+# Nothing in this build talks to it -- a byte-safe scan of all five partitions
+# for "tndiag" finds only its own .rc, its SELinux labels and this comment.
+# It is the clearest "ZUI wearing a PixelOS skin" item in the tree, and it is
+# a serial-number / MAC / RPMB-key write path we gain nothing from carrying.
+#
+# ⚠️ Its .rc also carried the ONLY `mkdir /mnt/vendor/persist/wcn7750` and
+# `mkdir /mnt/vendor/persist/bluetooth` in the image, and libLenovoNvram.so
+# (loaded by the enabled prop_init service) reads this unit's Wi-Fi and
+# Bluetooth MAC addresses out of those directories. Both mkdirs moved to
+# rootdir/etc/init.malbec.rc when tndiag was dropped -- do not remove them.
 
 #####################################
 # check_keymaster — type only, no rules, no exec label.

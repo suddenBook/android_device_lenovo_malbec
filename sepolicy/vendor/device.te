@@ -14,8 +14,9 @@ type lenovo_device, dev_type;
 # /dev/afw — Microtrust TEE bridge character device, opened by hal_afw.
 type afw_device, dev_type;
 
-# proinfo holds this unit's serials and MAC addresses; prop_init and tndiag read
-# the raw block device.
+# proinfo holds this unit's serials and MAC addresses; prop_init reads the raw
+# block device. (Stock's other reader, tndiag, is deliberately not shipped --
+# see daemons.te.)
 # ⚠️ Stock declares this with only the file_type attribute, which makes its own
 # blk_file rules unusable. dev_type added here deliberately — that is a stock bug,
 # not a convention worth copying.

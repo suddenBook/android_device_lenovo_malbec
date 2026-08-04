@@ -1,0 +1,128 @@
+# Rules derived from denials measured on a booted device.
+#
+# Provenance, not subject, is what groups these: each one belongs to a domain
+# whose primary definition lives somewhere else (AOSP's policy, or the QTI
+# vendor policy in device/qcom/sepolicy_vndr), so there is no natural .te file
+# of ours to put it in. Everything here comes from work/s15/boot1 — a 240 s
+# capture from t=0 on a permissive boot — and nothing here was copied from the
+# stock policy or inferred.
+#
+# What is deliberately NOT here, so the next session does not go looking:
+#
+#   * The ~2200 `zygote`/`hal_camera_default` -> *_prop { open getattr map }
+#     denials. Those are one process each enumerating the whole property area
+#     once at startup (__system_property_foreach maps every context file). A
+#     property a domain cannot read simply reads back empty, every domain has
+#     explicit get_prop() for the ones it needs, and "fix" would mean ~700 new
+#     grants. Noise.
+#
+#   * Denials whose SOURCE is a core domain — system_app on sysfs_zram,
+#     priv_app on proc_version, system_server mapping libsdmextension.so,
+#     servicemanager -> hal_graphics_composer_default, system_suspend on a
+#     sysfs `name`, init on debugfs_bootreceiver_tracing, kernel's
+#     net_bind_service. BOARD_VENDOR_SEPOLICY_DIRS cannot add rules for
+#     coredomains, and it should not: those are upstream's to fix.
+#
+#   * vendor_init setting ro.system.build.fingerprint / ro.bootimage.build
+#     .fingerprint. ro.* is write-once and init has already set both from
+#     build.prop by then, so the write is a guaranteed no-op; granting a vendor
+#     domain write access to build_prop to silence a cosmetic denial is a real
+#     privilege widening for nothing.
+
+#####################################
+# Thermal engine's client sockets.
+#
+#   avc: denied { create setattr } name="thermal-send-client"
+#        scontext=u:r:vendor_thermal-engine:s0
+#        tcontext=u:object_r:socket_device:s0 tclass=sock_file
+#
+# init_thermal-engine-v2.rc declares four of these (thermal-send-client,
+# thermal-recv-client, thermal-recv-passive-client, thermal-send-rule) and the
+# daemon re-creates them itself; on the running device all four are
+# u:object_r:socket_device:s0, i.e. they keep /dev/socket's own label.
+#
+# This is not cosmetic. Those sockets are the command channel that
+# thermal-switch-engine uses to move between the seven thermal-engine-malbec-*
+# policies. Lose them under enforcing and the device is stuck in whichever
+# profile it booted with, which on this build is the weakest one.
+allow vendor_thermal-engine socket_device:sock_file { create setattr unlink };
+
+#####################################
+# Lenovo/Tinno hardware inventory node.
+#
+#   avc: denied { read write open } name="info_gsensor"
+#        scontext=u:r:hal_sensors_default:s0 tcontext=u:object_r:sysfs:s0
+#
+# /sys/devices/platform/product-device-info/ is a per-component inventory the
+# ODM's drivers and HALs fill in at probe. Read off the running device:
+#
+#   info_gsensor  LSM6DSVETR_ACCEL      info_gyro   LSM6DSVETR_GYRO
+#   info_hall     OCH87893EV1AD         info_lsensor GS6155
+#   info_sar      AW96305DNR            info_fingerprint and info_nfc EMPTY
+#
+# (The two empty ones are worth recording: they are the ODM's own statement
+# that this unit has neither part, matching the tree's existing conclusions.)
+#
+# The sensors HAL both reads and writes its entry, so this is r+w, but only for
+# this one directory rather than the sysfs blanket stock uses.
+type sysfs_product_device_info, fs_type, sysfs_type;
+allow hal_sensors_default sysfs_product_device_info:dir search;
+allow hal_sensors_default sysfs_product_device_info:file rw_file_perms;
+
+#####################################
+# Gatekeeper reading KeyMint's retry timer.
+#
+#   avc: denied { read open getattr map }
+#        scontext=u:r:vendor_hal_gatekeeper_qti:s0
+#        tcontext=u:object_r:vendor_keymint_retry_timer_prop:s0 tclass=file
+#
+# The QTI gatekeeper shares the throttling counter with KeyMint. Without this
+# the lockout timer after failed unlock attempts reads as unset.
+get_prop(vendor_hal_gatekeeper_qti, vendor_keymint_retry_timer_prop)
+
+#####################################
+# Lenovo battery HAL reading persist.debug.*
+#
+#   avc: denied { read open getattr map } scontext=u:r:hal_lenovobattery_default:s0
+#        tcontext=u:object_r:persist_debug_prop:s0 tclass=file
+get_prop(hal_lenovobattery_default, persist_debug_prop)
+
+#####################################
+# Face unlock allocating from the system dmabuf heap.
+#
+#   avc: denied { read open } name="system"
+#        scontext=u:r:hal_faceunlock_default:s0
+#        tcontext=u:object_r:dmabuf_system_heap_device:s0 tclass=chr_file
+#
+# Standard for any HAL that has to allocate graphics/ION buffers on Android 12+.
+allow hal_faceunlock_default dmabuf_system_heap_device:chr_file r_file_perms;
+
+#####################################
+# Parallel module loading.
+#
+#   avc: denied { write }      scontext=vendor_modprobe tcontext=vendor_modprobe tclass=key
+#   avc: denied { sys_nice }   scontext=vendor_modprobe tcontext=vendor_modprobe tclass=capability
+#   avc: denied { setsched }   scontext=vendor_modprobe tcontext=kernel        tclass=process
+#
+# androidboot.load_modules_parallel=true is set in this device's bootconfig, so
+# modprobe forks workers and renices them. All three are the standard cost of
+# that flag.
+allow vendor_modprobe self:key write;
+allow vendor_modprobe self:capability sys_nice;
+allow vendor_modprobe kernel:process setsched;
+
+#####################################
+# prop_init reading /proc/meminfo.
+#
+#   avc: denied { read open getattr } name="meminfo" scontext=u:r:prop_init:s0
+#        tcontext=u:object_r:proc_meminfo:s0 tclass=file
+#
+# prop_init publishes a RAM-size property alongside the serials and MACs.
+allow prop_init proc_meminfo:file r_file_perms;
+
+#####################################
+# The CABL/SVI shell scripts reading Lenovo's init property.
+#
+#   avc: denied { read open getattr map } scontext=u:r:vendor_qti_init_shell:s0
+#        tcontext=u:object_r:vendor_lenovotb_init_prop:s0 tclass=file
+get_prop(vendor_qti_init_shell, vendor_lenovotb_init_prop)
