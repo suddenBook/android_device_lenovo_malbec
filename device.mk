@@ -163,6 +163,14 @@ PRODUCT_PACKAGES += \
 # libsoundtriggerhal.qti 则必须走 blob —— st-hal-ar/Android.bp:37 明确链 libar-pal。
 # onyx 的分法完全相同。
 
+# ★★ 承重，别精简 ★★
+# 这一段和下面 199 行开始的那一段，是 `;DISABLE_DEPS` 的**补偿**。
+# `;DISABLE_DEPS` 关掉的是 Soong 的依赖生成，也就是说：这些库 Soong **不会替我们
+# 装**，也**不会报错**。删掉其中任何一行的后果是开机后 dlopen 失败，而 `m nothing`、
+# `m pixelos`、check_elf_file 全都不会有任何反应 —— 构建期完全看不见。
+# 判定这一整套是否还完整，用 `python3 work/scripts/33-blob-linkcheck.py`
+# （它按链接器命名空间求解，不是按分区求并集）。
+#
 # ;DISABLE_DEPS 让 blob 不进 Soong 的依赖图，但运行时它们仍然要在 /vendor/lib64
 # 里找到自己链的那个接口版本。本树解析到的是更新的版本，所以旧版必须显式并装。
 # 版本号来自对出厂二进制逐个 readelf -d 的结果，不是猜的。
