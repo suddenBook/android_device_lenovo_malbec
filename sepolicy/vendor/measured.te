@@ -137,3 +137,21 @@ allow prop_init proc_meminfo:file r_file_perms;
 #   avc: denied { read open getattr map } scontext=u:r:vendor_qti_init_shell:s0
 #        tcontext=u:object_r:vendor_lenovotb_init_prop:s0 tclass=file
 get_prop(vendor_qti_init_shell, vendor_lenovotb_init_prop)
+
+#####################################
+# USB HAL walking /sys/class/qcom-battery.
+#
+#   avc: denied { search } comm="android.hardwar" name="qcom-battery"
+#        scontext=u:r:vendor_hal_usb_qti:s0
+#        tcontext=u:object_r:sysfs_qcom_battery:s0 tclass=dir
+#
+# ⚠️ This one is self-inflicted and only appeared after flashing. That directory
+# used to be plain sysfs, which vendor_hal_usb_qti can already search; giving it
+# its own type (for the charging-control gate) took the access away. It reads
+# usb_real_type / usb_typec_compliant from there.
+#
+# The lesson generalises: splitting a type out of a generic one is not additive.
+# Anything that reached the old label loses the new one, and a permissive boot is
+# where you find out.
+allow vendor_hal_usb_qti sysfs_qcom_battery:dir search;
+r_dir_file(vendor_hal_usb_qti, sysfs_qcom_battery)

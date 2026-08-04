@@ -737,9 +737,29 @@ $(call soong_config_set,lineage_health,charging_control_charging_path,/sys/class
 $(call soong_config_set,lineage_health,charging_control_charging_enabled,0)
 $(call soong_config_set,lineage_health,charging_control_charging_disabled,1)
 $(call soong_config_set_bool,lineage_health,charging_control_supports_bypass,false)
-$(call soong_config_set_bool,lineage_health,charging_control_supports_limit,true)
-$(call soong_config_set,lineage_health,charging_control_limit_start_path,/sys/class/power_supply/battery/charge_control_start_threshold)
-$(call soong_config_set,lineage_health,charging_control_limit_stop_path,/sys/class/power_supply/battery/charge_control_end_threshold)
+# ⚠️ LIMIT is deliberately NOT enabled, and the reason was only found after
+# flashing. charge_control_en is a ONE-SHOT latch, not a persistent enable:
+# measured on the flashed build,
+#
+#     echo 1 > charge_control_en        -> reads back 1
+#     echo 90 > ..._end_threshold       -> takes; charge_control_en now reads 0
+#     echo 100 > ..._end_threshold      -> IGNORED, stays 90
+#
+# i.e. the gate is consumed by the threshold write that follows it. The HAL
+# (hardware/lineage/interfaces/health/aidl/default/ChargingControl.cpp:232-246)
+# writes max then min and knows nothing about a gate, so every change the user
+# makes in Settings after the first one would be silently dropped. Enabling
+# LIMIT here ships a control that reports success and does nothing.
+#
+# TOGGLE on input_suspend has none of that problem and still gives the user the
+# same feature: Toggle.java:237-239 advertises MODE_LIMIT, and with TOGGLE the
+# framework watches the battery level itself and pauses charging at the target.
+#
+# To revisit: LIMIT would need ChargingControl.cpp to write the gate before each
+# setChargingLimit(), i.e. this tree's first patch outside device/ and vendor/.
+# The gain over TOGGLE is real but small (firmware enforces it, so it keeps
+# working while the CPU is asleep) and it is the owner's call, not a bug fix.
+$(call soong_config_set_bool,lineage_health,charging_control_supports_limit,false)
 
 # Screen
 TARGET_SCREEN_HEIGHT := 3504
