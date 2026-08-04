@@ -694,4 +694,28 @@
     <integer name="config_nightDisplayColorTemperatureMax">4628</integer>
     <integer name="config_nightDisplayColorTemperatureDefault">3420</integer>
 
+    <!-- Miracast / Wi-Fi Display. AOSP default is false
+         (core/res/res/values/config.xml:3424) and
+         DisplayManagerService.java:2397-2405 only builds a WifiDisplayAdapter
+         when it is true, so without this the whole vendor stack this tree
+         already ships is unreachable: wfdservice64, WfdService.apk and
+         libwfdnative.so are extracted, device.mk installs libinput_shim
+         specifically so libwfdnative resolves MotionEvent::initialize on
+         Android 16, and libwfdaac_vendor is in PRODUCT_PACKAGES. Stock turns it
+         on with persist.debug.wfd.enable=1 in system/build.prop:142 — the
+         partition PixelOS replaces, which is how the switch got lost. The
+         matching vendor-side properties are in properties/system.prop.
+
+         The QTI integration point exists in this tree: WifiDisplayController
+         holds mExtRemoteDisplay and dispatches through
+         ExtendedRemoteDisplayHelper (:767,:775), which is what WfdService.apk
+         registers with; AOSP's own RemoteDisplay path is the fallback and is
+         also still present (frameworks/av/media/libstagefright/wifi-display).
+
+         ⚠️ Not yet exercised against a real sink. If casting turns out not to
+         work, set this back to false and drop the five blobs rather than
+         leaving a Settings entry that fails — an option that is guaranteed to
+         fail is worse than an absent one. -->
+    <bool name="config_enableWifiDisplay">true</bool>
+
 </resources>

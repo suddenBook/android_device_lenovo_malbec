@@ -79,3 +79,30 @@ ro.media.recorder-max-base-layer-fps=60
 # factory sets both, on system and odm respectively, and shipping only one half
 # was an oversight rather than a decision.
 ro.vendor.qti.va_aosp.support=1
+
+# Miracast / Wi-Fi Display.
+#
+# The whole stack is already installed and was never switched on: wfdservice64,
+# WfdService.apk and libwfdnative.so come across as blobs, device.mk installs
+# libinput_shim specifically to give libwfdnative the pre-Android-16
+# MotionEvent::initialize symbol, and libwfdaac_vendor is in PRODUCT_PACKAGES.
+# What was missing is the framework side. AOSP's config_enableWifiDisplay
+# defaults to false (frameworks/base/core/res/res/values/config.xml:3424) and
+# DisplayManagerService.java:2397-2405 only constructs WifiDisplayAdapter when it
+# is true, so none of the above could ever be reached. The bool is set in
+# FrameworkOverlayMalbec; these two are the vendor-stack half of the same
+# switch, and both are verbatim from the factory system/build.prop:142-144.
+#
+# The QTI path is real on this tree, not a hope: WifiDisplayController keeps an
+# mExtRemoteDisplay and routes through ExtendedRemoteDisplayHelper
+# (frameworks/base/services/core/java/com/android/server/display/, :767,:775),
+# which is exactly the hook WfdService.apk plugs into. If it is ever unavailable
+# the controller falls back to AOSP's own RemoteDisplay, which is also still
+# present in this tree (frameworks/av/media/libstagefright/wifi-display).
+#
+# ⚠️ NOT verified on hardware yet -- the stack is complete and matches stock, but
+# nobody has cast to a sink. If it turns out broken, the honest fix is to set
+# config_enableWifiDisplay back to false and drop the five blobs, not to leave a
+# menu entry that fails.
+persist.debug.wfd.enable=1
+persist.sys.wfd.virtual=0

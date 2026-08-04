@@ -334,7 +334,14 @@ vendor.usb.rndis.func.name=gsi
 # (202404 >= 202404). The live device reports 202404.
 ro.board.api_level=202404
 
-sys.vendor.shutdown.waittime=500
+# ⚠️ sys.vendor.shutdown.waittime=500 used to be here and is deliberately gone.
+# It is the ONLY property in this file that vendor_init cannot set: sys.vendor.
+# has no vendor property_contexts entry, so it lands on system_prop, and
+# system/sepolicy/private/property.te's neverallow blocks granting any non-core
+# domain set access to it. So every enforcing boot logged one denial and the
+# property stayed unset. It also has zero consumers -- a byte-safe scan of the
+# whole factory image finds it only in build.prop itself. Same class as the
+# ro.mediaserver.64b.enable entry removed earlier.
 ro.hardware.keystore_desede=true
 ro.soc.manufacturer=QTI
 ro.soc.model=SM8735P
