@@ -215,7 +215,7 @@ TARGET_USES_VULKAN := true
 # the prebuilt dtbo plus the vendor display HAL resolve it. Do NOT hardcode
 # panel specific values anywhere here, and do not key anything off
 # ro.boot.lcd_type: it reads "glossy", a surface finish, not a vendor.
-TARGET_SCREEN_DENSITY := 320
+TARGET_SCREEN_DENSITY := 360
 
 # Filesystem
 TARGET_FS_CONFIG_GEN := $(DEVICE_PATH)/configs/config.fs
