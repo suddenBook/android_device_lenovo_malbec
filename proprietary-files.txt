@@ -325,7 +325,6 @@ vendor/etc/init/vendor.qti.tftp.rc
 vendor/etc/init/vendor.sensors.qti.rc
 vendor/etc/init/vendor.sensors.sscrpcd.rc
 vendor/etc/init/vmmgr.rc
-vendor/etc/init/vndservicemanager.rc
 vendor/etc/init/vppservice.rc
 vendor/etc/init/wfdvndservice.rc
 vendor/etc/init/wifisar.rc
@@ -2162,8 +2161,6 @@ vendor/bin/vendor.qti.syshealthmon-service
 vendor/bin/vendor_cmd_tool
 vendor/bin/vendor_modprobe.sh
 vendor/bin/vmmgr
-vendor/bin/vndservice
-vendor/bin/vndservicemanager
 vendor/bin/vppcommonlibraryunittest
 vendor/bin/vpplibraryfunctionaltest
 vendor/bin/vppservice
