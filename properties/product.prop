@@ -68,3 +68,35 @@ persist.sys.fuse.passthrough.enable=true
 # default; keeping parity avoids client-side allocation failures with the buffer
 # sizes the QTI audio HAL hands out.
 ro.af.client_heap_size_kbyte=7168
+
+# ── Remote Key Provisioning ────────────────────────────────────────────────
+#
+# ★ Missing until session 17, and its absence is not subtle: this device is
+# **RKP-only**. Stock says so itself (`remote_provisioning.tee.rkp_only=true` in
+# product/etc/build.prop:67) — the TEE KeyMint instance ships with no factory
+# attestation keys and is supposed to fetch them from Google at runtime.
+#
+# With `remote_provisioning.hostname` unset, RKP is switched off at the root:
+# Settings.getDefaultUrl() (RemoteKeyProvisioning/.../utils/Settings.java:239-243)
+# returns "" for an empty hostname, and RemoteProvisioningService.java:64-67 then
+# answers every getRegistration() with
+#   "RKP is disabled. System configured with no default URL."
+# Measured on the running build: ~20 keystore2 lines a minute, forever, and
+# `keymint_generate_key` failing — i.e. **no hardware key attestation at all**,
+# which is what Play Integrity's DEVICE verdict and every banking app want.
+#
+# ⚠️ This also revises session 16's conclusion. `work/s16/attest/` found a failed
+# QWES attestation-certificate licence in the persist partition and concluded
+# "attestation is factory-broken, not ours to fix". The licence finding stands,
+# but the conclusion does not follow: on an rkp_only device that certificate is
+# not the attestation path in the first place — RKP is. We had simply never
+# turned RKP on.
+#
+# Values are stock's, verbatim, not onyx's: onyx sets
+# `remote_provisioning.strongbox.rkp_only` because it has a StrongBox instance.
+# This device does not — `pm list features` reports only
+# `android.hardware.hardware_keystore=300` with no `android.hardware.strongbox_keystore`
+# — so the flag has to name the TEE instance instead.
+remote_provisioning.enable_rkpd=true
+remote_provisioning.hostname=remoteprovisioning.googleapis.com
+remote_provisioning.tee.rkp_only=true
