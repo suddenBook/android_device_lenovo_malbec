@@ -168,6 +168,22 @@ log.tag.SDM=W
 # next, so E is not usable for this tag at all.
 log.tag.PERFHAL-CLIENT=F
 
+# PERFHAL-SCENARIOD-BRIDGE — 538 lines in work/s17/boot1/logcat-stream.txt, and
+# `sed 's/[0-9]\+/N/g' | sort -u` on them returns exactly ONE line:
+#     SubmitScenarioDRequest() N: Request not submitted as Target Init is not complete
+# So the tag has no second message to lose. The window is 18:12:18 -> 18:12:24,
+# six seconds: every process that starts during boot asks the perf HAL for a
+# boost before the HAL has finished polling core-online state, and each refusal
+# is logged at E. Requests after target init succeed and say nothing.
+#
+# ⚠️ The boosts in those six seconds really are dropped, so this DOES hide a
+# (small) defect: early-boot perf hints do not apply. It is not fixable from the
+# device tree -- targetconfig.xml already lists soc_id 694 under Target="tuna",
+# byte-identical to stock (verified), so the config is not what is late. Keeping
+# 538 identical lines would not fix it either; it would only make the next
+# person's boot log 0.4 % noisier.
+log.tag.PERFHAL-SCENARIOD-BRIDGE=F
+
 # sec_channel — ⚠️ DELIBERATELY NOT SILENCED, and the reason is a correction.
 #
 # An earlier draft of this block set log.tag.sec_channel=F, on the stated
