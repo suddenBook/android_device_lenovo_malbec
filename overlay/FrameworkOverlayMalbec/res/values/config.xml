@@ -188,35 +188,33 @@
          geometry is wrong and guessing harder from one oblique photo was not
          going to fix it.
 
-         60px was tried as the first probe, sized from the crescent's measured
-         proportions. RESULT: the owner reports the crescent GREW. So the sign is
-         settled empirically even though the model still does not explain the
-         brightness - the mask is too LARGE, not too small, and the search goes
-         DOWN from 45px, not up.
+         The value was found by bisection on the device, because the arc model
+         I reasoned from did not survive contact: it predicted a black crescent
+         for Rm>Rg and no artefact at all for Rm<Rg, and the observed crescent
+         was BRIGHTER than the surrounding screen, which is neither. Something
+         in that model is wrong and was never found. So this is empirical.
 
-         36px is the second probe: a step below 45 of roughly the same magnitude
-         as 45->60 was above it, so the bracket is 36 .. 60 with 45 known to be
-         mildly wrong and 60 known to be worse.
-             crescent shrinks vs 45px  -> keep going down, try ~30px
-             crescent gone             -> stop, and record the value here
-             crescent grows vs 45px    -> the minimum is between 36 and 45;
-                                          try 40px
-         This is now a pure empirical bisection. Do NOT reason it out from arc
-         geometry - that model predicted a black crescent for Rm>Rg and no
-         artefact at all for Rm<Rg, and the observed crescent is brighter than
-         the surrounding screen, which is neither. Something in the assumed
-         geometry is wrong and has not been found.
+             45px (stock's own 20dp @ 360) -> thin bright crescent, all 4 corners
+             60px                          -> crescent GREW  => go down, not up
+             36px                          -> "almost gone" (owner, on a white
+                                              screen photographed with another
+                                              camera)
+             35px                          -> this value
 
-         Facts that ARE established, so nobody re-derives them:
-           - the crescent's inner edge is stair-stepped (rasterised) and its
-             outer edge is smooth (physical), so the inner boundary really is
-             SystemUI's mask and not an optical artefact
-           - there is no screen protector on the device (asked, confirmed)
-           - screencap cannot see any of this: AOSP deliberately excludes
+         Facts worth not re-deriving:
+           - the crescent's inner edge is stair-stepped, i.e. rasterised, so it
+             really is SystemUI's mask and not an optical artefact of the bevel;
+             its outer edge is smooth, i.e. physical
+           - there is no screen protector on this device (asked, confirmed)
+           - screencap CANNOT see any of this: AOSP deliberately excludes
              ScreenDecorOverlay from screenshots, so every check needs a photo
-             of a solid white screen taken with another camera
-         Record the final value here and delete this note once it converges. -->
-    <dimen name="rounded_corner_radius">36px</dimen>
+             of a solid white screen taken with a second camera. Do not try to
+             verify this from a screencap and conclude the corners are square.
+
+         If a sliver ever comes back, 34 and 33 are the next steps down; the
+         bracket above 35 is well established and there is nothing to gain by
+         going back up. -->
+    <dimen name="rounded_corner_radius">35px</dimen>
 
     <!-- ★ The status bar's left and right content insets come from HERE, not
          from any SystemUI dimension, and leaving it at AOSP's 0dp default is
