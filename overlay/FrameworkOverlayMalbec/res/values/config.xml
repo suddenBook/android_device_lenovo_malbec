@@ -237,10 +237,11 @@
              of a solid white screen taken with a second camera. Do not try to
              verify this from a screencap and conclude the corners are square.
 
-         If a sliver ever comes back, 34 and 33 are the next steps down; the
-         bracket above 35 is well established and there is nothing to gain by
-         going back up. -->
-    <dimen name="rounded_corner_radius">35px</dimen>
+         ★ 34px is the device owner's own setting, taken one step further down
+         the bracket after living with 35, and it is settled. Keep it. 33 is the
+         next step if a sliver ever reappears; going back up above 35 has been
+         established as pointless. -->
+    <dimen name="rounded_corner_radius">34px</dimen>
 
     <!-- ★ The status bar's left and right content insets come from HERE, not
          from any SystemUI dimension, and leaving it at AOSP's 0dp default is
@@ -667,12 +668,14 @@
          `android` with aapt2 and diffing against the built framework-res.apk
          (which already includes the PixelOS/LineageOS static overlays). -->
 
-    <!-- Stock: true, from product/overlay/LgsiFrameworksOverlay.apk.
-         AOSP default is false (core/res/res/values/config.xml). Consumer is
-         SystemUI KeyguardStatusBarRepository.kt:71 — with it false there is no
-         user switcher on the lock screen, which matters on a tablet where
-         multi-user is a headline feature. -->
-    <bool name="config_keyguardUserSwitcher">true</bool>
+    <!-- ★ Device owner's decision, settled: no user switcher on the lock screen.
+         Stock ships true (product/overlay/LgsiFrameworksOverlay.apk) and an
+         earlier round matched stock on the reasoning that multi-user is a
+         headline tablet feature; the owner does not use multi-user and prefers
+         the cleaner lock screen. AOSP's own default is false, so this is also
+         the upstream value. Consumer is SystemUI
+         KeyguardStatusBarRepository.kt:71. Do not flip it back. -->
+    <bool name="config_keyguardUserSwitcher">false</bool>
 
     <!-- Stock: true, from product/overlay/FrameworksResCommon_Sys.apk.
          AudioManager.java:7054 turns this into

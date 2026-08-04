@@ -131,17 +131,26 @@ TARGET_BOOTLOADER_BOARD_NAME := sun
 TARGET_USES_VULKAN := true
 
 # Display
-# 360, same as stock. Feeds ro.sf.lcd_density (build/make/core/
-# sysprop_config.mk:136). Purely the dp->px factor: the panel always scans out
-# its 2190x3504 real pixels either way, nothing is resampled.
+# 320. Feeds ro.sf.lcd_density (build/make/core/sysprop_config.mk:136). Purely
+# the dp->px factor: the panel always scans out its 2190x3504 real pixels either
+# way, nothing is resampled.
 #
-# ⚠️ This was 320 for one round, with the rationale "320 is the measured
-# physical density (dumpsys: 319.69 x 320.14 dpi), so a dp lands at Android's
-# defined 1/160 inch instead of 12.5% oversized". The premise is true and the
-# conclusion is wrong, and the owner felt it directly: on the 320 build the
-# report was "status bar is far too small, UI elements look wrong".
+# ★ THIS IS THE DEVICE OWNER'S DECISION AND IT IS SETTLED. Stock is 360 and an
+# earlier round shipped 360; the owner has since set 320 by hand and asked for
+# it to stay. It is a preference about how big the UI should be on their own
+# 13-inch tablet, and preferences of that kind are not something a derivation
+# overrules. Do not "correct" it back.
 #
-# Why density == physical dpi is the wrong target:
+# Everything below is kept because it is still the honest accounting of what 320
+# costs relative to 360, and because the 306 arithmetic at the end is referenced
+# from overlay/FrameworkOverlayMalbec. Read it as trade-offs that have been
+# accepted, not as an argument against the value above.
+#
+# What the owner gains at 320: 1752 x 1095 dp of workspace instead of
+# 1557 x 973 dp, i.e. 26% more logical area, which on a 13" screen with a
+# keyboard attached is the point of the machine.
+#
+# What it costs, and why 360 was argued for before:
 #
 #   dp is a *nominal* unit. Its purpose is that a given dp count occupies
 #   roughly the same physical size across devices, and the size Android
@@ -155,33 +164,33 @@ TARGET_USES_VULKAN := true
 #
 #     device                 real dpi   density   dp/inch   48dp
 #     Pixel Tablet 10.95"      275.6      320      137.8    8.85 mm
-#     malbec 13.0" @ 320       319.9      320      160.0    7.62 mm   <- too small
+#     malbec 13.0" @ 320       319.9      320      160.0    7.62 mm   <- shipped
 #     malbec 13.0" @ 360       319.9      360      142.2    8.57 mm   <- stock
 #
 #   Panel is 2190/319.69 = 6.85" x 3504/320.15 = 10.94", diagonal 12.91",
 #   i.e. the advertised 13.0". So 320 puts this 13" tablet 16% denser than
 #   Google's own 11" tablet -- the wrong direction for a device this size.
 #
-# Second, independent reason: logical workspace. At 320 the display is
-# 1752 x 1095 dp -- 1.9x the *area* of the Pixel Tablet's 1280 x 800 dp, and
-# beyond anything Google's SystemUI / Launcher / Settings layouts are tuned
-# for. At 360 it is 1557 x 973 dp, much closer. Verified on the running device
-# that the split-shade QS and the 2-pane Settings both leave large dead zones
-# at the wider size.
+# Second: logical workspace. At 320 the display is 1752 x 1095 dp -- 1.9x the
+# *area* of the Pixel Tablet's 1280 x 800 dp, which is past what Google's
+# SystemUI / Launcher / Settings layouts are tuned for; at 360 it is
+# 1557 x 973 dp, closer to tested ground. Observed on the running device: the
+# split-shade QS and the 2-pane Settings leave large dead zones at the wider
+# size. Accepted -- dead space is a cosmetic cost, and it buys real estate.
 #
-# Third: it makes a restored settings backup land where the owner expects.
-# Settings backs up display size as a *scale index*, not a px value
-# (DisplayDensityUtils; MIN_SCALE 0.85). The owner runs the smallest step. On
-# stock that is 360 * 0.85 = 306; restored onto a 320 build it becomes
-# 320 * 0.85 = 272 -- 11% below the density they had been living with, which
-# is exactly the complaint. With 360 the same restore reproduces 306.
+# Third: a restored settings backup lands differently. Settings backs up display
+# size as a *scale index*, not a px value (DisplayDensityUtils; MIN_SCALE 0.85).
+# The owner runs the smallest step, which on stock is 360 * 0.85 = 306; on a 320
+# build the same restore gives 320 * 0.85 = 272. If the UI ever comes back
+# smaller than expected after a restore, this is why, and the fix is to move the
+# Settings display-size step rather than to change the density here.
 #
-# The one real cost of 360 is resource buckets: 360 sits between xhdpi (320)
-# and xxhdpi (480), and ResTable_config::isBetterThan prefers the nearest
-# bucket >= requested, so bitmap drawables come from xxhdpi and are scaled by
-# 0.75. That is downscaling, which is the benign direction, and modern Material
-# UI is overwhelmingly vector drawables, which are unaffected. Paying that to
-# fix a 13%-too-small UI is clearly the right trade.
+# One thing 320 actually gets for free: it IS a resource bucket. 360 sits
+# between xhdpi (320) and xxhdpi (480), and ResTable_config::isBetterThan
+# prefers the nearest bucket >= requested, so on a 360 build bitmap drawables
+# come from xxhdpi and are scaled by 0.75. At 320 they are used at native size.
+# Minor either way -- modern Material UI is overwhelmingly vector drawables --
+# but it is a point in favour, not against.
 #
 # No packaging cost either way: PRODUCT_AAPT_PREF_CONFIG is unset and
 # PRODUCT_AAPT_CONFIG carries no density qualifiers, so every APK keeps all
@@ -215,7 +224,7 @@ TARGET_USES_VULKAN := true
 # the prebuilt dtbo plus the vendor display HAL resolve it. Do NOT hardcode
 # panel specific values anywhere here, and do not key anything off
 # ro.boot.lcd_type: it reads "glossy", a surface finish, not a vendor.
-TARGET_SCREEN_DENSITY := 360
+TARGET_SCREEN_DENSITY := 320
 
 # Filesystem
 TARGET_FS_CONFIG_GEN := $(DEVICE_PATH)/configs/config.fs
