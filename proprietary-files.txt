@@ -34,6 +34,62 @@
 # system_ext and product carry only the QTI system-side extensions that onyx
 # also ships, minus everything cellular — this is a Wi-Fi-only tablet with no
 # modem, so the qcril/IMS stack would only retry and log.
+#
+# ⚠️ vendor/lib64/libtinyxml2.so is listed ON PURPOSE, even though it is pure
+# AOSP and the tree builds a vendor variant of it. It is the one library on this
+# device with a *silent layout ABI break* between the vendor blobs' compile-time
+# headers and the current tree:
+#
+#   AOSP e26130265cbfe70dd26a22648b1c719406ce2c9e "Upgrade tinyxml2 to 11.0.0"
+#   turned DynArray/MemPoolT's `int` members into `size_t`, which grew
+#   sizeof(tinyxml2::XMLDocument) from 776 (0x308) to 880 (0x370).
+#
+# 16 blobs here link libtinyxml2.so and SEVEN construct an XMLDocument by value
+# — libpowercore.so embeds two at offsets 0x128/0x438 (stride 0x310 = 776
+# rounded up), libaudioeffecthal.qti.so memsets exactly 0x308 of stack and
+# builds one there. With the 880-byte constructor every one of them overruns by
+# 104 bytes. That is the whole reason poweropt-service and audiohalservice.qti
+# crashed on the first flash, and it is armed but not yet fired in
+# libcamxcoreutils.so / libcamxods.so / libquasar.so / libapengine.so /
+# liblearningmodule.so.
+#
+# The exported symbol sets of the two builds are IDENTICAL (231 = 231), so
+# check_elf_file, 33-blob-linkcheck.py and every other symbol-based gate is
+# structurally blind to this. Only the layout differs.
+#
+# Extracting the factory copy is safe in both directions:
+#   · the four TREE-BUILT vendor consumers were compiled against the v11 header,
+#     but the members that moved are private and live at offset >= 0x100; the
+#     XMLNode base and every scalar (_errorID, _errorStr, ...) occupy 0x00-0xa8
+#     and are byte-identical in both versions, which is all the inlinable public
+#     API touches. A consumer that reserves 880 while the library writes 776
+#     merely wastes 104 bytes — only the reverse corrupts memory.
+#   · libtinyxml2 is not LLNDK, so the vendor linker namespace never sees
+#     /system/lib64's v11. The system side is untouched.
+#
+# It carries ;MAKE_COPY_RULE_ONLY rather than being a normal prebuilt module,
+# and that is forced, not stylistic. external/tinyxml2/Android.bp:36 is a plain
+# `cc_library` with vendor_available/product_available/recovery_available, so
+# Soong considers its partition to be `system` even for the vendor variant. A
+# soc_specific prebuilt of the same name is then rejected outright by
+# build/soong/android/prebuilt.go:508-517
+# (checkInvariantsForSourceAndPrebuilt -> "partition is different:
+# system(libtinyxml2) != vendor(prebuilt_libtinyxml2)"), which is a hard
+# invariant with its own regression test (prebuilt_test.go:443). Measured, not
+# assumed: a plain entry here fails `m nothing` in 7 seconds.
+# MAKE_COPY_RULE_ONLY emits a PRODUCT_COPY_FILES rule instead of a Soong module,
+# so there is no module to change partitions and no conflict. The tree still
+# builds its own vendor variant; the copy rule overrides the install. Which rule
+# kati keeps is verified, not assumed -- see work/analysis/blob-ownership.txt
+# and `python3 work/scripts/30-dup-installs.py --check`.
+#
+# Two alternatives were tried and rejected, recorded so nobody retries them:
+#   · a plain blob entry -- the partition invariant above;
+#   · a soname rename (;FIX_SONAME + replace_needed) -- libtinyxml2_1.so proves
+#     a rename does not isolate C++ symbols (210 identical mangled names), and
+#     audiohalservice.qti has libtinyxml2.so directly in DT_NEEDED, so the v11
+#     copy would sit in that process's global lookup scope and win regardless of
+#     what the dlopened blob asked for.
 
 # APEX
 vendor/apex/com.google.android.widevine.nonupdatable.apex
@@ -2692,6 +2748,7 @@ vendor/lib64/libtestutils.so
 vendor/lib64/libtfestriping.so
 vendor/lib64/libthreadutils.so
 vendor/lib64/libtime_genoff.so
+vendor/lib64/libtinyxml2.so;MAKE_COPY_RULE_ONLY
 vendor/lib64/libtinyxml2_1.so
 vendor/lib64/libtlpd.so
 vendor/lib64/libtlpd_configmgr.so
