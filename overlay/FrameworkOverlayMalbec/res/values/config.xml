@@ -237,11 +237,11 @@
              of a solid white screen taken with a second camera. Do not try to
              verify this from a screencap and conclude the corners are square.
 
-         ★ 34px is the device owner's own setting, taken one step further down
-         the bracket after living with 35, and it is settled. Keep it. 33 is the
-         next step if a sliver ever reappears; going back up above 35 has been
-         established as pointless. -->
-    <dimen name="rounded_corner_radius">34px</dimen>
+         ★ 33px is the device owner's own setting. They walked it down the
+         bracket themselves, 35 -> 34 -> 33, living with each one; this is where
+         they stopped. Keep it. Going back up above 35 has been established as
+         pointless, and below 33 the crescent starts coming back. -->
+    <dimen name="rounded_corner_radius">33px</dimen>
 
     <!-- ★ The status bar's left and right content insets come from HERE, not
          from any SystemUI dimension, and leaving it at AOSP's 0dp default is
