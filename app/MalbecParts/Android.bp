@@ -15,8 +15,26 @@
 // mechanism (com.android.settings.action.IA_SETTINGS + a category meta-data),
 // so it lands inside Settings rather than beside it.
 
+// The allowlist is a separate module rather than a PRODUCT_COPY_FILES line so
+// that it travels with the app: same directory, same partition flag, and it
+// cannot be left behind if the app ever moves.
+prebuilt_etc {
+    name: "privapp-permissions-org.pixelos.malbec.parts.xml",
+    system_ext_specific: true,
+    sub_dir: "permissions",
+    src: "privapp-permissions-org.pixelos.malbec.parts.xml",
+    filename_from_src: true,
+}
+
 android_app {
     name: "MalbecParts",
+
+    // Pulls the allowlist in automatically, so no PRODUCT_PACKAGES line can
+    // ship the app without it. This is the whole reason the boot loop of
+    // session 16 cannot come back: forgetting the XML is no longer possible
+    // without also removing the app.
+    required: ["privapp-permissions-org.pixelos.malbec.parts.xml"],
+
 
     srcs: ["src/**/*.kt"],
     resource_dirs: ["res"],

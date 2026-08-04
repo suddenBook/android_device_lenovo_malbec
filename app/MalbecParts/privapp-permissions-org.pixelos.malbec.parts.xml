@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+
+     Privileged permission allowlist for MalbecParts.
+
+     Every signature|privileged permission a priv-app requests must appear in an
+     allowlist on its own partition, even when the app is platform-signed and
+     would be granted the permission by signature alone. Without this file
+     AppIdPermissionPolicy.onSystemReady() throws IllegalStateException, which
+     kills system_server, which kills zygote — a boot animation that never ends.
+     ro.control_privapp_permissions is "enforce" here
+     (vendor/lineage/config/common.mk).
+
+     The app is system_ext_specific, so this lands in
+     /system_ext/etc/permissions/ and is read into the system_ext allowlist
+     (AppIdPermissionPolicy.getPrivilegedPermissionAllowlistState -> isSystemExt).
+
+     Only permissions with the "privileged" protection flag belong here. The
+     app's other declared permissions are normal (VIBRATE, RECEIVE_BOOT_COMPLETED,
+     QUERY_ALL_PACKAGES), dangerous (BLUETOOTH_CONNECT, POST_NOTIFICATIONS) or
+     plain signature (MANAGE_KEY_GESTURES, INJECT_EVENTS, DEVICE_POWER,
+     WRITE_SETTINGS) and must NOT be listed — an entry naming a non-privileged
+     permission is dead weight that later readers will mistake for a requirement.
+-->
+<permissions>
+    <privapp-permissions package="org.pixelos.malbec.parts">
+        <!-- ActivityManager#getRunningTasks, for "Smart remote": the foreground
+             package decides which remote-control profile the pen buttons use.
+             SmartRemote.kt:122. -->
+        <permission name="android.permission.REAL_GET_TASKS" />
+        <!-- BluetoothDevice#setMetadata(METADATA_DEVICE_TYPE, "Stylus"), which
+             is what makes Settings show the pen's own detail page.
+             StylusMetadataTagger.kt:91. -->
+        <permission name="android.permission.BLUETOOTH_PRIVILEGED" />
+    </privapp-permissions>
+</permissions>

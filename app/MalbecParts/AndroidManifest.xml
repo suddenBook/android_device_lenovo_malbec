@@ -13,19 +13,23 @@
     <uses-permission android:name="android.permission.MANAGE_KEY_GESTURES" />
     <!-- Injecting the concrete keycode in "Smart remote". Signature. -->
     <uses-permission android:name="android.permission.INJECT_EVENTS" />
-    <!-- Reading the foreground package to pick the remote-control profile. -->
+    <!-- Reading the foreground package to pick the remote-control profile.
+         signature|privileged, so it is also listed in
+         privapp-permissions-org.pixelos.malbec.parts.xml. -->
     <uses-permission android:name="android.permission.REAL_GET_TASKS" />
-    <!-- Pen link state, and setMetadata(DEVICE_TYPE_STYLUS) on the bonded pen. -->
+    <!-- Pen link state, and setMetadata(DEVICE_TYPE_STYLUS) on the bonded pen.
+         BLUETOOTH_PRIVILEGED is signature|privileged; likewise allowlisted. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_PRIVILEGED" />
     <!-- peak_refresh_rate / min_refresh_rate live in Settings.System. -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
-    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
-    <!-- The anti-loss alert. -->
+    <!-- The anti-loss alert: buzz, optionally wake the panel, then notify.
+         PowerManager#wakeUp enforces DEVICE_POWER (signature|role) — not
+         TURN_SCREEN_ON, which gates Activity#setTurnScreenOn and which this app
+         never calls. -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />
+    <uses-permission android:name="android.permission.DEVICE_POWER" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- The action picker lists every launchable app. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />

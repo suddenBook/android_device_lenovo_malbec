@@ -398,6 +398,12 @@ PRODUCT_PACKAGES += \
 # sharedUserId=android.uid.system, and the one vendor node it needs written is
 # written by init.malbec.rc off a persist.sys.* property instead, which
 # system_app can already set. See app/MalbecParts/README.md.
+#
+# ⚠️ It is a priv-app, so every signature|privileged permission it requests must
+# also be in /system_ext/etc/permissions/. That allowlist is pulled in by the
+# app module's `required:` — do not add it here as well, and do not remove it.
+# Shipping the app without it is not a warning: system_server throws in
+# systemReady() and the device sits on the boot animation forever. It did, once.
 PRODUCT_PACKAGES += \
     MalbecParts
 
