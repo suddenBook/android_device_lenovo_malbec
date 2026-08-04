@@ -14,22 +14,39 @@ DEVICE_PATH := device/lenovo/malbec
 #
 # BUILD_BROKEN_DUP_RULES is ON, and here is the proof it is needed.
 #
-# Seven factory files are installed by the blob repo through PRODUCT_COPY_FILES
-# while the tree also has a Soong install rule for the same path:
+# 14 paths have both a blob PRODUCT_COPY_FILES entry and a Soong install rule.
+# Run `python3 work/scripts/30-dup-installs.py` for the live list with the winner
+# of each; do not trust the count in this comment over that output. As of the
+# current tree the blob wins 11 and the tree wins 3:
 #
-#   etc/init/{memtrack_qti, qspa_vendor, vendor.qti.audio-adsprpc-service,
-#             vendor.qti.hardware.vibrator.service, vndservicemanager}.rc
-#   etc/permissions/android.hardware.hardware_keystore.xml
-#   etc/usb_compositions.conf
+#   blob wins  etc/init/{memtrack_qti, qspa_vendor,
+#                        vendor.qti.audio-adsprpc-service, vndservicemanager}.rc
+#              etc/permissions/android.hardware.hardware_keystore.xml
+#              etc/usb_compositions.conf
+#              etc/wifi/wpa_supplicant.conf
+#              etc/aidl/hfp/hfp_codec_capabilities.xml
+#              etc/aidl/le_audio/aidl_audio_set_{configurations,scenarios}.bfbs
+#              etc/vintf/manifest/face-default.xml
+#   tree wins  etc/vintf/manifest/{manifest_audio_qti_services,memtrack_qti,
+#                                  soundtrigger.qti}.xml
 #
-# In every one of the seven the FACTORY file is the correct one:
-#   - the five .rc files start binaries we ship as blobs (verified: each .rc's
+# Why each side is right:
+#   - the four .rc files start binaries we ship as blobs (verified: each .rc's
 #     `service` line names a binary whose only install rule comes from
 #     vendor/lenovo/malbec),
 #   - hardware_keystore.xml declares feature version 300 to match the blob
-#     KeyMint service; the tree's copy claims 400,
+#     KeyMint service, which our manifest declares at V3; the tree's copy claims 400,
 #   - usb_compositions.conf carries Lenovo's USB VID 0x17EF and the Lenovo-only
-#     `readyfor` compositions; the tree's generic QTI copy uses 0x05C6.
+#     `readyfor` compositions; the tree's generic QTI copy uses 0x05C6,
+#   - face-default.xml: the AOSP reference face HAL leaks its vintf fragment into
+#     the build, but the only face service we install is the ArcSoft blob,
+#   - the three the tree wins are byte-equivalent in the only fields that matter
+#     (HAL name, version, fqname); they differ in comments and the schema
+#     attribute assemble_vintf normalises anyway.
+#
+# ⚠️ vendor.qti.hardware.vibrator.service.rc used to be in this list. It is gone —
+# the whole vibrator stack was removed once the tablet was confirmed to have no
+# motor. If it reappears here, something re-added the stack.
 #
 # kati materialises PRODUCT_COPY_FILES from build/make/core/Makefile:148, i.e.
 # after installs-$(TARGET_PRODUCT).mk, and Make keeps the LAST recipe -- so the
@@ -461,34 +478,57 @@ VENDOR_SECURITY_PATCH := 2026-05-05
 
 # Verified Boot
 BOARD_AVB_ENABLE := true
-# --flags 3 = HASHTREE_DISABLED | VERIFICATION_DISABLED.
 #
-# ⚠️ 第九轮补一条实测，因为原注释把后果说轻了：这不只是「bootloader 开机时不校验」。
-# fs_avb.cpp:255-259 先判 verification_disabled 置 kVerificationDisabled，而
-# :554-558 的 SetUpAvbHashtree 对 kVerificationDisabled 和 kHashtreeDisabled
-# **一视同仁**直接返回 kDisabled —— 也就是 /system /vendor /product /system_ext
-# /odm /vendor_dlkm /system_dlkm 七个只读分区**运行期完全没有 dm-verity**，不是
-# 「只是启动时不查」。而且 vbmeta 与 vbmeta_system 都在 AB_OTA_PARTITIONS 里，
-# 每次 OTA 都会把这个状态再抹到目标机上。
+# ⚠️ There is deliberately NO `BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --flags 3` here,
+# and the reasoning matters because earlier revisions of this file had one and
+# described it as a permanent decision. The disable belongs on the *flash*, not in
+# the *image*. Read this before adding it back.
 #
-# 顺带堵掉一个会被提出来的中间方案：`--flags 2`（只 VERIFICATION_DISABLED）
-# **不是**中间档。因为 :255 先判 verification_disabled，它同样走到那个
-# kDisabled 分支。要 dm-verity 就只能是 flags 0，没有第三种。
+# What --flags 3 (HASHTREE_DISABLED | VERIFICATION_DISABLED) would actually do:
+# fs_avb.cpp:255-259 sets kVerificationDisabled, and SetUpAvbHashtree at :554-558
+# treats kVerificationDisabled and kHashtreeDisabled identically and returns
+# kDisabled. That is not "the bootloader skips a check at boot" — it means
+# /system /vendor /product /system_ext /odm /vendor_dlkm /system_dlkm have no
+# dm-verity at runtime at all. And because vbmeta and vbmeta_system are both in
+# AB_OTA_PARTITIONS, every OTA built from this tree would re-apply that to whoever
+# installs it. An official device may not ship OTAs that turn off verified boot
+# for its users.
 #
-# ⚠️ This is an INTENTIONAL, PERMANENT divergence for this fork, not a bring-up
-# leftover — do not "fix" it. It is baked into vbmeta.img, and vbmeta is in
-# AB_OTA_PARTITIONS, so every OTA built from this tree also disables verified
-# boot on the target. That is the owner's explicit decision: the bootloader stays
-# unlocked, and if the device is ever relocked it will be reflashed wholesale via
-# 9008 rather than relying on rollback state.
+# `--flags 2` is not a middle ground either: :255 tests verification_disabled
+# first and lands on the same kDisabled branch. flags 0 or nothing.
 #
-# 35-upstream-readiness.py reports it under "intentional fork divergence", kept
-# separate from the bring-up switches that genuinely must be removed. If this
-# tree is ever proposed to PixelOS upstream, this line has to go — an official
-# device may not ship OTAs that turn off verified boot for its users.
-BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --flags 3
-BOARD_AVB_ALGORITHM := SHA256_RSA2048
-BOARD_AVB_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
+# Why flags 0 is safe on an unlocked device: fs_avb.cpp:280-290 IsAvbPermissive()
+# returns true whenever the bootloader is unlocked (unless
+# /metadata/gsi/dsu/avb_enforce exists, which it does not here), so
+# allow_verification_error is set and a verification failure degrades to
+# androidboot.veritymode=eio instead of refusing to boot. The stock ROM on this
+# very unit demonstrates it: ro.boot.veritymode=eio with seven live *-verity dm
+# targets. external/avb/README.md:768-786 says the same thing normatively.
+#
+# The real hazard people hit — sitting on the boot logo forever — comes from a
+# MISMATCHED image set (a patched boot, a GSI, or a partial flash against a stale
+# vbmeta): boot proceeds, but dm-verity is built from a hashtree that does not
+# describe the bytes on the partition, so every mismatched read returns EIO.
+# Two things guard against that here:
+#   1. work/scripts/43-avb-consistency.py --deep proves the descriptors match the
+#      images before anything is flashed.
+#   2. work/scripts/42-flash.sh writes the top-level vbmeta with
+#      `fastboot --disable-verity --disable-verification flash vbmeta_a`.
+#      fastboot.cpp:2487 passes is_vbmeta_partition("vbmeta_a") (true per
+#      :1128-1132) as apply_vbmeta, so :1241 calls rewrite_vbmeta_buffer, which ORs
+#      bits 0/1 into the flags field at offset 123 of the buffer being written.
+#      The device therefore behaves exactly as if flags 3 had been built in, while
+#      this image and every OTA generated from it stay correct. vbmeta_system does
+#      not need the same treatment: avb_slot_verify.c:977-991 short-circuits before
+#      it ever walks the chain descriptor.
+# Flashing vbmeta without those switches is how we later prove verity really works.
+#
+# SHA256_RSA4096 rather than RSA2048: stock signs vbmeta, vbmeta_system, boot and
+# recovery with RSA4096 (avbtool info_image on each Factory/image file), and
+# RSA4096 is also what AOSP falls back to when no key is given. The 2048-bit test
+# key was a silent downgrade with no stated reason.
+BOARD_AVB_ALGORITHM := SHA256_RSA4096
+BOARD_AVB_KEY_PATH := external/avb/test/data/testkey_rsa4096.pem
 # No BOARD_MOVE_GSI_AVB_KEYS_TO_VENDOR_BOOT. It only redirects the
 # {q,r,s}-developer-gsi.avbpubkey modules defined at
 # system/core/rootdir/avb/Android.bp:15-70, and none of them is in this product's
@@ -496,17 +536,26 @@ BOARD_AVB_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
 # no modules to move. Verified: `grep avbpubkey installed-files*.txt` is empty and
 # out/.../vendor_ramdisk/ has no avb/ directory.
 # (rootdir/etc/fstab.qcom still carries avb_keys= on the /system line, which is
-# therefore also dead. Left alone on purpose: it is the only item in this section
-# that sits on the first-stage /system mount path, it is currently a working
-# configuration, and we get exactly one flash attempt. Revisit after first boot.)
+# therefore also dead — and provably inert, not merely believed to be: fs_mgr.cpp:1641
+# reaches the avb_keys branch only as the `else` of `if (current_entry.fs_mgr_flags.avb)`,
+# and libfstab/fstab.cpp:330-334 sets that flag from `avb=vbmeta_system` on the same
+# line. Left in place deliberately: it is byte-identical to the factory
+# vendor/etc/fstab.qcom, i.e. a known-booting first-stage mount line, and there is
+# nothing to gain from editing one.)
 
-BOARD_AVB_BOOT_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
-BOARD_AVB_BOOT_ALGORITHM := SHA256_RSA2048
-BOARD_AVB_BOOT_ROLLBACK_INDEX := $(PLATFORM_SECURITY_PATCH_TIMESTAMP)
+BOARD_AVB_BOOT_KEY_PATH := external/avb/test/data/testkey_rsa4096.pem
+BOARD_AVB_BOOT_ALGORITHM := SHA256_RSA4096
+# Match stock rather than PLATFORM_SECURITY_PATCH_TIMESTAMP, for the same reason
+# spelled out under BOARD_AVB_RECOVERY_ROLLBACK_INDEX below. Measured:
+# `avbtool info_image --image Factory/image/boot.img` -> Rollback Index 1777939200.
+# On the bp4a release config PLATFORM_SECURITY_PATCH_TIMESTAMP is 1764892800, i.e.
+# *lower* than stock, so the previous value was not even monotonic with the image
+# it replaces.
+BOARD_AVB_BOOT_ROLLBACK_INDEX := 1777939200
 BOARD_AVB_BOOT_ROLLBACK_INDEX_LOCATION := 3
 
-BOARD_AVB_RECOVERY_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
-BOARD_AVB_RECOVERY_ALGORITHM := SHA256_RSA2048
+BOARD_AVB_RECOVERY_KEY_PATH := external/avb/test/data/testkey_rsa4096.pem
+BOARD_AVB_RECOVERY_ALGORITHM := SHA256_RSA4096
 # ⚠️ Stock uses a literal 1 at this same rollback index location (verified with
 # avbtool info_image on Factory/image/recovery.img). This used to be
 # PLATFORM_SECURITY_PATCH_TIMESTAMP = 1780272000.
@@ -534,12 +583,15 @@ BOARD_AVB_RECOVERY_ROLLBACK_INDEX_LOCATION := 1
 # image (Makefile:4973-4984 excludes chained members from vbmeta.img), which
 # disagrees with both stock and our own fstab.
 BOARD_AVB_VBMETA_SYSTEM := system system_ext product
-BOARD_AVB_VBMETA_SYSTEM_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
-BOARD_AVB_VBMETA_SYSTEM_ALGORITHM := SHA256_RSA2048
-# Same one-way-door reasoning as BOARD_AVB_RECOVERY_ROLLBACK_INDEX above: inert
-# today because the top-level vbmeta carries flags=3 and libavb returns before it
-# ever walks the chain descriptor, but zero cost to keep at 0.
-BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX := 0
+BOARD_AVB_VBMETA_SYSTEM_KEY_PATH := external/avb/test/data/testkey_rsa4096.pem
+BOARD_AVB_VBMETA_SYSTEM_ALGORITHM := SHA256_RSA4096
+# Same one-way-door reasoning as BOARD_AVB_RECOVERY_ROLLBACK_INDEX above. This was
+# 0 with a comment claiming it was inert "because the top-level vbmeta carries
+# flags=3" — that justification is gone now that the image is built with verity on,
+# so match stock instead: `avbtool info_image --image Factory/image/vbmeta_system.img`
+# -> Rollback Index 1777939200. Equal to stock is the only value that traps neither
+# direction if this device is ever relocked.
+BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX := 1777939200
 BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX_LOCATION := 2
 
 # No --hash_algorithm sha256 lines here. hardware/qcom-caf/common/BoardConfigQcom.mk
