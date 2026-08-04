@@ -12,9 +12,29 @@
 #
 # recovery is not on the boot path at all -- boot.img carries no ramdisk,
 # init_boot supplies the generic ramdisk and vendor_boot the vendor ramdisk.
-# recovery serves only fastbootd and `adb sideload`, which makes it the single
-# in-band way back if our ROM does not boot. So it is not flashed here. Flash it
-# by hand, once, after the device has proven it can boot.
+# recovery serves only fastbootd and `adb sideload`.
+#
+# ⚠️ This file used to omit `flash recovery` entirely, on the grounds that the stock
+# recovery is "the single in-band way back if our ROM does not boot". That premise
+# is false and was never checked:
+#
+#   - the stock recovery ramdisk contains no reference to pstore at all
+#     (`grep -rl pstore` over the extracted ramdisk returns 0 files), while ours
+#     mounts /sys/fs/pstore at bootable/recovery/etc/init.rc:66. When the ROM does
+#     not boot, the previous boot's kernel log is the only evidence there is, and
+#     the stock recovery cannot read it;
+#   - stock's recovery carries neither lib/modules nor an fstab; it takes both from
+#     vendor_boot, which this ROM replaces. Keeping it produces an untested hybrid
+#     rather than a known-good fallback;
+#   - and the patched ramoops region is larger than stock's, so its base address
+#     moves -- a boot on the stock DTB could not read our records even if it tried.
+#
+# The real way back is bootloader fastboot (ABL), which nothing here ever writes and
+# which the volume-down hotkey reaches before the BCB is read.
+#
+# So recovery IS flashed -- as the very last line, after every logical partition and
+# after `reboot fastboot`. The original hazard was flashing it *before* the step that
+# needs fastbootd; position solves that, omission was never needed.
 #
 # NOTE: `fastboot flashall` on this device's artifacts will always take the
 # reboot-into-fastbootd path, no matter what this file says. AOSP's fast path
@@ -46,3 +66,4 @@ flash vendor
 flash vendor_dlkm
 if-wipe erase userdata
 if-wipe erase metadata
+flash recovery
