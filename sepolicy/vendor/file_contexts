@@ -63,6 +63,28 @@
 # QTI vendor policy, so again label-only.
 /(vendor|system/vendor)/bin/wifisar\.sh                                      u:object_r:vendor_wcnss_service_exec:s0
 
+# ⚠️ /vendor/bin/tn_vendor_performance.sh is deliberately NOT labelled here, and it
+# is worth writing down because "stock labels it, we don't" looks like a gap and is
+# not one.
+#
+# Stock labels it tn_vendor_performance_shell_exec and its policy carries
+#   typetransition init_202404 tn_vendor_performance_shell_exec process
+#                  tn_vendor_performance_shell
+# but that transition can never fire. The service line is
+#   service tn_performance /vendor/bin/sh /vendor/bin/tn_vendor_performance.sh
+# so the file init actually execs is /vendor/bin/sh, and a domain transition keys on
+# the type of the exec'd file, not on an argument. Measured on the live stock device:
+#   ls -Z /vendor/bin/sh  ->  u:object_r:vendor_shell_exec:s0
+#   ls -Z /vendor/bin/tn_vendor_performance.sh -> u:object_r:tn_vendor_performance_shell_exec:s0
+# The service therefore runs in whatever init transitions to for vendor_shell_exec on
+# stock as well; Lenovo's dedicated domain is dead code.
+#
+# Copying the label would change nothing except read access to the script body, and
+# porting the domain would be building a transition for an exec that does not happen.
+# If the read-ahead tuning turns out to be denied on first boot, the fix is to give
+# the *shell* domain the sysfs access, or to drop the .rc and .sh from
+# proprietary-files.txt — not to invent a domain here.
+
 # ── Runtime paths ──────────────────────────────────────────────────────────
 # /data/vendor/afw is created from init by
 # vendor.microtrust.hardware.afw-service.rc with no restorecon, so this label has

@@ -1,5 +1,33 @@
 # Copied from the stock vendor_service_contexts. The vibrator_dual entry is
 # omitted along with its binary.
+#
+# ⚠️ One stock label is deliberately NOT reproduced here, and the reason is worth
+# writing down because the obvious fix makes things worse:
+#
+#   vendor.qti.diaghal.Idiag/default  u:object_r:vendor_hal_diaghal_service:s0
+#
+# We install the fragment (proprietary-files.txt: vendor.qti.diag.hal.service.xml),
+# the .rc and /vendor/bin/diag-router, which really does implement the interface
+# (readelf -d shows NEEDED vendor.qti.diaghal-V1-ndk.so, and the binary carries the
+# aidl::vendor::qti::diaghal::BnIdiag symbols). Stock — a `user` build — carries the
+# label at vendor_service_contexts:131.
+#
+# We cannot: the TYPE vendor_hal_diaghal_service is declared in
+# device/qcom/sepolicy_vndr/sm8750/generic/vendor/test/service.te:30, and
+# sm8750/SEPolicy.mk:43-46 adds generic/vendor/test only for userdebug/eng. So
+#   - on userdebug (what we build) the label already comes from QTI and everything
+#     works;
+#   - adding the line here would make a `user` build fail at checkfc, because the
+#     type does not exist in that policy;
+#   - declaring the type ourselves would collide with QTI's on userdebug.
+#
+# QTI gate the whole diag-router domain on userdebug/eng on purpose. If this tree is
+# ever built `user`, drop the three diag entries from proprietary-files.txt
+# (vendor/bin/diag-router, vendor/etc/init/vendor.qti.diag.rc,
+# vendor/etc/vintf/manifest/vendor.qti.diag.hal.service.xml) rather than adding a
+# label — a declared HAL with no label is refused by Access.cpp:167-170 before the
+# enforcing check, so clients block on waitForService() forever and permissive does
+# not save them.
 lenovo.hardware.ai.IDevice/default                              u:object_r:hal_lenovo_ai_service:s0
 vendor.lenovo.hardware.battery.IBattery/default                 u:object_r:hal_lenovobattery_service:s0
 vendor.lenovo.hardware.display.IDisplay/default                 u:object_r:hal_lenovodisplay_service:s0
@@ -33,11 +61,15 @@ vendor.dolby.dvs.IDvs/default                                   u:object_r:dvs_a
 # The service has no seclabel of its own; it runs in the mediacodec domain via
 # the mediacodec_exec label on its binary (file_contexts:39), matching stock.
 #
-# Note that mediacodec is not a hal_codec2_server in AOSP, so under enforcing
-# it will additionally need permission to add this service. That rule is
-# deliberately NOT guessed here: the first flash boots permissive, where the
-# add is allowed and the denial is recorded, and a rule written against a real
-# denial is narrower than one written against a prediction. The label, by
-# contrast, cannot wait — Access.cpp:167-170 fails the selabel lookup before
-# it ever consults enforcing mode.
+# ⚠️ An earlier revision of this comment said "mediacodec is not a
+# hal_codec2_server in AOSP, so under enforcing it will additionally need
+# permission to add this service". That is false, and acting on it would have
+# added a redundant rule: system/sepolicy/vendor/mediacodec.te:9 is
+# `hal_server_domain(mediacodec, hal_codec2)`, and hal_attribute_service
+# (public/te_macros:785-787) expands to `add_service(hal_codec2_server,
+# hal_codec2_service)`. The add is already allowed, enforcing or not.
+#
+# The label itself is still required and cannot wait for a denial —
+# Access.cpp:167-170 fails the selabel lookup before it ever consults enforcing
+# mode, so a missing label is a hard registration failure even in permissive.
 android.hardware.media.c2.IComponentStore/default9              u:object_r:hal_codec2_service:s0
