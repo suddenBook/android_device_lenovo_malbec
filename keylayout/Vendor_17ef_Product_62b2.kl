@@ -546,11 +546,55 @@ key usage 0x0d005a STYLUS_BUTTON_SECONDARY
 # Lenovo lapis custom key
 key usage 0x0c038e LOCK
 key usage 0x0c0391 MUTE
-key usage 0x0c0393 SEARCH
+# F7, printed as the touchpad on/off key. Routed to a spare F-key so it is
+# assignable, but with NO default action, because "turn the touchpad off" cannot
+# be done properly on this build. Both routes were implemented and tested:
+#
+#   InputSettings.setTouchpadsEnabled  -> silently does nothing. It is gated on
+#       isTouchpadDisableFeatureFlagEnabled() (InputSettings.java:440,:644) and
+#       the aconfig flag com.android.hardware.input.touchpad_disable is absent
+#       here (`adb shell aflags list | grep touchpad_disable` returns nothing),
+#       so useTouchpads() short-circuits to true. The write appears to succeed.
+#
+#   InputManager.disableInputDevice    -> works, and was verified to affect only
+#       the folio touchpad (17ef:62b2, SOURCE_TOUCHPAD, external) and never the
+#       panel or the digitiser, which are 0000:0000 internal devices. But it also
+#       drops the tablet out of desktop mode: ShellDesktopMode gates on
+#       hasAnyTouchpadDevice, so turning the touchpad off closes every desktop
+#       window. A key labelled "touchpad" must not do that. Re-enabling was also
+#       unreliable in the owner's hands.
+#
+# So the mapping stays (the key is worth something) and the action does not.
+# ⚠️ Until session 17 this usage was not in this file at all, so the key reached
+# the framework as KEY_UNKNOWN and did nothing at all. Owner-measured with
+# work/scripts/60-keyboard-key-probe.sh.
+key usage 0x0c0392 F17
+# Fn + right-hand key 1. Stock calls it GLOBAL_SEARCH. KEYCODE_SEARCH is not
+# usable here: KeyGestureController.java:1082-1090 only acts on it when
+# config_searchKeyBehavior == 1 (TARGET_ACTIVITY), and AOSP's default is 0, so
+# the key falls through and nothing handles it. Bound through our own picker
+# instead, defaulting to LAUNCH_SEARCH.
+key usage 0x0c0393 F23
 key usage 0x0c0394 FULLSCREEN
-key usage 0x0c0395 RECENT_APPS
-# The two user-customisable app keys. F19/F20 rather than MACRO_1/MACRO_2 — see
-# the header for why MACRO is structurally unbindable on this ROM.
+# F10, the split-screen key. It used to map to RECENT_APPS, which is why it
+# opened the recents list instead of splitting the screen — owner-reported, and
+# visible in dumpsys input's last-handled gestures (keycode 312 ->
+# KEY_GESTURE_TYPE_RECENT_APPS). AOSP has the action but only as a gesture
+# (SPLIT_SCREEN_NAVIGATION_LEFT/RIGHT, 27/28, both in this unit's
+# mSupportedKeyGestures), never as a keycode, so it goes through the picker.
+key usage 0x0c0395 F21
+# F11, printed as PC/phone link. That feature is ZUI's and has no AOSP
+# equivalent, so rather than leave a dead key it becomes assignable with no
+# default.
+key usage 0x0c0397 F22
+# The two keys to the right of F12. Owner-measured with
+# work/scripts/60-keyboard-key-probe.sh: the AI/search key sends 0x0398 on its
+# own and 0x0393 with Fn; the apps/settings key sends 0x0399 on its own and
+# 0x039b with Fn. Stock's capability table for 17ef:62b2 calls the plain presses
+# support_diy_app1 / support_diy_app2 — they are meant to be user-assigned,
+# which is why they appeared to "do nothing".
+# F19/F20 rather than MACRO_1/MACRO_2 — see the header for why MACRO is
+# structurally unbindable on this ROM.
 key usage 0x0c0398 F19
 key usage 0x0c0399 F20
 key usage 0x0c039b SETTINGS

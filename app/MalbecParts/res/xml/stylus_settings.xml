@@ -31,14 +31,55 @@
             android:title="@string/pen_long_click"
             android:persistent="false" />
 
-        <Preference
-            android:key="pen_press_click"
-            android:title="@string/pen_press_click"
-            android:persistent="false" />
-
         <com.android.settingslib.widget.FooterPreference
             android:key="pen_buttons_footer"
             android:title="@string/pen_buttons_footer"
+            android:selectable="false" />
+
+    </PreferenceCategory>
+
+    <!-- The folio keyboard's reassignable keys. Merged into this page rather
+         than living behind Settings > System > Keyboard > Physical keyboard >
+         Advanced keyboard settings: this page is already called "Stylus and
+         keyboard", and the owner reported the keyboard half was effectively
+         undiscoverable four levels down. Both entry points now land here. -->
+    <PreferenceCategory
+        android:key="cat_keyboard_keys"
+        android:title="@string/keyboard_keys_category">
+
+        <Preference
+            android:key="keyboard_touchpad"
+            android:title="@string/keyboard_touchpad"
+            android:persistent="false" />
+
+        <Preference
+            android:key="keyboard_split"
+            android:title="@string/keyboard_split"
+            android:persistent="false" />
+
+        <Preference
+            android:key="keyboard_pc_link"
+            android:title="@string/keyboard_pc_link"
+            android:persistent="false" />
+
+        <Preference
+            android:key="keyboard_app1"
+            android:title="@string/keyboard_app1"
+            android:persistent="false" />
+
+        <Preference
+            android:key="keyboard_app2"
+            android:title="@string/keyboard_app2"
+            android:persistent="false" />
+
+        <Preference
+            android:key="keyboard_search"
+            android:title="@string/keyboard_search"
+            android:persistent="false" />
+
+        <com.android.settingslib.widget.FooterPreference
+            android:key="keyboard_footer"
+            android:title="@string/keyboard_footer"
             android:selectable="false" />
 
     </PreferenceCategory>

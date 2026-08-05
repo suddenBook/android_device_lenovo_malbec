@@ -23,11 +23,14 @@
     <uses-permission android:name="android.permission.BLUETOOTH_PRIVILEGED" />
     <!-- peak_refresh_rate / min_refresh_rate live in Settings.System. -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
-    <!-- The anti-loss alert: buzz, optionally wake the panel, then notify.
+    <!-- The anti-loss alert: optionally wake the panel, then notify.
          PowerManager#wakeUp enforces DEVICE_POWER (signature|role) — not
          TURN_SCREEN_ON, which gates Activity#setTurnScreenOn and which this app
-         never calls. -->
-    <uses-permission android:name="android.permission.VIBRATE" />
+         never calls.
+         No VIBRATE: this device has no vibrator (dumpsys vibrator_manager
+         reports vibratorIds = [] and there is no android.hardware.vibrator
+         feature), so asking for it would advertise a capability that cannot
+         exist here. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.DEVICE_POWER" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -75,6 +78,20 @@
             <intent-filter>
                 <action android:name="com.android.settings.action.IA_SETTINGS" />
             </intent-filter>
+            <!-- Settings > System > Keyboard > Physical keyboard > "Advanced
+                 keyboard settings" lands on this same page. The hook is already
+                 in AOSP: packages/apps/Settings/res/xml/physical_keyboard_settings.xml:83-89
+                 declares a RemotePreference with
+                 settings:requiresAction="org.lineageos.settings.device.ADVANCED_KEYBOARD_SETTINGS"
+                 and hides itself when nothing answers.
+                 ⚠️ It points here rather than at a page of its own because that
+                 page was four levels deep and the owner could not find it, while
+                 this one is one tap from Connected devices and is already titled
+                 "Stylus and keyboard". One page, two doors. -->
+            <intent-filter>
+                <action android:name="org.lineageos.settings.device.ADVANCED_KEYBOARD_SETTINGS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
             <meta-data
                 android:name="com.android.settings.category"
                 android:value="com.android.settings.category.ia.connect" />
@@ -84,22 +101,6 @@
             <meta-data
                 android:name="com.android.settings.summary"
                 android:value="@string/stylus_summary" />
-        </activity>
-
-        <!-- Settings > System > Keyboard > Physical keyboard >
-             "Advanced keyboard settings". The hook is already in AOSP:
-             packages/apps/Settings/res/xml/physical_keyboard_settings.xml:83-89
-             declares a RemotePreference with
-             settings:requiresAction="org.lineageos.settings.device.ADVANCED_KEYBOARD_SETTINGS"
-             and hides itself when nothing answers. Nothing to patch. -->
-        <activity
-            android:name=".keyboard.KeyboardSettingsActivity"
-            android:label="@string/keyboard_title"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="org.lineageos.settings.device.ADVANCED_KEYBOARD_SETTINGS" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
         </activity>
 
         <!-- Shared "what should this key do?" picker, used by both screens. -->

@@ -25,7 +25,7 @@ class StylusSettingsFragment : SettingsBasePreferenceFragment() {
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.stylus_settings, rootKey)
 
-        for ((prefKey, _) in Constants.PEN_BUTTONS) {
+        for ((prefKey, _) in Constants.ALL_TRIGGERS) {
             findPreference<Preference>(prefKey)?.setOnPreferenceClickListener { pref ->
                 startActivity(
                     Intent(requireContext(), ActionPickerActivity::class.java)
@@ -60,13 +60,36 @@ class StylusSettingsFragment : SettingsBasePreferenceFragment() {
         refreshSummaries()
     }
 
+    /** VID/PID of the folio, matched the same way the pen is. */
+    private fun isFolioAttached(): Boolean {
+        val im = requireContext().getSystemService(android.hardware.input.InputManager::class.java)
+            ?: return false
+        return im.inputDeviceIds.any { id ->
+            val d = im.getInputDevice(id) ?: return@any false
+            d.vendorId == Constants.PEN_VENDOR_ID && d.productId == Constants.KEYBOARD_PRODUCT_ID
+        }
+    }
+
     private fun refreshSummaries() {
         val context = requireContext()
 
-        for ((prefKey, _) in Constants.PEN_BUTTONS) {
+        for ((prefKey, _) in Constants.ALL_TRIGGERS) {
             val action = GestureBinder.actionFor(context, prefKey)
             findPreference<Preference>(prefKey)?.summary = getString(action.labelRes)
         }
+
+        // Same rule as the pen category above, for the same reason: "does this
+        // tablet have a folio" rather than "is it docked right now". Undocking
+        // the keyboard must not make the owner's key assignments disappear from
+        // Settings while the bindings themselves stay alive in the framework's
+        // input_gestures.xml. InputDevice answers the first question only while
+        // docked, so the answer is remembered the first time.
+        val prefs = GestureBinder.prefs(context)
+        if (isFolioAttached() && !prefs.getBoolean(Constants.PREF_FOLIO_EVER_SEEN, false)) {
+            prefs.edit().putBoolean(Constants.PREF_FOLIO_EVER_SEEN, true).apply()
+        }
+        findPreference<PreferenceCategory>(Constants.PREF_CAT_KEYBOARD_KEYS)?.isVisible =
+            isFolioAttached() || prefs.getBoolean(Constants.PREF_FOLIO_EVER_SEEN, false)
 
         findPreference<ListPreference>(Constants.PREF_TOUCH_MODE)?.let {
             it.value = PenModeController.currentMode(context)

@@ -15,20 +15,19 @@
          a report of "the double click does the wrong thing" maps to one line in
          the keylayout. -->
     <string name="pen_buttons_category">Pen button</string>
-    <string name="pen_buttons_footer">The button on the side of the pen. Each gesture can do something different. The pen\'s barrel buttons for erasing and right-click are handled by the screen itself and are not set here.</string>
+    <string name="pen_buttons_footer">The button on the side of the pen. Each gesture can do something different. Holding the button and tapping the screen is a separate signal the pen sends for note-taking; it is not offered here because it fires while the button is held and would collide with Press and hold. The barrel buttons for erasing and right-click are handled by the screen itself.</string>
     <string name="pen_one_click">Single click</string>
     <string name="pen_two_click">Double click</string>
     <string name="pen_three_click">Triple click</string>
     <string name="pen_long_click">Press and hold</string>
-    <string name="pen_press_click">Press</string>
 
     <!-- Out-of-range alert -->
     <string name="pen_alert_category">If you leave the pen behind</string>
     <string name="pen_lost_alert_title">Alert me</string>
-    <string name="pen_lost_alert_summary">Vibrate and notify if the pen stays out of range</string>
+    <string name="pen_lost_alert_summary">Notify me if the pen stays out of range</string>
     <string name="pen_lost_alert_summary_last_seen">Last connected <xliff:g id="when" example="5 minutes ago">%1$s</xliff:g></string>
     <string name="pen_lost_wake_title">Turn on the screen</string>
-    <string name="pen_lost_wake_summary">Wake the tablet as well as vibrating. Off by default, so an alert in your bag does not drain the battery.</string>
+    <string name="pen_lost_wake_summary">Also turn the screen on, so the alert is visible without picking the tablet up. Off by default, so an alert in your bag does not drain the battery.</string>
     <string name="pen_lost_channel">Stylus left behind</string>
     <string name="pen_lost_notification_title"><xliff:g id="name" example="Lenovo Tab Pen Plus">%1$s</xliff:g> is out of range</string>
     <string name="pen_lost_notification_text">It has not reconnected. Tap to open Bluetooth settings.</string>
@@ -49,10 +48,14 @@
 
     <!-- Keyboard -->
     <string name="keyboard_title">Advanced keyboard settings</string>
-    <string name="keyboard_keys_category">Customisable keys</string>
-    <string name="keyboard_app1">App key 1</string>
-    <string name="keyboard_app2">App key 2</string>
-    <string name="keyboard_footer">These are the only two keys on this keyboard that can be reassigned. The rest of the function row is fixed in the keyboard\'s own firmware.</string>
+    <string name="keyboard_keys_category">Folio keyboard keys</string>
+    <string name="keyboard_touchpad">Touchpad key (F7)</string>
+    <string name="keyboard_split">Split-screen key (F10)</string>
+    <string name="keyboard_pc_link">PC link key (F11)</string>
+    <string name="keyboard_app1">Assistant key (right of F12)</string>
+    <string name="keyboard_app2">Apps key (far right)</string>
+    <string name="keyboard_search">Fn + Assistant key</string>
+    <string name="keyboard_footer">Six keys whose printed function either has no Android equivalent or is meant to be chosen by you. Everything else in the function row — mute, volume, microphone, brightness, screenshot, full screen and lock — is already handled by Android and by the keyboard\'s own firmware. Hold Fn to get plain F1–F12.</string>
 
     <!-- Action picker -->
     <string name="action_picker_title">Choose an action</string>

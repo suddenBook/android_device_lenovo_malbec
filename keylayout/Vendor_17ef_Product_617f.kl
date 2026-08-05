@@ -121,7 +121,20 @@
 #   0x0c0602  PEN_THREE_CLICK    triple click (NOT the eraser end — that would
 #                                be STYLUS_BUTTON_TAIL, which we must not use)
 #   0x0c0603  PEN_LONG_CLICK     press and hold
-#   0x0c0604  PEN_PRESS_CLICK    press
+#   0x0c0604  PEN_PRESS_CLICK    NOT a gesture and DELIBERATELY NOT MAPPED.
+#                                It is the "button is being held" state, used by
+#                                stock only for hold-the-button-and-tap-the-screen
+#                                to start a note. Stock's own dispatcher excludes
+#                                it: BluetoothPenInputPolicy.processStylusPenKeyEvent
+#                                gives it clickStatusType 4, swallows the DOWN
+#                                unless quick-create-note is active, and then
+#                                gates the remote-control path on
+#                                `clickStatusType != 4`. Stock's settings UI
+#                                offers four gestures, not five.
+#                                Owner-confirmed on this unit: it fires while the
+#                                button is held, so binding it collided with
+#                                Press-and-hold. F17 has been given to the folio
+#                                keyboard's touchpad key instead.
 #   0x0c0605  PEN_BT_DISCONNECT  link-state signal, not an input event
 #
 # ⚠️ All six share scancode KEY_UNKNOWN(240) and differ only in MSC_SCAN. That
@@ -143,7 +156,6 @@ key usage 0x0c0600    F13
 key usage 0x0c0601    F14
 key usage 0x0c0602    F15
 key usage 0x0c0603    F16
-key usage 0x0c0604    F17
 key usage 0x0c0605    F18
 
 # ===========================================================================

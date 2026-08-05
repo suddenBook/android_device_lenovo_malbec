@@ -19,9 +19,6 @@ import android.content.IntentFilter
 import android.os.Handler
 import android.os.PowerManager
 import android.os.SystemClock
-import android.os.VibrationEffect
-import android.os.VibrationAttributes
-import android.os.Vibrator
 import android.provider.Settings
 import android.util.Log
 import androidx.preference.PreferenceManager
@@ -229,18 +226,24 @@ class PenPresenceWatcher(
     private fun fire(device: BluetoothDevice) {
         Log.i(TAG, "pen out of range for ${GRACE_MILLIS}ms")
 
-        // ⚠️ The attributes are load-bearing, not decoration. vibrate(effect)
-        // with no VibrationAttributes lands on USAGE_UNKNOWN, and
-        // VibrationSettings.java:435-437 drops every usage outside
-        // BATTERY_SAVER_USAGE_ALLOWLIST while Battery Saver is on; :439-443 then
-        // takes the intensity from the haptic-feedback family, so turning off
-        // "Touch feedback" also silences it. Both of those are exactly the
-        // states someone is in when they walk away from a tablet.
-        // USAGE_NOTIFICATION is in the allowlist (VibrationSettings.java:94-99).
-        context.getSystemService(Vibrator::class.java)?.vibrate(
-            VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK),
-            VibrationAttributes.createForUsage(VibrationAttributes.USAGE_NOTIFICATION),
-        )
+        // ⚠️ NO vibration. This device has no vibrator at all, and the alert
+        // used to both call Vibrator#vibrate and promise a buzz in its summary
+        // string. Measured, not assumed:
+        //
+        //     adb shell dumpsys vibrator_manager | grep -A2 Vibrators
+        //       vibratorIds = []
+        //       Vibrators:
+        //     adb shell pm list features | grep -i vibrat   -> nothing
+        //
+        // Session 8 had already established this and removed the whole vibrator
+        // stack from the tree; the anti-loss feature was written two rounds later
+        // without checking. vibrate() on a device with no vibrator is a silent
+        // no-op, so the code looked fine and the string lied to the owner.
+        //
+        // (Session 17 first "fixed" this by adding VibrationAttributes so Battery
+        // Saver would not drop it -- a correct fix to a call that can never make
+        // a sound. Recorded here because it is exactly the kind of plausible
+        // change that survives review.)
 
         if (prefs.getBoolean(Constants.PREF_PEN_LOST_WAKE, false)) {
             context.getSystemService(PowerManager::class.java)?.wakeUp(

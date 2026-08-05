@@ -35,7 +35,12 @@ object GestureBinder {
         PreferenceManager.getDefaultSharedPreferences(context)
 
     fun actionFor(context: Context, prefKey: String): GestureAction =
-        GestureAction.byId(prefs(context).getString(prefKey, GestureAction.ID_NONE))
+        GestureAction.byId(
+            prefs(context).getString(
+                prefKey,
+                Constants.DEFAULT_ACTIONS[prefKey] ?: GestureAction.ID_NONE,
+            )
+        )
 
     fun setAction(context: Context, prefKey: String, actionId: String) {
         prefs(context).edit().putString(prefKey, actionId).apply()

@@ -24,7 +24,29 @@ object Constants {
     const val KEY_PEN_TWO_CLICK = KeyEvent.KEYCODE_F14
     const val KEY_PEN_THREE_CLICK = KeyEvent.KEYCODE_F15
     const val KEY_PEN_LONG_CLICK = KeyEvent.KEYCODE_F16
-    const val KEY_PEN_PRESS_CLICK = KeyEvent.KEYCODE_F17
+
+    /*
+     * ⚠️ HID usage 0x0c0604 (stock name PEN_PRESS_CLICK) is deliberately NOT
+     * mapped, and F17 has been handed to the keyboard instead.
+     *
+     * It is not a gesture. Stock's own dispatcher proves it
+     * (services.jar -> BluetoothPenInputPolicy.processStylusPenKeyEvent):
+     *
+     *     KEYCODE_PEN_PRESS_CLICK -> clickStatusType = 4
+     *         if (down && !mIsStylusPenQuickCreateNote) {
+     *             Log.d("Don't send stylus pen press click key event to screen");
+     *             return false;
+     *         }
+     *     ...
+     *     if (mRemoteControlEnable && clickStatusType != 4)   // 4 excluded
+     *         processStylusPenRemoteControl(clickStatusType, down)
+     *
+     * It is the "button is being held" state, used only for hold-the-button-and-
+     * tap-the-screen to start a note. Stock's own settings UI offers four
+     * gestures, not five. The owner confirmed it on the device: it fires while
+     * the button is held, so binding it collided with Press-and-hold, and the
+     * note action it exists for has no default app here anyway.
+     */
 
     /**
      * Not user-assignable. The pen sends HID usage 0x0c0605 when it is about to
@@ -35,8 +57,23 @@ object Constants {
      */
     const val KEY_PEN_BT_DISCONNECT = KeyEvent.KEYCODE_F18
 
-    const val KEY_KEYBOARD_APP1 = KeyEvent.KEYCODE_F19
-    const val KEY_KEYBOARD_APP2 = KeyEvent.KEYCODE_F20
+    /*
+     * Folio keyboard keys whose printed function PixelOS cannot provide as-is.
+     * Each is routed to a spare F-key so it becomes bindable; the default is the
+     * closest native equivalent of what the keycap says, and the owner can change
+     * it like any other.
+     *
+     * Which physical key sends which HID usage is stock's own capability table,
+     * work/unpacked/parts/system/usr/kb-type-config/lenovo_keyboard.xml entry
+     * 17ef:62b2: support_touchpad_toggle, support_split_screen,
+     * support_supper_connect, support_diy_app1, support_diy_app2, support_diy_ai.
+     */
+    const val KEY_KEYBOARD_TOUCHPAD = KeyEvent.KEYCODE_F17     // 0x0c0392  F7
+    const val KEY_KEYBOARD_APP1 = KeyEvent.KEYCODE_F19         // 0x0c0398  right-hand key 1
+    const val KEY_KEYBOARD_APP2 = KeyEvent.KEYCODE_F20         // 0x0c0399  right-hand key 2
+    const val KEY_KEYBOARD_SPLIT = KeyEvent.KEYCODE_F21        // 0x0c0395  F10
+    const val KEY_KEYBOARD_PC_LINK = KeyEvent.KEYCODE_F22      // 0x0c0397  F11
+    const val KEY_KEYBOARD_SEARCH = KeyEvent.KEYCODE_F23       // 0x0c0393  Fn + right-hand key 1
 
     /**
      * Private KeyGestureEvent types.
@@ -72,18 +109,23 @@ object Constants {
     const val PREF_PEN_TWO_CLICK = "pen_two_click"
     const val PREF_PEN_THREE_CLICK = "pen_three_click"
     const val PREF_PEN_LONG_CLICK = "pen_long_click"
-    const val PREF_PEN_PRESS_CLICK = "pen_press_click"
+    const val PREF_KEYBOARD_TOUCHPAD = "keyboard_touchpad"
     const val PREF_KEYBOARD_APP1 = "keyboard_app1"
     const val PREF_KEYBOARD_APP2 = "keyboard_app2"
+    const val PREF_KEYBOARD_SPLIT = "keyboard_split"
+    const val PREF_KEYBOARD_PC_LINK = "keyboard_pc_link"
+    const val PREF_KEYBOARD_SEARCH = "keyboard_search"
 
     const val PREF_PEN_LOST_ALERT = "pen_lost_alert"
     const val PREF_PEN_LOST_WAKE = "pen_lost_wake"
     const val PREF_PEN_LAST_SEEN = "pen_last_seen"
+    const val PREF_FOLIO_EVER_SEEN = "folio_ever_seen"
 
     const val PREF_TOUCH_MODE = "touch_mode"
 
     /** Category keys inside the preference XML, for show/hide. */
     const val PREF_CAT_PEN_BUTTONS = "cat_pen_buttons"
+    const val PREF_CAT_KEYBOARD_KEYS = "cat_keyboard_keys"
 
     /**
      * Every configurable trigger, so a single loop can reconcile the whole set.
@@ -94,12 +136,30 @@ object Constants {
         PREF_PEN_TWO_CLICK to KEY_PEN_TWO_CLICK,
         PREF_PEN_THREE_CLICK to KEY_PEN_THREE_CLICK,
         PREF_PEN_LONG_CLICK to KEY_PEN_LONG_CLICK,
-        PREF_PEN_PRESS_CLICK to KEY_PEN_PRESS_CLICK,
     )
 
     val KEYBOARD_KEYS = listOf(
+        PREF_KEYBOARD_TOUCHPAD to KEY_KEYBOARD_TOUCHPAD,
+        PREF_KEYBOARD_SPLIT to KEY_KEYBOARD_SPLIT,
+        PREF_KEYBOARD_PC_LINK to KEY_KEYBOARD_PC_LINK,
         PREF_KEYBOARD_APP1 to KEY_KEYBOARD_APP1,
         PREF_KEYBOARD_APP2 to KEY_KEYBOARD_APP2,
+        PREF_KEYBOARD_SEARCH to KEY_KEYBOARD_SEARCH,
+    )
+
+    /**
+     * What a key does before the owner has ever opened the picker.
+     *
+     * Only the keys whose keycap already promises something get one: the
+     * touchpad key toggles the touchpad, the split-screen key splits the screen.
+     * The rest default to nothing, because guessing on the owner's behalf is
+     * worse than an obviously unset row.
+     */
+    val DEFAULT_ACTIONS = mapOf(
+        PREF_KEYBOARD_SPLIT to "split_left",
+        PREF_KEYBOARD_APP1 to "assistant",
+        PREF_KEYBOARD_APP2 to "all_apps",
+        PREF_KEYBOARD_SEARCH to "search",
     )
 
     val ALL_TRIGGERS = PEN_BUTTONS + KEYBOARD_KEYS
@@ -111,6 +171,10 @@ object Constants {
      */
     const val PEN_VENDOR_ID = 0x17ef
     const val PEN_PRODUCT_ID = 0x617f
+
+    /** The folio keyboard, same vendor. Its capability table is stock's
+     *  system/usr/kb-type-config/lenovo_keyboard.xml entry 17ef:62b2. */
+    const val KEYBOARD_PRODUCT_ID = 0x62b2
 
     /**
      * Touch controller / panel mode.
