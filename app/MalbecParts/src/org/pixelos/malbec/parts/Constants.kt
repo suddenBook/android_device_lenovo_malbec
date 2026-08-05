@@ -185,7 +185,7 @@ object Constants {
      *
      *   panel  HighReportRate   finger      pen
      *   120    0                120 Hz      240 Hz  (Pen_ID 2;87 = model 2, 87 %)
-     *   120    1                350 Hz      none
+     *   120    1                360 Hz      none
      *   144    0                185 Hz      none
      *   144    1                185 Hz      none
      *   144    1 + pen on       112 Hz      none    <- worst state on the device
@@ -196,12 +196,12 @@ object Constants {
      *   GAME:  120 Hz + support_pen 0 + HighReportRate 1 + thermal game
      *
      * ⚠️ Both modes are 120 Hz, and that is the finding, not an oversight. The
-     * top finger report rate (~350 Hz) exists ONLY at 120 Hz: above it the
+     * top finger report rate (~360 Hz) exists ONLY at 120 Hz: above it the
      * controller caps at ~185 Hz and HighReportRate stops doing anything at all.
      * So 144 Hz costs the stylus AND half the touch sampling to buy 24 frames,
      * which is why the refresh-rate picker is removed from Settings entirely
      * (overlay/SettingsOverlayMalbec). Stock's own no-pen state is 144 + HRR 1,
-     * so stock never reaches 350 Hz either — 120 + HRR 1 is a corner ZUI never
+     * so stock never reaches 360 Hz either — 120 + HRR 1 is a corner ZUI never
      * enters.
      *
      * ⚠️ HighReportRate is a BOOLEAN; only the literal value 1 arms it. HRR=4 at

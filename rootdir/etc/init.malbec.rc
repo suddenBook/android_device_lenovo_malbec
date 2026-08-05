@@ -68,14 +68,14 @@ on property:sys.boot_completed=1
 #
 #   panel  HighReportRate   finger      pen
 #   120    0                120 Hz      240 Hz   (Pen_ID 2;87 = model 2, 87 %)
-#   120    1                350 Hz      none
+#   120    1                360 Hz      none
 #   144    0                185 Hz      none
 #   144    1                185 Hz      none
 #   144    1 + pen on       112 Hz      none     <- worst state on the device
 #
 # Two of those rows overturn what this file used to say:
 #
-#   * The 350 Hz finger rate exists ONLY at 120 Hz. Above 120 the controller caps
+#   * The 360 Hz finger rate exists ONLY at 120 Hz. Above 120 the controller caps
 #     at ~185 Hz and HighReportRate stops having any effect at all. The old
 #     comment here claimed "HighReportRate 1 -> 360 Hz (3x)" as if it were
 #     panel-independent; it is 3x of 120, not 3x of the panel.

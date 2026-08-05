@@ -82,7 +82,7 @@
          y=0   (left empty, as the launcher's own layout does — the search row)
          y=1   [ clock 2x2 ]            .    .    [ weather 2x2 ]
          y=2      (clock)               .    .       (weather)
-         y=3   [ Device mode 3x1     ]  .    [ calendar 2x2 ]
+         y=3   [ Device mode 2x1 ]  .   .    [ calendar 2x2 ]
          y=4   Play  Google folder   .  .       (calendar)
 -->
 <workspace>
@@ -114,11 +114,10 @@
         packageName="com.google.android.calendar"
         className="com.android.calendar.widget.CalendarAppWidgetProvider" />
 
-    <!-- ★ The reason this file exists. 3x1 rather than 2x1: at
-         TARGET_SCREEN_DENSITY 320 on a 6-column grid, two cells ellipsise the
-         subtitle, and a widget whose own subtitle does not fit at its default
-         size is not finished. -->
-    <appwidget screen="0" x="0" y="3" spanX="3" spanY="1"
+    <!-- ★ The reason this file exists. 2x1, matching targetCellWidth in
+         res/xml/pen_mode_widget_info.xml — if those two disagree the launcher
+         resizes it on first layout and the grid gets a hole. -->
+    <appwidget screen="0" x="0" y="3" spanX="2" spanY="1"
         packageName="org.pixelos.malbec.parts"
         className="org.pixelos.malbec.parts.display.PenModeWidgetProvider" />
 

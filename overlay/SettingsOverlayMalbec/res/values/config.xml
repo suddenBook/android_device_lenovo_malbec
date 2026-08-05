@@ -13,12 +13,12 @@
 
              panel  HighReportRate   finger      pen
              120    0                120 Hz      240 Hz  (Pen_ID 2;87)
-             120    1                350 Hz      none
+             120    1                360 Hz      none
              144    0                185 Hz      none
              144    1                185 Hz      none
 
          At 144 Hz the digitizer cannot see the active pen at all, AND the finger
-         report rate falls to 185 Hz — barely half of the 350 Hz available at
+         report rate falls to 185 Hz — barely half of the 360 Hz available at
          120 Hz, because HighReportRate stops doing anything above 120. So 144 Hz
          costs the stylus and half the touch sampling to buy 24 extra frames.
          There is no configuration in which a user is better off there.

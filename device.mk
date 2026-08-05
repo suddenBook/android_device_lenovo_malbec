@@ -712,7 +712,7 @@ PRODUCT_COPY_FILES += \
 #
 # SettingsOverlayMalbec removes the refresh-rate picker. On this panel every rate
 # above 120 Hz is measurably worse — it costs the stylus entirely AND halves the
-# finger report rate, 350 Hz -> 185 Hz — so there is no setting to offer. The
+# finger report rate, 360 Hz -> 185 Hz — so there is no setting to offer. The
 # measurements and the trap in the "obvious" alternative are in its config.xml.
 #
 # SystemUIOverlayMalbec puts the Device mode tile in the DEFAULT Quick Settings

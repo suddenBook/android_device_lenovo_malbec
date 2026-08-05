@@ -5,9 +5,9 @@
 -->
 <appwidget-provider
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="180dp"
+    android:minWidth="120dp"
     android:minHeight="72dp"
-    android:targetCellWidth="3"
+    android:targetCellWidth="2"
     android:targetCellHeight="1"
     android:initialLayout="@layout/widget_pen_mode"
     android:previewLayout="@layout/widget_pen_mode"
@@ -25,10 +25,11 @@
      description was @string/touch_mode_footer — the 700-character settings-page
      footer, shown verbatim under the widget's name in the picker. Now a sentence.
 
-     targetCellWidth 3 rather than 2: at TARGET_SCREEN_DENSITY 320 on a 6-column
-     grid, two cells is not enough for "350 Hz touch · no stylus" beside a 44 dp
-     disc, and a widget whose own subtitle is ellipsised in its default size is
-     not finished.
+     targetCellWidth 2, at the owner's request — 3 was too big on the home screen.
+     The subtitles were shortened to fit ("120Hz Touch · Stylus On" /
+     "360Hz Touch · Stylus Off"), which is what makes 2 cells viable at
+     TARGET_SCREEN_DENSITY 320 on a 6-column grid. If either string grows again,
+     check it does not ellipsise before widening the widget back.
 
      updatePeriodMillis 0 is right and deliberate: nothing here polls. Updates are
      pushed by PenModeController whenever the mode changes.

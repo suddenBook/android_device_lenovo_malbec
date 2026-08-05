@@ -83,14 +83,14 @@
 
              panel  HighReportRate   finger      pen
              120    0                120 Hz      240 Hz
-             120    1                350 Hz      none
+             120    1                360 Hz      none
              144    0                185 Hz      none
              144    1                185 Hz      none
 
-         The top finger report rate is ~350 Hz and it exists ONLY at 120 Hz. Above
+         The top finger report rate is ~360 Hz and it exists ONLY at 120 Hz. Above
          120 the controller caps at ~185 Hz and HighReportRate stops having any
          effect at all - so 144 Hz costs the stylus AND half the touch sampling,
-         and stock's own no-pen state (144 + HRR 1) never reaches 350 Hz either.
+         and stock's own no-pen state (144 + HRR 1) never reaches 360 Hz either.
          120 + HRR 1 is a corner ZUI does not enter.
 
          That is why this tree ships TWO modes at the same 120 Hz, differing in

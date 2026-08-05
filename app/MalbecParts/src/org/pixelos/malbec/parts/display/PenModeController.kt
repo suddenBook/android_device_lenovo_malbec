@@ -27,19 +27,19 @@ import org.pixelos.malbec.parts.R
  *
  *   panel  HighReportRate   finger      pen
  *   120    0                120 Hz      240 Hz   (Pen_ID 2;87 — model 2, 87 %)
- *   120    1                350 Hz      none
+ *   120    1                360 Hz      none
  *   144    0                185 Hz      none
  *   144    1                185 Hz      none
  *   144    1 + pen on       112 Hz      none     <- worst state on the device
  *
  * Three things follow, and two of them overturn what this project believed:
  *
- *  1. The maximum finger report rate is ~350 Hz and it is ONLY available at
+ *  1. The maximum finger report rate is ~360 Hz and it is ONLY available at
  *     120 Hz. Above 120 the controller caps at ~185 Hz and HighReportRate stops
  *     having any effect at all. So "the fastest touch" and "144 Hz" are mutually
  *     exclusive, in the opposite direction from the obvious assumption — and
  *     144 Hz is what stock's own no-pen state uses, so stock never reaches
- *     350 Hz either.
+ *     360 Hz either.
  *  2. HighReportRate is a BOOLEAN and only the literal value 1 arms it. At
  *     120 Hz, HRR=4 measured 120.5 Hz — indistinguishable from HRR=0. The driver
  *     passes the byte through unclamped (nvt_high_report_rate_set @0x946c →
