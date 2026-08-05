@@ -709,10 +709,22 @@ PRODUCT_COPY_FILES += \
 # which upstream fills with a ladder this panel's Dolby tuning never uses, so
 # the app showed "Unknown". Derived from vendor/etc/dolby/dax-default.xml —
 # derivation in the overlay's own arrays.xml.
+#
+# SettingsOverlayMalbec removes the refresh-rate picker. On this panel every rate
+# above 120 Hz is measurably worse — it costs the stylus entirely AND halves the
+# finger report rate, 350 Hz -> 185 Hz — so there is no setting to offer. The
+# measurements and the trap in the "obvious" alternative are in its config.xml.
+#
+# SystemUIOverlayMalbec puts the Device mode tile in the DEFAULT Quick Settings
+# panel, so it is reachable from inside a full-screen game without being dragged
+# in from the edit screen first. It overrides both default-tile strings because
+# QSHost.getDefaultSpecs picks between them on an aconfig flag.
 PRODUCT_PACKAGES += \
     DolbyAtmosOverlayMalbec \
     FrameworkOverlayMalbec \
+    SettingsOverlayMalbec \
     SettingsProviderOverlayMalbec \
+    SystemUIOverlayMalbec \
     WifiOverlayMalbec
 
 # Charging control — "Charging optimisation" in Settings > Battery.

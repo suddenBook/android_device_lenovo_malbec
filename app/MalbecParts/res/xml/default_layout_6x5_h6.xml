@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+
+     ★ The default home screen for this tablet, so the Device mode widget is on it
+     the first time the device boots after a flash rather than waiting to be found
+     in the widget picker.
+
+     ── How this file gets used ───────────────────────────────────────────────
+
+     Launcher3's LayoutParserFactory.createExternalLayoutParser (:61-90) tries, in
+     order: an xml override, an app-restriction layout, AutoInstallsLayout.get,
+     then the PARTNER_CUSTOMIZATION route. We take the third: AutoInstallsLayout.get
+     (:93-127) looks for a SYSTEM package with a broadcast receiver matching
+     `android.autoinstalls.config.action.PLAY_AUTO_INSTALL` (that is the marker
+     receiver in our AndroidManifest.xml) and then asks it for, in order,
+         default_layout_<cols>x<rows>_h<hotseatIcons>
+         default_layout_<cols>x<rows>
+         default_layout
+     Only the first name is provided here, deliberately — see "grid" below.
+
+     Verified rather than assumed:
+       * PLAY_AUTO_INSTALL had NO claimant on the device
+         (`cmd package query-receivers -a …PLAY_AUTO_INSTALL` -> "No receivers
+         found"), so nothing is being displaced. The other marker action,
+         PARTNER_CUSTOMIZATION, is already taken by
+         com.google.android.apps.wallpaper.pixel — which is exactly why the fourth
+         route in the factory would have been unreliable and this one is not.
+       * The shipped launcher retains the mechanism: `PLAY_AUTO_INSTALL` and
+         `default_layout` are both present in NexusLauncherReleaseTablet.apk's
+         classes.dex.
+
+     ── ⚠️ It REPLACES the launcher's default layout, it does not add to it ──
+
+     There is no append. So this file has to carry a whole reasonable home screen,
+     and it was built from what this ROM actually installs rather than by copying
+     Pixel's file: of the eleven apps in the launcher's own default_workspace_6x5,
+     FIVE are not in this build (YouTube, YT Music, Docs, Google TV, Kids Home).
+     Copying it verbatim would have produced a hotseat with a hole in it and a
+     Google folder with two apps in it.
+
+     Every component below was resolved on the running device with
+     `cmd package resolve-activity` (brief form) against ACTION_MAIN plus
+     CATEGORY_LAUNCHER for each package, and every widget provider was confirmed
+     present in `dumpsys appwidget`.
+     A component that later stops resolving is not fatal — AppShortcutParser
+     (:421-423) logs "Favorite not found" and skips that one row.
+
+     ── Grid ──────────────────────────────────────────────────────────────────
+
+     6 columns x 5 rows, hotseat 6, taken from the launcher prebuilt's own
+     device_profiles.xml grid-option (dbFile launcher_6_by_5.db, numColumns 6,
+     numRows 5, numHotseatIcons 6) and confirmed by the live database name
+     /data/data/com.google.android.apps.nexuslauncher/databases/launcher_6_by_5.db.
+
+     Only the exact-match resource name is provided. If the owner changes the grid
+     in Wallpaper & style, getXmlResId returns 0 for every name, AutoInstallsLayout
+     returns null, and the launcher falls back to its OWN layout for that grid —
+     which is the right outcome, because coordinates written for 6x5 would land
+     off the edge of a 4x4. The cost is that the widget is not pre-placed on a
+     non-default grid; the owner can drag it in, and the QS tile is there anyway.
+
+     ── Dialect ───────────────────────────────────────────────────────────────
+
+     ⚠️ This is AutoInstallsLayout's dialect, NOT the one in the launcher's own
+     default_workspace_*.xml. Three differences that silently produce an empty
+     screen if you copy the wrong one:
+       * root tag is <workspace>, not <favorites>
+       * an app is <appicon>, not <favorite>  (:370-378 registers appicon,
+         autoinstall, folder, apppair, appwidget, searchwidget, shortcut — there
+         is no "favorite")
+       * the hotseat is container="hotseat" with rank=, not container="-101" with
+         screen=  (parseContainerAndScreen :276-284 string-compares against
+         Favorites.containerToString(CONTAINER_HOTSEAT) = "hotseat", and reads
+         ATTR_RANK in that branch)
+     Attributes are written without a namespace, which is supported:
+     getAttributeValue (:733-740) falls back to the null namespace.
+
+     ── Layout ────────────────────────────────────────────────────────────────
+
+         y=0   (left empty, as the launcher's own layout does — the search row)
+         y=1   [ clock 2x2 ]            .    .    [ weather 2x2 ]
+         y=2      (clock)               .    .       (weather)
+         y=3   [ Device mode 3x1     ]  .    [ calendar 2x2 ]
+         y=4   Play  Google folder   .  .       (calendar)
+-->
+<workspace>
+
+    <!-- Hotseat. Four of six, matching how many the launcher's own 6x5 layout
+         fills; Camera takes the slot YouTube had, since YouTube is not in this
+         build and a tablet with a stylus is a device people photograph notes with. -->
+    <appicon container="hotseat" rank="0"
+        packageName="com.android.chrome"
+        className="com.google.android.apps.chrome.Main" />
+    <appicon container="hotseat" rank="1"
+        packageName="com.google.android.gm"
+        className="com.google.android.gm.ConversationListActivityGmail" />
+    <appicon container="hotseat" rank="2"
+        packageName="com.google.android.apps.photos"
+        className="com.google.android.apps.photos.home.HomeActivity" />
+    <appicon container="hotseat" rank="3"
+        packageName="org.lineageos.aperture"
+        className="org.lineageos.aperture.CameraLauncher" />
+
+    <!-- Widgets. -->
+    <appwidget screen="0" x="0" y="1" spanX="2" spanY="2"
+        packageName="com.google.android.deskclock"
+        className="com.android.alarmclock.AnalogAppWidgetProvider" />
+    <appwidget screen="0" x="4" y="1" spanX="2" spanY="2"
+        packageName="com.google.android.googlequicksearchbox"
+        className="com.google.android.apps.search.assistant.verticals.snapshot.widgets.weather.WeatherWidget_Receiver" />
+    <appwidget screen="0" x="4" y="3" spanX="2" spanY="2"
+        packageName="com.google.android.calendar"
+        className="com.android.calendar.widget.CalendarAppWidgetProvider" />
+
+    <!-- ★ The reason this file exists. 3x1 rather than 2x1: at
+         TARGET_SCREEN_DENSITY 320 on a 6-column grid, two cells ellipsise the
+         subtitle, and a widget whose own subtitle does not fit at its default
+         size is not finished. -->
+    <appwidget screen="0" x="0" y="3" spanX="3" spanY="1"
+        packageName="org.pixelos.malbec.parts"
+        className="org.pixelos.malbec.parts.display.PenModeWidgetProvider" />
+
+    <appicon screen="0" x="0" y="4"
+        packageName="com.android.vending"
+        className="com.android.vending.AssetBrowserActivity" />
+
+    <!-- titleText and not title: title takes a resource id resolved against THIS
+         package (FolderParser :604-609), and there is no reason to add a
+         translated string for a folder the user will rename or delete. -->
+    <folder screen="0" x="1" y="4" titleText="Google">
+        <appicon packageName="com.google.android.googlequicksearchbox"
+            className="com.google.android.googlequicksearchbox.SearchActivity" />
+        <appicon packageName="com.google.android.apps.maps"
+            className="com.google.android.maps.MapsActivity" />
+        <appicon packageName="com.google.android.calendar"
+            className="com.android.calendar.AllInOneActivity" />
+        <appicon packageName="com.google.android.deskclock"
+            className="com.android.deskclock.DeskClock" />
+        <appicon packageName="com.google.android.contacts"
+            className="com.android.contacts.activities.PeopleActivity" />
+        <appicon packageName="com.google.android.calculator"
+            className="com.android.calculator2.Calculator" />
+        <appicon packageName="com.google.android.apps.weather"
+            className="com.google.android.apps.weather.home.HomeActivity" />
+        <appicon packageName="com.android.settings"
+            className="com.android.settings.Settings" />
+    </folder>
+
+</workspace>

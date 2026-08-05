@@ -1,0 +1,18 @@
+<!--
+     SPDX-FileCopyrightText: The Android Open Source Project
+     SPDX-License-Identifier: Apache-2.0
+
+     Material Symbols "speed" — the glyph the widget shows in Game mode, so the
+     state is legible without reading the label. Paired with ic_stylus for Daily.
+     No tint here: the widget sets it per state via setColorInt, and the QS tile
+     and Settings row use ic_stylus instead.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M418,620Q441,643 474.5,642Q508,641 526,616L716,331Q725,317 712.5,305Q700,293 686,302L401,492Q376,510 375,543.5Q374,577 397,600L418,620ZM480,880Q397,880 322.5,848.5Q248,817 191.5,760.5Q135,704 103.5,629.5Q72,555 72,472Q72,389 103.5,314.5Q135,240 191.5,183.5Q248,127 322.5,95.5Q397,64 480,64Q550,64 615,86Q680,108 733,148L676,205Q634,175 583.5,157.5Q533,140 480,140Q342,140 245,237.5Q148,335 148,472Q148,609 245,706.5Q342,804 480,804Q618,804 715,706.5Q812,609 812,472Q812,419 794.5,368.5Q777,318 747,276L804,219Q844,272 866,337Q888,402 888,472Q888,555 856.5,629.5Q825,704 768.5,760.5Q712,817 637.5,848.5Q563,880 480,880Z" />
+</vector>

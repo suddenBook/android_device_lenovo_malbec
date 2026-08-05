@@ -40,7 +40,14 @@ vendor.lenovo.hardware.usb.IUsb/default                         u:object_r:hal_l
 # Third-party vendor HALs. Without these entries servicemanager rejects the
 # registration outright — Access.cpp:165-170 fails the selabel lookup before it
 # ever consults enforcing mode, so permissive does not help.
-afw_service                                                     u:object_r:qcom_afw_service:s0
+# ⚠️ `afw_service` was labelled here and is GONE, along with its type in
+# service.te. Nothing registers that name: `service list` on the running device
+# has only vendor.microtrust.hardware.afw.IAFWDevice/default (the line below),
+# and `strings` on /vendor/bin/hw/vendor.microtrust.hardware.afw-service contains
+# no `afw_service` at all -- only the three
+# aidl::vendor::microtrust::hardware::afw::IAFWDevice symbols. There was also no
+# add_service(hal_afw, qcom_afw_service), so even an attempt would have failed.
+# If a future blob does register it, add the label AND the add_service together.
 vendor.microtrust.hardware.afw.IAFWDevice/default               u:object_r:hal_afw_service:s0
 vendor.dolby.dms.IDms/default                                   u:object_r:hal_aidl_dms_service:s0
 vendor.dolby.dvs.IDvs/default                                   u:object_r:dvs_aidl_service:s0

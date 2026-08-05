@@ -12,9 +12,9 @@ import android.content.pm.ResolveInfo
 import android.os.Bundle
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
-import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceScreen
 import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity
+import com.android.settingslib.widget.SettingsBasePreferenceFragment
 import com.android.settingslib.widget.SelectorWithWidgetPreference
 import org.pixelos.malbec.parts.R
 
@@ -51,7 +51,17 @@ class ActionPickerActivity : CollapsingToolbarBaseActivity() {
     }
 }
 
-class ActionPickerFragment : PreferenceFragmentCompat() {
+/**
+ * ⚠️ SettingsBasePreferenceFragment, not PreferenceFragmentCompat. That base is
+ * what applies the Expressive look: SettingsBasePreferenceFragment.kt:33-45 calls
+ * setDivider(null) and adds MarginItemDecoration, and :54-58 overrides
+ * onCreateAdapter to return SettingsPreferenceGroupAdapter -- the adapter that
+ * draws the rounded grouped preference cards. With the plain compat base this
+ * page was a flat divider-separated list opened from a page of rounded cards,
+ * which is exactly the "looks like it belongs in Settings" claim this app makes
+ * about itself.
+ */
+class ActionPickerFragment : SettingsBasePreferenceFragment() {
 
     private val prefKey by lazy {
         requireArguments().getString(ActionPickerActivity.EXTRA_PREF_KEY)!!
@@ -69,7 +79,13 @@ class ActionPickerFragment : PreferenceFragmentCompat() {
         val current = GestureBinder.actionFor(requireContext(), prefKey)
         val currentIsApp = current.id.startsWith(GestureAction.LAUNCH_APP_PREFIX)
 
-        for (action in GestureAction.CATALOGUE) {
+        // isAvailable() drops entries that cannot fire on this device -- today
+        // that is "Open notes", because android.app.role.NOTES has no holder
+        // here. See GestureAction.isAvailable for the framework path that would
+        // otherwise return a null intent and log one warning.
+        for (action in GestureAction.CATALOGUE.filter {
+            GestureAction.isAvailable(requireContext(), it)
+        }) {
             val pref = SelectorWithWidgetPreference(requireContext()).apply {
                 key = action.id
                 title = getString(action.labelRes)

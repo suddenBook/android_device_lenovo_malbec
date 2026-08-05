@@ -3,10 +3,44 @@
      SPDX-FileCopyrightText: The LineageOS Project
      SPDX-License-Identifier: Apache-2.0
 
-     Deliberately plain: system colour attributes and the system typography, no
-     custom palette, no drop shadow, no bespoke shape. On a home screen full of
-     Material You widgets, anything with its own visual identity reads as
-     foreign — which is exactly what the owner asked this app not to be.
+     Home-screen switch between Daily and Game mode.
+
+     Still no custom palette, no drop shadow and no bespoke shape — everything
+     here is a platform token, so the widget belongs on a Material You home
+     screen rather than merely surviving on one. What changed is that the first
+     version did not actually achieve that:
+
+       * SQUARE corners. It set android:clipToOutline="true" over a colour
+         background, and clipToOutline clips to the background DRAWABLE's outline
+         — a resolved colour is a ColorDrawable whose outline is a plain rectangle,
+         so the attribute did nothing at all and this was the only hard-edged
+         rectangle on the screen. Now a shape drawable carrying
+         @android:dimen/system_app_widget_background_radius, the same value every
+         stock widget uses.
+       * No STATE. Both modes rendered identically apart from one word, on a 13"
+         screen. Now the icon, its filled circle and the whole card change colour
+         together — the same active/inactive language a Quick Settings tile uses,
+         which is what a one-tap toggle should look like.
+       * Theme attributes rather than the wallpaper palette. RemoteViews are
+         inflated in the LAUNCHER's process against the LAUNCHER's theme, so
+         ?android:attr/colorBackgroundFloating resolved to whatever the host
+         happened to use — and colorBackgroundFloating is the *dialog* token
+         (core/res/res/values/attrs.xml:40), not a surface. @android:color/system_*
+         is the wallpaper-derived Material You palette; see res/values/colors.xml.
+
+     ── Notes for whoever edits this next ────────────────────────────────────
+
+     * android:text is set here as well as from RemoteViews. It is NOT redundant:
+       previewLayout renders this file directly in the widget picker, and without
+       it the picker showed an icon and two empty lines.
+     * At runtime the text is set with setCharSequence(id, "setText", resId), not
+       setTextViewText(id, string). That passes a resource REFERENCE, which the
+       host re-resolves when the locale changes (RemoteViews.java:7951-7967).
+       AppWidgetServiceImpl has no locale handler — it re-broadcasts only on font
+       scale (:646-661) and package change (:4892) — so a baked-in string would
+       stay in the old language forever.
+     * Only ids RemoteViews touches carry an @+id, so a future edit cannot
+       silently break a setter.
 -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -15,17 +49,26 @@
     android:layout_height="match_parent"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:padding="12dp"
-    android:background="?android:attr/colorBackgroundFloating"
-    android:clipToOutline="true">
+    android:padding="14dp"
+    android:background="@drawable/widget_background"
+    android:contentDescription="@string/pen_mode_widget_label">
 
-    <ImageView
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_marginEnd="12dp"
-        android:src="@drawable/ic_stylus"
-        android:tint="?android:attr/textColorPrimary"
-        android:contentDescription="@string/pen_mode_widget_label" />
+    <FrameLayout
+        android:id="@+id/icon_frame"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_marginEnd="14dp"
+        android:background="@drawable/widget_icon_background">
+
+        <ImageView
+            android:id="@+id/mode_icon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_stylus"
+            android:importantForAccessibility="no" />
+
+    </FrameLayout>
 
     <LinearLayout
         android:layout_width="0dp"
@@ -39,8 +82,10 @@
             android:layout_height="wrap_content"
             android:maxLines="1"
             android:ellipsize="end"
-            android:textAppearance="?android:attr/textAppearanceListItem"
-            android:textColor="?android:attr/textColorPrimary" />
+            android:text="@string/touch_mode_daily_short"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/widget_title" />
 
         <TextView
             android:id="@+id/mode_detail"
@@ -48,8 +93,9 @@
             android:layout_height="wrap_content"
             android:maxLines="1"
             android:ellipsize="end"
-            android:textAppearance="?android:attr/textAppearanceListItemSecondary"
-            android:textColor="?android:attr/textColorSecondary" />
+            android:text="@string/touch_mode_daily_detail"
+            android:textSize="13sp"
+            android:textColor="@color/widget_detail" />
 
     </LinearLayout>
 

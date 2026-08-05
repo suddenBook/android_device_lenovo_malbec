@@ -33,35 +33,11 @@ value:2908
 [AID_VENDOR_QTR]
 value:2909
 
-[AID_VENDOR_NXP_STRONGBOX]
-value:2910
-
-[AID_VENDOR_NXP_WEAVER]
-value:2911
-
 [AID_VENDOR_SSGTZD]
 value:2912
 
-[AID_VENDOR_THALES_STRONGBOX]
-value:2913
-
 [AID_VENDOR_QCC]
 value:2914
-
-[AID_VENDOR_NXP_AUTHSECRET]
-value:2915
-
-[AID_VENDOR_THALES_WEAVER]
-value:2916
-
-[AID_VENDOR_THALES_AUTHSECRET]
-value:2917
-
-
-
-
-
-
 
 # ⚠️ Six [system/vendor/bin/...] stanzas were removed in session 12 (cnd,
 # ims_rtp_daemon, loc_launcher, pd-mapper, pm-service, slim_daemon).
@@ -104,3 +80,18 @@ mode: 0771
 user: AID_SYSTEM
 group: AID_SYSTEM
 caps: 0
+
+# ⚠️ Six AIDs were removed here: AID_VENDOR_{NXP,THALES}_{STRONGBOX,WEAVER,AUTHSECRET}.
+# This file's own header says "only files this tree actually installs are listed",
+# and those six exist solely for
+#   android.hardware.security.keymint-service.strongbox-{nxp,thales}
+#   android.hardware.security.weaver-service.{nxp,thales}
+#   android.hardware.authsecret-service.{nxp,thales}-qti
+# none of which is built (0 matches under out/.../vendor/bin) and none of which
+# could be: this device has no StrongBox. `pm list features` reports
+# android.hardware.hardware_keystore=300 and no android.hardware.strongbox_keystore,
+# which is also why properties/product.prop:96-99 is written the way it is.
+#
+# The reverse direction was checked too, and is clean: every `user`/`group` name
+# in all shipped vendor .rc files resolves against /vendor/etc/{passwd,group} plus
+# the AOSP builtins, so this table is over-complete and never under-complete.

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- Put the Device mode tile in the default Quick Settings panel.
+
+         ── Why this and not only the home-screen widget ────────────────────
+         The moment you actually want to change mode is while a game is already
+         full-screen, where the launcher is unreachable and the shade is not. A
+         tile that has to be dragged in from the edit screen first is a tile most
+         users never find, so it may as well not exist.
+
+         ── Which resource, and how that was determined ─────────────────────
+         QSHost.getDefaultSpecs (frameworks/base/packages/SystemUI/src/com/android/
+         systemui/qs/QSHost.java:42-52) picks between TWO strings:
+
+             QsInCompose.isEnabled() ? quick_settings_tiles_new_default
+                                     : quick_settings_tiles_default
+
+         so overriding the wrong one is a silent no-op. Measured which is live
+         rather than guessing: `adb shell settings get secure sysui_qs_tiles`
+         returns exactly AOSP's quick_settings_tiles_new_default
+         (internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,
+         screenrecord,battery), so QsInCompose is on and the *_new_default string
+         is the one that matters. Both are overridden here anyway: the flag is a
+         build-time read-only value that a later PixelOS merge could flip, and
+         keeping the two lists in step costs one extra element.
+
+         The custom(pkg/cls) syntax is AOSP's own — the stock default list already
+         carries custom(com.android.permissioncontroller/...SafetyCenterQsTileService).
+
+         ⚠️ This is the DEFAULT set, applied once when Settings.Secure
+         sysui_qs_tiles has never been written. It does not appear on a device
+         whose /data already carries a tile list; that is only reachable through a
+         data wipe, which is exactly the case that matters here (first boot after
+         a flash). Criterion after flashing:
+             adb shell settings get secure sysui_qs_tiles
+         must contain custom(org.pixelos.malbec.parts/...PenModeTileService).
+
+         Appended at the end rather than inserted, so nothing the user expects in
+         the first row moves. -->
+    <string name="quick_settings_tiles_default" translatable="false">
+        internet,bt,flashlight,dnd,alarm,airplane,controls,wallet,rotation,battery,cast,screenrecord,mictoggle,cameratoggle,custom(com.android.permissioncontroller/.permission.service.v33.SafetyCenterQsTileService),custom(org.pixelos.malbec.parts/org.pixelos.malbec.parts.display.PenModeTileService)
+    </string>
+
+    <string name="quick_settings_tiles_new_default" translatable="false">
+        internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery,custom(org.pixelos.malbec.parts/org.pixelos.malbec.parts.display.PenModeTileService)
+    </string>
+</resources>

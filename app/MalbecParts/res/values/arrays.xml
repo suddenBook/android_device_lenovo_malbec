@@ -5,11 +5,13 @@
 -->
 <resources>
     <string-array name="touch_mode_entries" translatable="false">
-        <item>@string/touch_mode_stylus</item>
+        <item>@string/touch_mode_daily</item>
         <item>@string/touch_mode_game</item>
     </string-array>
 
-    <!-- Must match Constants.TOUCH_MODE_*. -->
+    <!-- Must match Constants.TOUCH_MODE_*. ⚠️ "stylus" is the wire value for
+         Daily mode and is deliberately unchanged by the rename — see the comment
+         on Constants.TOUCH_MODE_DAILY. Changing it here breaks init.malbec.rc. -->
     <string-array name="touch_mode_values" translatable="false">
         <item>stylus</item>
         <item>game</item>

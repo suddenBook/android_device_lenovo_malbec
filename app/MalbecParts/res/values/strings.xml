@@ -32,19 +32,25 @@
     <string name="pen_lost_notification_title"><xliff:g id="name" example="Lenovo Tab Pen Plus">%1$s</xliff:g> is out of range</string>
     <string name="pen_lost_notification_text">It has not reconnected. Tap to open Bluetooth settings.</string>
 
-    <!-- Touch and refresh mode -->
+    <!-- Device mode -->
     <string name="touch_mode_category">Screen and touch</string>
-    <string name="touch_mode_title">Touch mode</string>
-    <string name="touch_mode_stylus">Stylus mode: 120 Hz, pen enabled</string>
-    <string name="touch_mode_game">Game mode: 144 Hz, faster touch, pen disabled</string>
-    <string name="touch_mode_stylus_short">Stylus</string>
+    <string name="touch_mode_title">Device mode</string>
+    <string name="touch_mode_daily">Daily — stylus works</string>
+    <string name="touch_mode_game">Game — fastest touch, no stylus</string>
+    <string name="touch_mode_daily_short">Daily</string>
     <string name="touch_mode_game_short">Game</string>
-    <string name="touch_mode_stylus_detail">120 Hz · pen on</string>
-    <string name="touch_mode_game_detail">144 Hz · pen off</string>
-    <string name="touch_mode_footer">The screen and the touch controller share one setting because the hardware cannot do both at once. At 144 Hz the controller stops scanning for the pen entirely, and finger touches are read three times as often. Stylus mode is the default.</string>
+    <string name="touch_mode_daily_detail">Stylus on · 120 Hz touch</string>
+    <string name="touch_mode_game_detail">350 Hz touch · no stylus</string>
+    <!-- Toasts. Shown on every switch, whichever surface caused it. -->
+    <string name="touch_mode_daily_toast">Daily mode: the stylus works, and the screen reads finger touches 120 times a second</string>
+    <string name="touch_mode_game_toast">Game mode: 350 touch readings a second and full processor clocks for longer. The stylus does not work in this mode.</string>
+    <string name="touch_mode_rate_restored_toast">Above 120 Hz the stylus stops working and touch readings drop to 185 a second, so the refresh rate has been set back to 120 Hz</string>
+    <string name="touch_mode_footer">The screen, the touch controller and the thermal policy move together, because the hardware cannot do all of it at once. Game mode reads finger touches about 350 times a second instead of 120, and lets the processor hold its full clock until the tablet reaches 48°C rather than stepping down from 42°C — but the touch controller stops scanning for the stylus entirely. Daily is the default and the only mode the stylus works in. Both modes run the screen at 120 Hz: above that the stylus cannot be detected at all and touch readings fall to about 185 a second, which is why this tablet has no refresh-rate setting.</string>
 
-    <string name="pen_mode_tile_label">Touch mode</string>
-    <string name="pen_mode_widget_label">Touch mode</string>
+    <string name="pen_mode_tile_label">Device mode</string>
+    <string name="pen_mode_widget_label">Device mode</string>
+    <string name="pen_mode_widget_description">Switch between Daily and Game mode from the home screen.</string>
+    <string name="pen_mode_widget_action">Tap to switch</string>
 
     <!-- Keyboard -->
     <string name="keyboard_title">Advanced keyboard settings</string>

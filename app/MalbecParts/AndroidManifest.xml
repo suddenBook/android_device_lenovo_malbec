@@ -48,6 +48,13 @@
             android:exported="true">
             <intent-filter android:priority="1000">
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <!-- An OTA that replaces this APK kills the process, and with it
+                     the five private KeyGestureEvent handler registrations
+                     (KeyGestureController.binderDied -> onKeyGestureHandlerRemoved,
+                     :1611-1615). The bindings survive in input_gestures.xml, so
+                     `dumpsys input` still shows them while nothing dispatches
+                     them. This re-registers without waiting for a reboot. -->
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
@@ -98,10 +105,41 @@
             <meta-data
                 android:name="com.android.settings.icon"
                 android:resource="@drawable/ic_stylus" />
+            <!-- ⚠️ android:resource, NOT android:value. With android:value a
+                 @string/ reference is coerced to a literal String at PARSE time
+                 (ParsingPackageUtils.java:3272-3281 peeks android:resource first
+                 and stores an int; otherwise it coerceToString()s the value), and
+                 Tile.java:243-255 only calls res.getString() on the Integer
+                 branch. So android:value froze this summary in the build
+                 language forever. The icon two lines up was already correct
+                 because Tile.java:303 requires an int there; the summary was not.
+                 TileUtils.java:178-179 says the same for the sibling title key. -->
             <meta-data
                 android:name="com.android.settings.summary"
-                android:value="@string/stylus_summary" />
+                android:resource="@string/stylus_summary" />
         </activity>
+
+        <!-- ★ Marker that makes this package the launcher's layout customisation
+             provider, so res/xml/default_layout_6x5_h6.xml becomes the default
+             home screen and the Device mode widget is already on it after a
+             flash. Nothing is ever broadcast to this receiver; see
+             LauncherLayoutMarker for the mechanism and why exported="false" is
+             still discoverable.
+
+             ⚠️ Verified free before claiming it:
+                 cmd package query-receivers -a \
+                     android.autoinstalls.config.action.PLAY_AUTO_INSTALL
+             returned "No receivers found" on this build. The sibling marker
+             action, com.android.launcher3.action.PARTNER_CUSTOMIZATION, is
+             already held by com.google.android.apps.wallpaper.pixel — that is why
+             this is the action to use and not that one. -->
+        <receiver
+            android:name=".launcher.LauncherLayoutMarker"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.autoinstalls.config.action.PLAY_AUTO_INSTALL" />
+            </intent-filter>
+        </receiver>
 
         <!-- Shared "what should this key do?" picker, used by both screens. -->
         <activity
@@ -127,10 +165,19 @@
 
         <!-- Home-screen widget for the same switch, because the owner asked for
              one-tap-from-the-desktop specifically. -->
+        <!-- ⚠️ exported="false". It was true, which let any uid flip the panel
+             mode and rewrite /proc with
+                 am broadcast -a org.pixelos.malbec.parts.TOGGLE_PEN_MODE \
+                     -n org.pixelos.malbec.parts/.display.PenModeWidgetProvider
+             because TOGGLE_PEN_MODE is not a protected broadcast. Neither
+             legitimate sender needs it: APPWIDGET_UPDATE comes from system_server
+             and the click arrives via a PendingIntent, both uid 1000, and
+             ActivityManager.canAccessUnexportedComponents (:5405-5423) grants
+             ROOT_UID/SYSTEM_UID access to unexported components. -->
         <receiver
             android:name=".display.PenModeWidgetProvider"
             android:label="@string/pen_mode_widget_label"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

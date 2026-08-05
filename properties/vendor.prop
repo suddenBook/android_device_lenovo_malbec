@@ -37,8 +37,18 @@ debug.sf.ignore_hwc_physical_display_orientation=true
 # Buffer latching. Both read off the running stock ROM rather than off
 # system/build.prop, which carries a stale latch_unsignaled=1 that the vendor
 # copy overrides. See the note in system.prop.
+# ⚠️ debug.sf.latch_unsignaled was here and is GONE: it has zero readers in
+# Android 16. SurfaceFlinger::getLatchUnsignaledConfig (SurfaceFlinger.cpp:590-596)
+# reads ONLY debug.sf.auto_latch_unsignaled and otherwise returns Disabled; the
+# old name survives solely in hardware/qcom-caf/*/display/config/*.mk, which are
+# build-system property lists, not readers. Verified: 0 hits for the symbol
+# across frameworks/native/services/surfaceflinger and frameworks/native/libs.
+#
+# The one below IS read, at SurfaceFlinger.cpp:591. Its value equals the AOSP
+# default (true), so it is redundant -- kept because it records the intent, and
+# because the paragraph it replaced in system.prop argued at length about a
+# property that turned out not to exist any more.
 debug.sf.auto_latch_unsignaled=1
-debug.sf.latch_unsignaled=0
 
 ro.vendor.display.cabl=2
 ro.vendor.display.idle_time=0
@@ -175,8 +185,15 @@ ro.surface_flinger.clear_slots_with_set_layer_buffer=false
 ro.surface_flinger.force_hwc_copy_for_virtual_displays=true
 ro.surface_flinger.max_frame_buffer_acquired_buffers=3
 ro.surface_flinger.max_virtual_display_dimension=4096
-ro.surface_flinger.protected_contents=true
-ro.surface_flinger.use_color_management=true
+# ⚠️ ro.surface_flinger.protected_contents and .use_color_management were here
+# and are GONE: both have zero readers in Android 16. They still exist in
+# frameworks/native/services/surfaceflinger/sysprop/SurfaceFlingerProperties.sysprop,
+# which is why "the sysprop is defined" looks like a green light, but nothing
+# calls the generated accessor -- 0 hits for either symbol across
+# frameworks/native/services/surfaceflinger and frameworks/native/libs, against
+# 5 for has_wide_color_display and 1 for auto_latch_unsignaled in the same scan.
+# They came from stock's vendor/build.prop. The tree already deleted debug.sf.hw
+# and debug.egl.hw on exactly this criterion; these two were missed.
 ro.surface_flinger.wcg_composition_dataspace=143261696
 
 # 显示 HAL

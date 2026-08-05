@@ -10,6 +10,7 @@ import android.content.Context
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import org.pixelos.malbec.parts.Constants
+import org.pixelos.malbec.parts.MalbecPartsService
 import org.pixelos.malbec.parts.R
 
 /**
@@ -39,9 +40,12 @@ class PenModeTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
+        // Same reason as the widget: a tile tap can be what starts this process,
+        // and the refresh-rate observer has to be running when we leave.
+        MalbecPartsService.sync(this)
+        // toggle() announces once from PenModeController's funnel and refreshes
+        // both this tile and the widget, so nothing else is needed here.
         PenModeController.toggle(this)
-        refresh()
-        PenModeWidgetProvider.requestUpdate(this)
     }
 
     private fun refresh() {
@@ -50,10 +54,10 @@ class PenModeTileService : TileService() {
         tile.state = if (game) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         tile.label = getString(R.string.pen_mode_tile_label)
         tile.subtitle = getString(
-            if (game) R.string.touch_mode_game_short else R.string.touch_mode_stylus_short
+            if (game) R.string.touch_mode_game_short else R.string.touch_mode_daily_short
         )
         tile.contentDescription = getString(
-            if (game) R.string.touch_mode_game else R.string.touch_mode_stylus
+            if (game) R.string.touch_mode_game else R.string.touch_mode_daily
         )
         tile.updateTile()
     }

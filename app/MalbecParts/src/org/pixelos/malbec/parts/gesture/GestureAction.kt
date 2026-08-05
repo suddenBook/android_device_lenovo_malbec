@@ -5,6 +5,8 @@
 
 package org.pixelos.malbec.parts.gesture
 
+import android.app.role.RoleManager
+import android.content.Context
 import android.hardware.input.AppLaunchData
 import android.hardware.input.KeyGestureEvent
 import org.pixelos.malbec.parts.Constants
@@ -56,6 +58,7 @@ data class GestureAction(
 
         const val ID_NONE = "none"
         const val ID_LAUNCH_APP = "launch_app"
+        const val ID_NOTES = "notes"
 
         /**
          * Prefix for "launch this specific app", stored as
@@ -106,7 +109,7 @@ data class GestureAction(
                 KeyGestureEvent.KEY_GESTURE_TYPE_TAKE_SCREENSHOT,
             ),
             GestureAction(
-                "notes",
+                ID_NOTES,
                 R.string.action_notes,
                 KeyGestureEvent.KEY_GESTURE_TYPE_LAUNCH_APPLICATION,
                 AppLaunchData.RoleData(ROLE_NOTES),
@@ -206,12 +209,51 @@ data class GestureAction(
         )
 
         /**
-         * android.app.role.NOTES. Hardcoded rather than referenced from
-         * RoleManager: that class lives in the Permission mainline module
-         * (packages/modules/Permission/framework-s/), which platform_apis does
-         * not put on this app's classpath. The string is the API.
+         * android.app.role.NOTES.
+         *
+         * ⚠️ The previous comment here said RoleManager "lives in the Permission
+         * mainline module, which platform_apis does not put on this app's
+         * classpath". That is false -- SettingsLib itself imports
+         * android.app.role.RoleManager (RestrictedLockUtilsInternal.java:36) and
+         * SettingsLib is already a static_libs dependency, so the class is on the
+         * classpath and isAvailable() below can use it. The string constant is
+         * kept because it reads better at the two use sites.
          */
         const val ROLE_NOTES = "android.app.role.NOTES"
+
+        /**
+         * ★ Which catalogue entries can actually do something on THIS device.
+         *
+         * "Open notes" is KEY_GESTURE_TYPE_LAUNCH_APPLICATION with
+         * AppLaunchData.RoleData(ROLE_NOTES). The gesture type is registered and
+         * dispatches fine, but ModifierShortcutManager.java:88-104 then needs a
+         * role holder:
+         *
+         *     if (rm.isRoleAvailable(role)) {
+         *         String rolePackage = rm.getDefaultApplication(role);
+         *         if (rolePackage != null) { intent = pm.getLaunchIntentForPackage(...) }
+         *         else { Log.w(TAG, "No default application for role " + role); }
+         *     }
+         *     return intent;   // null
+         *
+         * Measured on this device: `cmd role get-role-holders android.app.role.NOTES`
+         * is EMPTY, while BROWSER returns com.android.chrome and ASSISTANT returns
+         * com.google.android.googlequicksearchbox -- so the command works and this
+         * role genuinely has no holder. Binding it would show as selected in the
+         * picker, appear in `dumpsys input`, and do nothing but log one warning.
+         *
+         * Offering an action that cannot fire is the failure this whole curated
+         * catalogue exists to prevent; it was just failing one layer lower down.
+         * Filtered at picker-build time rather than removed, so it appears by
+         * itself the day the owner installs a notes app.
+         */
+        fun isAvailable(context: Context, action: GestureAction): Boolean {
+            if (action.id != ID_NOTES) return true
+            val rm = context.getSystemService(RoleManager::class.java) ?: return false
+            return runCatching {
+                rm.isRoleAvailable(ROLE_NOTES) && rm.getRoleHolders(ROLE_NOTES).isNotEmpty()
+            }.getOrDefault(false)
+        }
 
         fun byId(id: String?): GestureAction {
             if (id == null) return NONE

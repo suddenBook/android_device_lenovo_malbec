@@ -184,34 +184,78 @@ log.tag.PERFHAL-CLIENT=F
 # person's boot log 0.4 % noisier.
 log.tag.PERFHAL-SCENARIOD-BRIDGE=F
 
-# sec_channel — ⚠️ DELIBERATELY NOT SILENCED, and the reason is a correction.
+# sec_channel — ⚠️ SILENCED, and this reverses the previous round's decision
+# because that decision rested on a measurement that was not real.
 #
-# An earlier draft of this block set log.tag.sec_channel=F, on the stated
-# grounds that /vendor/bin/ssgtzd "retries every 5 seconds, forever". Measured
-# against the actual capture, that is wrong:
+# The text here used to argue against silencing it, on the ground that it is
+# "a bounded boot-time burst, 67 lines over 170 seconds, then it stops",
+# "re-confirmed on the running device an hour later: zero sec_channel lines in a
+# 60-second window while ssgtzd is still resident".
 #
-#   18:28:40.797  Modemcomm: Init Instance on handle:0 failed with -3
-#   18:28:40.797  Modemcomm: Failed to get handle of SSGQMSCA service
-#   ... every 5 s ...
-#   18:31:30.989  Modemcomm: Failed to get handle of SSGSCA service as well
-#                 - exiting
+# Measured again: ssgtzd pid 1516, ETIME 12:22:07 — the same process since boot —
+# still emitting, ~23 lines per minute, continuously, for twelve hours. It is not
+# bounded and it never stops.
 #
-# 67 lines over 170 seconds, then it stops. Re-confirmed on the running device
-# an hour later: zero sec_channel lines in a 60-second window while ssgtzd is
-# still resident (pid 1520). It is a bounded boot-time burst, not a spammer, and
-# 67 lines is not worth spending a suppression on.
+# ★ How the "zero lines" reading was produced, because the mechanism generalises:
+# the logcat tag is `sec_channel` followed by TWO SPACES. Tag filtering therefore
+# matches nothing at all:
 #
-# It is left visible on top of that, because the last line is informative: it is
-# this device telling us that the Secure Services Group's QMI Secure Channel
-# Agent, which lives on the MODEM, is unreachable -- which it must be, since
-# ro.baseband=apq and there is no modem.
+#     adb shell logcat -d -b main -s sec_channel      | grep -c sec_channel  -> 0
+#     adb shell logcat -d -b main                     | grep -c sec_channel  -> 40
+#     adb shell logcat -d -b main -s 'sec_channel  ' | grep -c sec_channel  -> 0
 #
-# ⚠️ Do not delete ssgtzd on the strength of that. It is the TrustZone-side
-# secure channel daemon, and there is an unresolved lead: KeyMint attestation on
-# this build fails with SECURE_HW_COMMUNICATION_FAILED (-49), and this is the
-# other secure-channel daemon in the system. No evidence links them yet, and
-# session 15 has already shown what happens when a service is removed because it
-# looked idle (`qms` -> memperfd wedged forever).
+# Same shape as the `grep -I` lesson: a filter that cannot match returns a clean
+# looking zero. Any vendor tag that pads its name to a fixed width has this
+# property, and several here do.
+#
+# ── What is being hidden ───────────────────────────────────────────────────
+#
+# A true statement, repeated forever. /vendor/bin/ssgtzd is Qualcomm's Secure
+# Services Group TrustZone daemon; one of its threads, ModemThreadHandler, opens
+# a QMI secure channel to SSGSCA, which lives ON THE MODEM. This is an APQ part
+# (ro.baseband=apq). There is no modem, so it can never succeed, and the daemon
+# retries every five seconds for as long as the device is up.
+#
+# Correlated and worth knowing: the kernel qrtr_ns thread emits
+# `ctrl_cmd_del_client(): del client cmd failed: [0x3c:0x1] 0x406d -28` in bursts
+# of three on the SAME five-second cadence. That is the other half of the same
+# loop. It lands in the `kernel` log buffer, which only exists because
+# ro.logd.kernel defaults from ro.debuggable — so it is present on userdebug and
+# absent on the `user` builds PixelOS ships. Nothing here can suppress it and
+# nothing needs to.
+#
+# ── Why silencing and not fixing ──────────────────────────────────────────
+#
+# Two real fixes were investigated and both are closed:
+#
+# 1. The daemon HAS a vendor knob for this. Disassembly of the key/value callback
+#    at 0x20dac gives it exactly:
+#        keylen==12 -> strncasecmp "modem_enable" -> out[+4] = (value[0] != '0')
+#        keylen== 9 -> strncasecmp "tz_enable"    -> out[+0] = (value[0] != '0')
+#                      else "log_level"           -> atoi() into a global
+#    and `strings` names /vendor/etc/sec_channel.rc as the file it comes from.
+#    But that path is DEAD CODE in this build: a scan for ADRP+ADD sites
+#    referencing the string finds none (/vendor/etc/qwesd.rc has four), and there
+#    is no qword pointer to it in .data either. Neither file exists in stock. So
+#    there is no config to ship.
+#
+# 2. Not shipping ssgtzd at all. Rejected as out of proportion. It is the
+#    TrustZone secure-channel daemon and the QWES licensing daemon's peer; the
+#    argument for removing it would be "it makes noise", which is not a reason to
+#    delete a security daemon. Session 15 already demonstrated the cost of
+#    removing a service that merely looked idle (`qms` -> memperfd wedged
+#    forever).
+#
+# What has changed since the last round is that the ONE reason to keep it visible
+# is gone. That reason was an unresolved lead: KeyMint attestation failing with
+# SECURE_HW_COMMUNICATION_FAILED, and this being the other secure-channel daemon
+# in the system. Measured now: zero occurrences of SECURE_HW_COMMUNICATION_FAILED
+# and zero of "RKP is disabled" in the ring buffer. Round 17's RKP configuration
+# fixed attestation, so the lead is closed and the log line protects nothing.
+#
+# ⚠️ If attestation ever regresses, unset this first — this daemon is still the
+# most likely place to look, and its errors are the only evidence it produces.
+log.tag.sec_channel=F
 
 # SP — Google's on-device handwriting/speech models complaining that a TFLite
 # zip file ref was finalised without being closed. An app-side leak in a

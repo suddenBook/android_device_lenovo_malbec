@@ -14,14 +14,26 @@ import org.pixelos.malbec.parts.display.PenModeController
 class BootCompletedReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
-        Log.i(Constants.TAG, "boot completed")
+        // MY_PACKAGE_REPLACED as well as BOOT_COMPLETED: an OTA that swaps this
+        // APK drops the private gesture handler registrations with the process,
+        // and re-registering here beats waiting for the next reboot.
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED &&
+            intent.action != Intent.ACTION_MY_PACKAGE_REPLACED
+        ) {
+            return
+        }
+        Log.i(Constants.TAG, "starting up: ${intent.action}")
 
-        // Restate the touch mode. init.malbec.rc applies the persisted property
-        // on its own, but the panel side lives in Settings.System and the two
-        // must agree — if a previous boot was interrupted between the two
-        // writes, this is where it gets fixed.
-        PenModeController.setMode(context, PenModeController.currentMode(context))
+        // Restate the mode. init.malbec.rc applies the persisted property on its
+        // own, but the panel side lives in Settings.System and the two must agree
+        // — if a previous boot was interrupted between the two writes, or if
+        // something left peak_refresh_rate above 120, this is where it is fixed.
+        //
+        // reassert() and NOT setMode(): setMode always toasts, because it means
+        // "the user just chose this". Greeting the owner with a mode toast on
+        // every boot would be wrong, and it is the kind of wrong that only shows
+        // up on real hardware.
+        PenModeController.reassert(context)
 
         // The service reconciles the gesture table itself in onCreate.
         MalbecPartsService.sync(context)

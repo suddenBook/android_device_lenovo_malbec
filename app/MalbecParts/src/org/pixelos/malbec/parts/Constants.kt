@@ -177,36 +177,65 @@ object Constants {
     const val KEYBOARD_PRODUCT_ID = 0x62b2
 
     /**
-     * Touch controller / panel mode.
+     * The device's two modes.
      *
-     * The two knobs are NOT independent and must move together. Measured on this
-     * unit, both directions, with the pen in the owner's hand:
+     * Measured on this unit, 8 s per window, panel rate read back inside every
+     * window (work/scripts/61-touch-rate-at-144.sh, raw evdev in
+     * work/s18/touch-rate/):
      *
-     *   peak_refresh_rate 120 -> 6746 pen events, 438 pressure samples;
-     *                            finger reports at 120 Hz
-     *   peak_refresh_rate 144 -> ZERO pen events; the controller cannot even
-     *                            detect the pen, and /proc/Pen_ID falls back to
-     *                            255;255
-     *   HighReportRate 0      -> finger 120 Hz, pen 237 Hz
-     *   HighReportRate 1      -> finger 360 Hz
+     *   panel  HighReportRate   finger      pen
+     *   120    0                120 Hz      240 Hz  (Pen_ID 2;87 = model 2, 87 %)
+     *   120    1                350 Hz      none
+     *   144    0                185 Hz      none
+     *   144    1                185 Hz      none
+     *   144    1 + pen on       112 Hz      none    <- worst state on the device
      *
-     * So there are exactly two coherent states, and they are the same two stock
-     * uses (DisplayModeDirector.supportPen(true/false) in ZUI's patch):
+     * So:
      *
-     *   STYLUS: 120 Hz panel + HighReportRate 0 + pen scanning on
-     *   GAME:   144 Hz panel + HighReportRate 1 + pen scanning off
+     *   DAILY: 120 Hz + support_pen 1 + HighReportRate 0 + thermal normal
+     *   GAME:  120 Hz + support_pen 0 + HighReportRate 1 + thermal game
      *
-     * ⚠️ The device ships in STYLUS. That is a deliberate default, not an
-     * oversight: this tablet comes with a stylus, and a pen that produces no
-     * events at all is not a trade against 1.4 ms of frame time. But GAME is a
-     * real gain and not only for games — it triples the finger report rate,
-     * which is the part an earlier round of this project understated.
+     * ⚠️ Both modes are 120 Hz, and that is the finding, not an oversight. The
+     * top finger report rate (~350 Hz) exists ONLY at 120 Hz: above it the
+     * controller caps at ~185 Hz and HighReportRate stops doing anything at all.
+     * So 144 Hz costs the stylus AND half the touch sampling to buy 24 frames,
+     * which is why the refresh-rate picker is removed from Settings entirely
+     * (overlay/SettingsOverlayMalbec). Stock's own no-pen state is 144 + HRR 1,
+     * so stock never reaches 350 Hz either — 120 + HRR 1 is a corner ZUI never
+     * enters.
+     *
+     * ⚠️ HighReportRate is a BOOLEAN; only the literal value 1 arms it. HRR=4 at
+     * 120 Hz measured 120.5 Hz, indistinguishable from 0. This refutes session
+     * 14's "0..4 swept, 1..4 all saturate at 349-366 Hz". The driver accepts one
+     * hex digit and passes it through unclamped (nvt_high_report_rate_set @0x946c
+     * → {0x76, v}); the firmware only recognises 1. There is nothing above 1.
+     *
+     * ⚠️ /proc/report_threshold ({0x75, v}, same unclamped path) does nothing
+     * measurable: 0/1/4/0 at 120 Hz + HRR 1 gave 324.4 / 303.1 / 347.1 / 346.5 Hz,
+     * a spread smaller than the gap between the two identical thr=0 windows.
+     * Leave it at 0.
+     *
+     * ⚠️ The WIRE VALUES stay "stylus" and "game" even though the UI says Daily
+     * and Game. Two reasons, neither of them inertia:
+     *
+     *   * The value names the HARDWARE state of the digitizer — pen scanning on or
+     *     off — which is exactly what init.malbec.rc keys off. The product name
+     *     for that state should be free to change without touching init.
+     *   * persist.sys.malbec.touch_mode survives an OTA. Renaming the value would
+     *     leave an upgraded device holding "stylus", matching no init trigger at
+     *     all: no /proc writes, and the pen silently dead until the user opened
+     *     this app. A migration trigger could cover it, but that is permanent
+     *     scaffolding for a cosmetic rename.
      */
-    const val TOUCH_MODE_STYLUS = "stylus"
+    const val TOUCH_MODE_DAILY = "stylus"
     const val TOUCH_MODE_GAME = "game"
 
-    const val REFRESH_RATE_STYLUS = 120f
-    const val REFRESH_RATE_GAME = 144f
+    /**
+     * The one refresh rate either mode wants, and the ceiling the pen needs.
+     * Both modes pin peak_refresh_rate here; see the table above for why there is
+     * no second value.
+     */
+    const val REFRESH_RATE_PINNED = 120f
 
     /**
      * init.malbec.rc turns these into writes to /proc/HighReportRate and

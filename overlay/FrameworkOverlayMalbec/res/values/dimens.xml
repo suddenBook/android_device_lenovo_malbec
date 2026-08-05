@@ -37,9 +37,18 @@
          the bar as too small on the 28dp build, which is the same observation.
 
          Interaction with TARGET_SCREEN_DENSITY (BoardConfig.mk): this is dp, so
-         it tracks density. At the 360 set there it is 88px, and at the owner's
-         restored 0.85 display-size step (306) it is 75px — byte for byte what
-         they had on the factory ROM.
+         it tracks density. ⚠️ The arithmetic here used to be anchored to 360 and
+         claimed 88px "byte for byte what they had on the factory ROM". This tree
+         ships 320 (BoardConfig.mk:227, frozen by the owner), so 39dp is
+         39 * 320/160 = 78px, and the running device agrees: dumpsys window prints
+         statusBars frame=[0,0][3504,78].
+
+         So parity with Lenovo's physical bar height is NOT what this value
+         achieves at the density we ship — 44dp would be needed for 88px at 320.
+         Whether to chase that is a preference call for the owner, not a defect;
+         what was wrong was the comment asserting a parity the number does not
+         have. 39dp is the value dumped from stock's framework-res.apk, which is
+         still the best-sourced starting point.
 
          ⚠️ Not copied from work/reference/hirero-malbec-device, which puts 52dp
          here. That is 33% above what Lenovo ships and has no derivation in that

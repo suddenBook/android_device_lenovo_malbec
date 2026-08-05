@@ -98,9 +98,19 @@
 # ⚠️ Custom input gestures are keyed on (keycode, modifierState) ONLY — they are
 # NOT per-device (InputGestureManager.getCustomGestureForKeyEvent, :499-513).
 # So the pen and the folio keyboard must not share an F-key. The allocation is:
-#     F13..F18  pen  (this file)
-#     F19, F20  folio keyboard APP1 / APP2 (Vendor_17ef_Product_62b2.kl)
-#     F21..F24  unallocated — leave free
+#     F13..F16  pen buttons: single / double / triple / press-and-hold
+#     F17       folio keyboard, touchpad key (F7 keycap)
+#     F18       pen, "link going away" — bound by the app, never user-assignable
+#     F19, F20  folio keyboard, the two keys right of F12 (App key 1 / 2)
+#     F21       folio keyboard, split-screen key (F10 keycap)
+#     F22       folio keyboard, PC-link key (F11 keycap)
+#     F23       folio keyboard, Fn + App key 1 (search)
+#     F24       unallocated — leave free
+# (⚠️ this table used to read "F13..F18 pen / F19,F20 keyboard / F21..F24 free",
+#  which stopped being true when session 17's probes moved the folio keys onto
+#  F17 and F21..F23. Keeping it accurate is the entire point of writing it down:
+#  the two files' sets must stay disjoint, and they are —
+#  pen {F13,F14,F15,F16,F18} vs folio {F17,F19,F20,F21,F22,F23}.)
 # Vendor_17ef_Product_62b2.kl's inherited `key 183..194 → F13..F24` block was
 # deleted for exactly this reason; see the note there.
 #

@@ -58,23 +58,43 @@
 # section 8 (H2) for the sweep that would settle it if pressure is still absent.
 on property:sys.boot_completed=1
     write /proc/support_pen 1
+    write /proc/HighReportRate 0
 
 # ---------------------------------------------------------------------------
-# Touch mode: the panel rate and the touch controller's scan mode, which are one
-# hardware knob with two coherent settings.
+# Device mode: the touch controller's scan mode and the thermal policy.
 #
-# Measured on this unit, both directions:
+# Measured on this unit, 8 s per window, panel rate read back inside every window
+# (work/scripts/61-touch-rate-at-144.sh; raw evdev in work/s18/touch-rate/):
 #
-#   panel 144 Hz      the controller cannot detect the pen AT ALL -- not "no
-#                     pressure", zero events, /proc/Pen_ID back to 255;255
-#   panel 120 Hz      pen fully working; finger reports at 120 Hz
-#   HighReportRate 1  finger reports at 360 Hz (3x)
+#   panel  HighReportRate   finger      pen
+#   120    0                120 Hz      240 Hz   (Pen_ID 2;87 = model 2, 87 %)
+#   120    1                350 Hz      none
+#   144    0                185 Hz      none
+#   144    1                185 Hz      none
+#   144    1 + pen on       112 Hz      none     <- worst state on the device
 #
-# So stock has exactly two states and no others, switched from its framework
-# patch (DisplayModeDirector.supportPen(true/false)):
+# Two of those rows overturn what this file used to say:
 #
-#   stylus:  120 Hz + support_pen 1 + HighReportRate 0
-#   game:    144 Hz + support_pen 0 + HighReportRate 1
+#   * The 350 Hz finger rate exists ONLY at 120 Hz. Above 120 the controller caps
+#     at ~185 Hz and HighReportRate stops having any effect at all. The old
+#     comment here claimed "HighReportRate 1 -> 360 Hz (3x)" as if it were
+#     panel-independent; it is 3x of 120, not 3x of the panel.
+#   * HighReportRate is a BOOLEAN. Only the literal 1 arms it: HRR=4 at 120 Hz
+#     measured 120.5 Hz, indistinguishable from 0. Session 14's "1..4 all
+#     saturate at 349-366 Hz" does not reproduce.
+#
+# So every rate above 120 is strictly worse here — it costs the stylus AND half
+# the touch sampling — and the refresh-rate picker is therefore removed from
+# Settings entirely (overlay/SettingsOverlayMalbec). Both modes run at 120 Hz and
+# differ only in these writes:
+#
+#   stylus (UI name "Daily"): support_pen 1 + HighReportRate 0 + thermal normal
+#   game   (UI name "Game"):  support_pen 0 + HighReportRate 1 + thermal game
+#
+# ⚠️ Wire values stay "stylus"/"game" although the UI says Daily/Game: the value
+# names the digitizer's hardware state, and persist.sys.malbec.touch_mode survives
+# an OTA, so renaming it would leave upgraded devices matching no trigger here at
+# all -- no /proc writes, pen silently dead. See app/MalbecParts Constants.kt.
 #
 # The panel half lives in Settings.System peak_refresh_rate and is written by
 # MalbecParts. This is the /proc half. It is done here rather than in the app
@@ -89,6 +109,43 @@ on property:sys.boot_completed=1
 # system_app already holds set_prop for it (private/system_app.te:43), so this
 # needs no new property type and no new rule.
 #
+# ── The thermal half ───────────────────────────────────────────────────────
+#
+# vendor.thermal.mode selects which of Lenovo's own tables for THIS chassis
+# /vendor/bin/thermal-engine-v2 loads. The plumbing is already in the vendor
+# init we ship (init.qcom.rc:516-526): the service's own argument is
+# `-c /vendor/etc/thermal-engine-malbec-${vendor.thermal.mode}.conf`, and
+# `on property:vendor.thermal.mode=*` stops and restarts it. So one setprop is
+# the whole mechanism; sepolicy/vendor/vendor_init.te:45 already grants
+# set_prop(vendor_init, vendor_thermal_prop).
+#
+# ⚠️ `game`, NOT `skynet`. The two differ in the opposite direction from what the
+# names suggest, and this was checked against the conf files rather than against
+# anyone's summary of them:
+#
+#   normal   CPU clusters 1/2/3 step down at 42/44/46/48 C
+#            (2611 -> 2323 -> 1920 -> 1190 MHz on cl1/2)
+#   game     the 42/44/46 C steps are GONE; a single step at 48 C.
+#            Full clock until 48 C. Battery-current throttle starts 1 C earlier.
+#   skynet   onset moves 42 C -> 40 C, adds a whole MON-MSM-CPU0 block that
+#            throttles the little cluster (normal never touches it), and every
+#            rung is lower. It is SLOWER and cooler, not faster.
+#
+# Stock's own mapping settles which is which: system/etc/tn_thermal_config.xml
+# assigns ~50 real games (PUBG Mobile, Honor of Kings, CoD Mobile, Wild Rift,
+# Brawl Stars, ...) to `game`, and assigns `skynet` to exactly two packages,
+# `skynet.cputhrottlingtest` and `com.example.ndkdhryv7` -- i.e. skynet is the
+# profile ZUI applies when it detects a CPU-throttling BENCHMARK, to hold the
+# chassis temperature down while it runs.
+#
+# Only the two bare property triggers carry the setprop, not the boot_completed
+# ones. The bare triggers fire both when persist properties load during
+# second-stage init and on every runtime change, so both paths are covered, while
+# a `normal` device avoids a second redundant thermal-engine restart per boot
+# (properties/vendor.prop already ships vendor.thermal.mode=normal as the
+# build-time default, and init notifies on every set even when the value is
+# unchanged -- property_service.cpp:427).
+#
 # ⚠️ ORDER MATTERS, and it is load-bearing. Both this and the plain
 # `on property:sys.boot_completed=1` block above fire on the same event, and
 # init runs same-trigger actions in parse order (ActionManager iterates its list
@@ -101,6 +158,12 @@ on property:sys.boot_completed=1
 # Boot_Update_Firmware delayed work fires at ~7.3 s and sends {0x50,0x7B,0x00}.
 # Anything written before that is overwritten. The bare property triggers below
 # handle the runtime case, where the driver is long past that point.
+#
+# ⚠️ Within each block, support_pen is written BEFORE HighReportRate, and that is
+# now load-bearing for a second reason. The measured table above has one state
+# that is worse than either mode -- 144 Hz with HighReportRate 1 AND pen scanning
+# still on, 112 Hz, below the panel rate. Writing HighReportRate first would rest
+# there for the duration of one write during every daily -> game transition.
 on property:sys.boot_completed=1 && property:persist.sys.malbec.touch_mode=game
     write /proc/support_pen 0
     write /proc/HighReportRate 1
@@ -108,10 +171,12 @@ on property:sys.boot_completed=1 && property:persist.sys.malbec.touch_mode=game
 on property:persist.sys.malbec.touch_mode=game
     write /proc/support_pen 0
     write /proc/HighReportRate 1
+    setprop vendor.thermal.mode game
 
 on property:persist.sys.malbec.touch_mode=stylus
     write /proc/support_pen 1
     write /proc/HighReportRate 0
+    setprop vendor.thermal.mode normal
 
 # ---------------------------------------------------------------------------
 # Per-unit Bluetooth / Wi-Fi MAC address storage.
@@ -152,13 +217,10 @@ on post-fs
 # ---------------------------------------------------------------------------
 # Charging control gate.
 #
-# The two nodes Settings' "Charging control" drives,
-#   /sys/class/power_supply/battery/charge_control_{start,end}_threshold
-# are inert until this class attribute is 1. Measured on the running unit:
-# with charge_control_en at 0, writing 60 / 70 / 75 / 90 / 100 to end_threshold
-# all leave it at 80; with it at 1, every one of them takes. The gate is in
-# qti_battery_charger.ko (battery_psy_set_charge_end_threshold), and it is 0 at
-# boot, which is why the feature looked unimplementable at first.
+# The node Settings' "Charging control" drives,
+#   /sys/class/power_supply/battery/charge_control_end_threshold
+# is inert until this class attribute is 1. The gate is in
+# qti_battery_charger.ko (battery_psy_set_charge_end_threshold).
 #
 # ⚠️ The parking values are not cosmetic. The pair boots holding 70/80 -- ZUI's
 # battery-health setting, left behind in the charger firmware's state. The
@@ -167,10 +229,46 @@ on post-fs
 # the driver's [55 100] range, start just under it. The framework re-applies the
 # owner's real choice from Settings when charging control is enabled.
 #
-# `on boot` and not earlier: the charger firmware link (pmic_glink) has to be up
-# for the writes to reach it, and battery_chg probes well before boot but the
-# glink channel is not guaranteed until then.
-on boot
+# ── Two corrections, both measured on the running device ───────────────────
+#
+# 1. `on boot` DID NOT WORK. Measured after 12 h of uptime, with this block
+#    shipped and the file demonstrably parsed (the support_pen write above had
+#    taken, /proc/support_pen read "Pen state 1!" against a driver default of 0):
+#
+#        charge_control_en                 0
+#        charge_control_end_threshold     80     <- should have been 100
+#        charge_control_start_threshold   70     <- should have been 95
+#
+#    Not a permissions problem: all three nodes are root-owned 0644 and
+#    vendor_init writes them. The charger firmware link (pmic_glink) is simply
+#    not up at `on boot`; battery_chg probes earlier but the glink channel is
+#    not guaranteed until later, which the previous version of this comment
+#    already suspected and shipped anyway. Moved to sys.boot_completed=1, which
+#    lands around 25 s -- long after the kernel's own BATTERY_CHG worker starts
+#    logging.
+#
+# 2. The gate is NOT symmetric, and the old comment ("the two nodes ... are
+#    inert") had it wrong. Measured, in one sitting, late in the boot:
+#
+#        echo 1   > charge_control_en          -> reads back 1
+#        echo 100 > end_threshold              -> takes (80 -> 100); en falls to 0
+#        echo 95  > start_threshold  (en == 0) -> TAKES ANYWAY (70 -> 95)
+#
+#    So `end_threshold` is gated and one-shot; `start_threshold` is not gated at
+#    all. That also refines PROGRESS.md's error #74, which modelled the latch as
+#    covering both. The practical consequence is that one `en=1` per
+#    `end_threshold` write is enough and no re-open is needed for the start
+#    value -- but the gate is written immediately before the end write rather
+#    than at the top of the block, so the pairing is visible and a future
+#    reorder cannot silently separate them.
+#
+# Verification after the next flash, two lines:
+#     adb shell cat /sys/class/power_supply/battery/charge_control_end_threshold
+#     adb shell cat /sys/class/power_supply/battery/charge_control_start_threshold
+# must read 100 and 95. If they read 80 and 70 this block did not run again, and
+# the next thing to look at is `adb logcat -b kernel -d | grep -i charge_control`
+# plus init's own "Unable to write to file" warnings from the boot capture.
+on property:sys.boot_completed=1
     write /sys/class/qcom-battery/charge_control_en 1
     write /sys/class/power_supply/battery/charge_control_end_threshold 100
     write /sys/class/power_supply/battery/charge_control_start_threshold 95

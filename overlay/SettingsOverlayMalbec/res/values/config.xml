@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- ★ Remove the refresh-rate picker from Settings > Display.
+
+         ── Why ─────────────────────────────────────────────────────────────
+         On this panel every rate above 120 Hz is strictly worse, and that is
+         measured, not assumed (work/s18/touch-rate/, 8 s per window, panel rate
+         read back inside every window):
+
+             panel  HighReportRate   finger      pen
+             120    0                120 Hz      240 Hz  (Pen_ID 2;87)
+             120    1                350 Hz      none
+             144    0                185 Hz      none
+             144    1                185 Hz      none
+
+         At 144 Hz the digitizer cannot see the active pen at all, AND the finger
+         report rate falls to 185 Hz — barely half of the 350 Hz available at
+         120 Hz, because HighReportRate stops doing anything above 120. So 144 Hz
+         costs the stylus and half the touch sampling to buy 24 extra frames.
+         There is no configuration in which a user is better off there.
+
+         The list itself cannot be filtered: RefreshRateUtils.getRefreshRates()
+         (packages/apps/Settings/.../display/RefreshRateUtils.java:45-49) builds it
+         at runtime from Display.getSupportedModes(), so no RRO can remove one
+         entry. Removing the mode from the panel timings would mean patching
+         dtbo.img — panel-specific, and this device has two panel suppliers whose
+         timings differ, so it would break the rule that no device-tree file may
+         hardcode a panel. Hiding the control is the only panel-agnostic lever,
+         and it is a real one: RefreshRatePreferenceController.getAvailabilityStatus
+         (:84-88) is gated on exactly this boolean.
+
+         ── ⚠️ The trap, for whoever revisits this ───────────────────────────
+         The obvious "safer" variant — hide the advanced list and let the classic
+         Smooth display toggle stand in — does the OPPOSITE of what it looks like
+         on this build. Two facts compose badly:
+
+           * PeakRefreshRatePreferenceController:71-73 sets its target rate from
+             findHighestRefreshRateAmongAllDisplays() when
+             com.android.server.display.feature.flags.
+             back_up_smooth_display_and_force_peak_refresh_rate is on, and
+             `adb shell aflags list` reports it ENABLED here.
+           * :118-120 then writes Float.POSITIVE_INFINITY, which
+             DisplayModeDirector.java:1186-1188 resolves to the highest supported
+             rate.
+
+         So that toggle would offer 60 or 144 — the one value we are removing.
+         It is moot only because PixelOS ships config_show_smooth_display=false
+         (packages/apps/Settings/res/values/config.xml:577), which makes the
+         fallback controller UNSUPPORTED too. Do not "restore the toggle" by
+         setting that to true without re-reading both files.
+
+         ── What the user is left with ───────────────────────────────────────
+         No refresh-rate control in Settings at all. The rate is owned by
+         MalbecParts (Stylus and keyboard > Device mode), which pins
+         peak_refresh_rate to 120 in both modes; config_defaultPeakRefreshRate is
+         120 as well, so an un-provisioned device agrees. AOSP's own idle and
+         content-driven switching still runs underneath — measured 30 Hz idle,
+         120 Hz while scrolling — so nothing is lost by dropping the manual 60 Hz
+         entry.
+
+         MalbecParts keeps its ContentObserver on peak_refresh_rate and
+         min_refresh_rate anyway. This removes the UI, not the setting: `settings
+         put`, a backup restore, or a POSITIVE_INFINITY left by the flag above can
+         still move it, and the observer is what keeps /proc coherent if that
+         happens. -->
+    <bool name="config_show_advanced_refresh_rate">false</bool>
+</resources>

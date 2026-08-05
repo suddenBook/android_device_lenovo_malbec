@@ -18,10 +18,18 @@
      (AppIdPermissionPolicy.getPrivilegedPermissionAllowlistState -> isSystemExt).
 
      Only permissions with the "privileged" protection flag belong here. The
-     app's other declared permissions are normal (VIBRATE, RECEIVE_BOOT_COMPLETED,
-     QUERY_ALL_PACKAGES), dangerous (BLUETOOTH_CONNECT, POST_NOTIFICATIONS) or
-     plain signature (MANAGE_KEY_GESTURES, INJECT_EVENTS, DEVICE_POWER,
-     WRITE_SETTINGS) and must NOT be listed — an entry naming a non-privileged
+     app's other declared permissions are normal (RECEIVE_BOOT_COMPLETED,
+     QUERY_ALL_PACKAGES), dangerous (BLUETOOTH_CONNECT, POST_NOTIFICATIONS),
+     signature (MANAGE_KEY_GESTURES, INJECT_EVENTS), signature|role
+     (DEVICE_POWER) or signature|preinstalled|appop|pre23|role (WRITE_SETTINGS),
+     and must NOT be listed
+
+     ⚠️ VIBRATE used to be in that list. It is not declared and must not be: this
+     device has no vibration motor at all (dumpsys vibrator_manager reports
+     vibratorIds = [], and android.hardware.vibrator is absent from
+     pm list features), and the whole vibration path was deliberately removed.
+     `dumpsys package` does show VIBRATE granted, but that is the shared uid 1000
+     permission set contributed by other packages, not by this manifest. — an entry naming a non-privileged
      permission is dead weight that later readers will mistake for a requirement.
 -->
 <permissions>

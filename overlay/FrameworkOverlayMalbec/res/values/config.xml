@@ -71,27 +71,46 @@
          trade-off. Both states this leaves reachable work with the pen: Smooth
          Display on gives 120 (config_defaultPeakRefreshRate), off gives 60.
 
-         Consequence worth stating plainly, because it answers "is our touch
-         sampling rate the same as stock": /proc/HighReportRate stays at the
-         driver default 0, and that is now CORRECT rather than an omission - it
-         is exactly the value stock uses in its supportPen(true) state, which is
-         the state this configuration is permanently in. Before this change the
-         device was in neither of stock's two states: HighReportRate 0 (stock's
-         pen mode) at 144 Hz (stock's no-pen mode).
+         ★ Consequence, and it is the opposite of what this file used to say.
 
-         To trade the stylus back for 144 Hz on a running device:
-             settings put system peak_refresh_rate 144.0
-         The pen stops working immediately, and starts again at 120.
+         The old text here claimed /proc/HighReportRate "stays at the driver
+         default 0, and that is now CORRECT rather than an omission - it is
+         exactly the value stock uses in its supportPen(true) state". True as far
+         as it went, but it left the tablet permanently in stock's PEN state and
+         quietly gave up the fastest touch this hardware has. Measured, 8 s per
+         window, panel rate read back inside every window
+         (work/scripts/61-touch-rate-at-144.sh; raw evdev in work/s18/touch-rate/):
+
+             panel  HighReportRate   finger      pen
+             120    0                120 Hz      240 Hz
+             120    1                350 Hz      none
+             144    0                185 Hz      none
+             144    1                185 Hz      none
+
+         The top finger report rate is ~350 Hz and it exists ONLY at 120 Hz. Above
+         120 the controller caps at ~185 Hz and HighReportRate stops having any
+         effect at all - so 144 Hz costs the stylus AND half the touch sampling,
+         and stock's own no-pen state (144 + HRR 1) never reaches 350 Hz either.
+         120 + HRR 1 is a corner ZUI does not enter.
+
+         That is why this tree ships TWO modes at the same 120 Hz, differing in
+         the touch controller and the thermal policy rather than in the panel rate
+         (MalbecParts, "Device mode"), and why the refresh-rate picker is removed
+         from Settings altogether (overlay/SettingsOverlayMalbec). There is no
+         configuration above 120 Hz in which a user of this device is better off.
+
+         The old instruction here - "to trade the stylus back for 144 Hz,
+         settings put system peak_refresh_rate 144.0" - still physically works,
+         but it now also costs half the touch sampling, and MalbecParts will
+         notice, say so in a toast, and put it back. It is not a supported state.
 
          ★ DO NOT "improve" this into stock's dynamic scheme. That was the
          obvious next step and the device owner rejected it, with the better
-         argument: switching costs more than the 24 Hz buys. Every transition is
-         a DSI mode change on the panel PLUS a mode change in the touch
-         controller, both of which are visible and both of which cost power, and
-         they would fire every time the pen enters and leaves range. 144 - 120 is
-         1.4 ms of frame time. Paying a mode switch repeatedly to buy that back
-         is a bad trade, and pinning the value also deletes a whole class of
-         state-machine bugs (pen arriving mid-switch, switch racing the idle
+         argument: switching costs more than the 24 Hz buys. Every transition is a
+         DSI mode change on the panel PLUS a mode change in the touch controller,
+         both visible and both costing power, and they would fire every time the
+         pen enters and leaves range. Pinning the value also deletes a whole class
+         of state-machine bugs (pen arriving mid-switch, switch racing the idle
          timer, the chicken-and-egg above). Static is the design, not a stopgap.
 
          Of the two, config_defaultPeakRefreshRate is the load-bearing one, and
@@ -100,13 +119,36 @@
          (DisplayModeDirector.java:1209-1215) turns that into
              Vote.forPhysicalRefreshRates(0, peak)  @ PRIORITY_USER_SETTING_PEAK_REFRESH_RATE
          - a ceiling on the PHYSICAL panel mode, which is what the pen actually
-         needs. config_defaultRefreshRate only yields
-             Vote.forRenderFrameRates(0, default)   @ PRIORITY_DEFAULT_RENDER_FRAME_RATE
-         (:1223-1226), the lowest priority, and it bounds the render rate only -
-         it would happily leave the panel in the 144 Hz mode while rendering 120.
-         It is set here for coherence, not because it does the work. Confirmed on
-         the device: with peak at 120, dumpsys SurfaceFlinger reports
-         activeMode={id=2, ... vsyncRate=120.00 Hz}, i.e. the mode really changed.
+         needs.
+
+         config_defaultRefreshRate is 0, and that is not "unset" - it is AOSP's
+         documented way to say "the peak setting is the default"
+         (core/res/res/values/config.xml:5859-5862: "If a non-zero value is set
+         for config_defaultPeakRefreshRate, then config_defaultRefreshRate may be
+         set to 0, in which case the value set for config_defaultPeakRefreshRate
+         will act as the default frame rate.").
+
+         ⚠️ It used to be 120 here, "for coherence", and that silently capped the
+         game tier. updateRefreshRateSettingLocked (DisplayModeDirector.java:
+         1226-1228) turns a non-zero value into
+             Vote.forRenderFrameRates(0, default)
+         registered with updateGlobalVote() - a GLOBAL render ceiling that no
+         per-display peak vote can lift. Measured on the device, all three rows
+         from one sitting:
+
+             peak=120            physical (0,120)   render (0,120)   mode 3
+             peak=144            physical (0,144)   render (0,120)   <- capped
+             peak=144 + min=144  physical (144,144) render (144,144) mode 2, 144 Hz
+
+         So with the old value, choosing game mode raised the panel's ceiling and
+         then throttled the render rate back to 120 anyway: half a mode change,
+         which is worse than either state. Setting it to 0 removes the global vote
+         entirely; the ceiling in each mode then comes only from
+         PEAK_REFRESH_RATE, which MalbecParts owns. Daily mode (peak 120) is
+         unaffected - it still gets physical (0,120) render (0,120).
+
+         The "both are 0" error branch at :1231-1237 cannot trigger: peak falls
+         back to config_defaultPeakRefreshRate = 120 when the setting is unset.
 
          Note also that 144 Hz remains in Display > Refresh rate, because that
          list is built at runtime from Display.getSupportedModes()
@@ -116,8 +158,10 @@
          stock) or carrying the tree's only out-of-device-tree source patch. Apps
          cannot reach 144 regardless - the app-request range only considers votes
          at priority >= APP_REQUEST_REFRESH_RATE_RANGE_PRIORITY_CUTOFF (5) and
-         the peak setting sits at 9, so it bounds them. Only a human choosing
-         144 in Settings can do it, and the pen starts working again on 120. -->
+         the peak setting sits at 9, so it bounds them. A human choosing 144 in
+         Settings can do it, and MalbecParts turns that into a full, coherent
+         switch to game mode rather than letting the pen fail silently: it watches
+         both PEAK_REFRESH_RATE and MIN_REFRESH_RATE and toasts what happened. -->
     <!-- Default to LIGHT, not dark.
 
          AOSP's own default is already 1 / MODE_NIGHT_NO (config.xml:898). Dark
@@ -145,7 +189,7 @@
     <integer name="config_defaultNightMode">1</integer>
 
     <integer name="config_defaultPeakRefreshRate">120</integer>
-    <integer name="config_defaultRefreshRate">120</integer>
+    <integer name="config_defaultRefreshRate">0</integer>
 
     <!-- Rounded display corners. Stock gets this from the same vendor RRO as
          config_defaultRefreshRate above; ro.sf.rounded_corner_radius is unset on
@@ -162,6 +206,19 @@
              stock RRO declares    20dp
              stock default density 360   ->  20 * 360/160 = 45 px
              dump-time density     306   ->  20 * 306/160 = 38.25 -> 38 px
+
+         ⚠️ THIS TREE SHIPS DENSITY 320, not 360. BoardConfig.mk:227 is
+         TARGET_SCREEN_DENSITY := 320 (owner's decision, frozen), and the running
+         device confirms it: `wm density` reports 320 and dumpsys display prints
+         density 320. So at the density we actually ship the privacy-dot floor is
+         20 * 320/160 = 40 px, not 45.
+
+         The shipped 45 px is still CORRECT, because the framework takes
+         max(ongoing_appops_dot_min_padding, roundedCornerPadding) and 45 > 40 —
+         the bar stays symmetric. But the derivation above no longer explains the
+         number, and the next person to "recompute it properly" would arrive at 40
+         and think they had found a bug. 45 px = 22.5 dp at 320, chosen because it
+         is what stock renders and the owner's eye was calibrated on stock.
 
          An earlier revision said 45px and cited a dumpsys measurement; that was
          the right number with the wrong evidence. It was then "corrected" to

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+
+     Widget colours, dark theme. Same tokens as values/colors.xml with the tonal
+     ramp inverted; see that file for why the palette is @android:color/system_*
+     rather than theme attributes.
+
+     Note this device ships config_defaultNightMode = 1 (light) because the panel
+     is an LCD — but the user can still switch to dark, and the widget must follow
+     the LAUNCHER's theme, not ours.
+-->
+<resources>
+    <!-- Daily (resting) -->
+    <color name="widget_bg">@android:color/system_neutral1_800</color>
+    <color name="widget_icon_bg">@android:color/system_accent2_700</color>
+    <color name="widget_title">@android:color/system_neutral1_50</color>
+    <color name="widget_detail">@android:color/system_neutral2_200</color>
+    <color name="widget_icon">@android:color/system_accent1_200</color>
+
+    <!-- Game (active) -->
+    <color name="widget_bg_active">@android:color/system_accent1_700</color>
+    <color name="widget_icon_bg_active">@android:color/system_accent1_200</color>
+    <color name="widget_title_active">@android:color/system_accent1_50</color>
+    <color name="widget_detail_active">@android:color/system_accent1_100</color>
+    <color name="widget_icon_active">@android:color/system_accent1_900</color>
+</resources>

@@ -186,5 +186,17 @@ r_dir_file(vendor_hal_usb_qti, sysfs_qcom_battery)
 # has ~50 AVC records instead of 842, and the audit backlog stops overflowing —
 # the s16 capture hit the kernel's 64-record burst limit, so the 842 was itself
 # an undercount and some real denials were dropped on the floor.
-dontaudit zygote property_type:file { getattr open map read };
-dontaudit hal_camera_default property_type:file { getattr open map read };
+#
+# ⚠️ `read` is deliberately NOT in these rules, and it was before. The evidence
+# recorded above counts three permissions only -- getattr, open, map -- for both
+# domains, and `read` appeared in neither tally. In a file called measured.te
+# whose whole method is "only what was measured", the extra permission was the
+# one thing here that was not.
+#
+# It matters more for zygote than the width suggests: zygote is the ancestor of
+# every app process, so silencing a whole permission for it against EVERY
+# property type is the widest possible suppression in the worst possible domain,
+# and it would hide a real future failure of an app to read a property it needs.
+# That defeats the "unmasks the rest of the log" purpose stated just above.
+dontaudit zygote property_type:file { getattr open map };
+dontaudit hal_camera_default property_type:file { getattr open map };
