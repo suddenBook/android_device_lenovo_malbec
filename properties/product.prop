@@ -107,58 +107,77 @@ ro.af.client_heap_size_kbyte=7168
 # Measured on the running build, every boot, eleven times:
 #
 #     E KeymasterUtils:  IKMHal_sendCmd failed with rsp_header->status: -18
-#     E KeyMasterHalDevice: keymint_generate_csr_v2_FIXED
 #     E android_keymaster: TA call to generate_csr_v2() failed with error: -18
 #     E android.hardware.security.keymint-service-qti: MAC tag mismatch
 #
 # The TA refuses to produce a CSR. rkpd completes a network round trip to
 # Google, gets a challenge, and then fails locally — so the failure is inside
 # TrustZone, which this port does not replace and cannot change. The KeyMint HAL
-# binary and every library under it are stock blobs, and these three properties
-# were byte-identical to stock's, so there is nothing on our side left to vary.
+# and every library under it are stock blobs, and these properties were
+# byte-identical to stock's, so there was nothing on our side left to vary.
 #
-# The consequence is the part the previous two rounds missed by counting lines
-# instead of following them: **41 attestation-key requests per boot all fail**
-# with OUT_OF_KEYS_TRANSIENT_ERROR. Hardware key attestation does not work on
-# this device today, whatever these properties say. Plain TEE key generation is
-# fine (`keystore_cli_v2 generate --seclevel=tee` succeeds); it is specifically
-# attestation that is dead.
+# The consequence the previous two rounds missed by counting lines instead of
+# following them: 41 attestation-key requests per boot all failed with
+# OUT_OF_KEYS_TRANSIENT_ERROR. Hardware key attestation does not work on this
+# device. Plain TEE key generation is fine — keystore_cli_v2 generate
+# --seclevel=tee succeeds — it is specifically attestation that is dead.
 #
-# So the choice was: keep paying ~780 error lines and a network round trip on
-# every boot for something structurally incapable of succeeding, or stop. The
-# owner chose to stop.
+# ── ★★ TWO CORRECTIONS, both made by flashing and measuring ────────────────
 #
-# TWO changes, and the second matters more than the first:
+# **1. `remote_provisioning.enable_rkpd` DOES NOTHING. It has ZERO readers.**
 #
-#   enable_rkpd=false     stops rkpd. That is the ~780 lines and the network.
+# A tree-wide search for the string finds exactly one hit, and it is an
+# unrelated aconfig flag name in ConfigInfrastructure's WritableFlags.java:545.
+# No AOSP code reads this property. Session 17 set it to `true` believing it
+# armed RKP; session 20 set it to `false` believing that disarmed RKP. Both were
+# inert, and the flashed build proved it: with enable_rkpd=false, rkpd still ran,
+# still contacted remoteprovisioning.googleapis.com, and still failed the CSR.
 #
-#   tee.rkp_only=false    is NOT a claim that this TEE has a factory attestation
-#                         key. It is what lets keystore2 TRY one:
-#                         attestation_key_utils.rs hard-fails when rkp_only is
-#                         true and RKPD has no keys, and falls back to the
-#                         factory batch key when it is false. With RKP proven
-#                         non-functional here, that fallback is the only route
-#                         attestation has left. If the TEE really has no batch
-#                         key — which is what stock's rkp_only=true asserts —
-#                         nothing is lost, because the alternative was a
-#                         guaranteed failure.
+# The actual switch is `remote_provisioning.hostname`:
+#     RkpRegistrationCheck.java:114   if (SystemProperties.get(...).isEmpty())
+#     Settings.java:239-243           getDefaultUrl() returns "" for an empty host
+# and RemoteProvisioningService then answers every getRegistration() with
+# "RKP is disabled. System configured with no default URL."
 #
-# ★ ACCEPTANCE, and it doubles as the experiment OPEN-ISSUES.md §14 asks for.
-#   After flashing:
-#       adb logcat -d | grep -c OUT_OF_KEYS
-#   0  -> the TEE did have a factory key. Attestation now works, and stock's
-#         rkp_only=true was over-cautious for this unit. Record it and stop.
-#   >0 -> stock was honest, attestation is genuinely unreachable, and this
-#         configuration is still the right one: same outcome, ~780 fewer lines
-#         and no network call per boot.
+# So the line is GONE. It is stock parity with no reader — the same shape as the
+# ro.vendor.dolby.dax.version line vendor.prop removed for the same reason.
+# (⚠️ Kept as a comment rather than silently deleted because it is set on stock,
+# so the next person WILL see it there and wonder why we do not.)
 #
-# ⚠️ Do NOT test this with a runtime `setprop`. The 41 requests happen while
-# apps start during boot, so the value has to be in place before
-# sys.boot_completed. Round 20 tried the runtime form and it answered nothing.
+# **2. `rkp_only=false` worked, and the acceptance criterion I wrote was wrong.**
 #
-# ⚠️ Leave remote_provisioning.hostname set. It costs nothing with rkpd off, and
-# removing it would put the tree back in the state the paragraphs above
-# diagnosed — which would be an honest-looking way to lose the diagnosis.
-remote_provisioning.enable_rkpd=false
-remote_provisioning.hostname=remoteprovisioning.googleapis.com
+# The criterion was "grep -c OUT_OF_KEYS; 0 means attestation now works". It
+# measured one failure mode. After flashing, OUT_OF_KEYS is indeed 0 — keystore2
+# now logs a WARNING and falls back instead of hard-failing, which is exactly
+# what rkp_only=false is for. But the fallback fails too, one layer down:
+#
+#     E keystore2: security_level.rs:680
+#           1: Error::Km(r#SECURE_HW_COMMUNICATION_FAILED)
+#        0: security_level.rs:674: While generating without a provided
+#           attestation key and params: [... ATTESTATION_CHALLENGE ...]
+#
+# 44 times per boot, all from com.google.android.gms. So stock's rkp_only=true
+# was HONEST: there is no usable factory attestation key either, and the TA
+# cannot attest at all in this state. Attestation is unreachable on this device
+# by either route, and no property setting changes that.
+#
+# rkp_only stays false anyway: with rkpd off it makes keystore2 fail fast on the
+# factory path instead of waiting on a provisioning service that is not coming.
+#
+# ★ THE REAL ACCEPTANCE CRITERION, replacing the one that was too narrow:
+#     adb logcat -d | grep -c SECURE_HW_COMMUNICATION_FAILED
+#   That is the attestation failure itself. It is expected to stay non-zero
+#   until somebody solves the TA problem; 0 would mean attestation started
+#   working and this whole block should be revisited.
+#     adb logcat -d | grep -c Rkpd
+#   THIS is what these two lines buy: it should now be ~0, where it was ~500.
+#   No rkpd, no network round trip, no CSR failure, on every boot.
+#
+# ⚠️ Do NOT test either with a runtime setprop — the requests happen while apps
+# start during boot, so the values have to be in place before sys.boot_completed.
+#
+# ⚠️ remote_provisioning.hostname is deliberately NOT set. That is the off
+# switch. An earlier draft of this comment said to leave it set "because
+# removing it would put the tree back in the state session 17 diagnosed" — but
+# session 17's premise was that RKP could work here, and it cannot.
 remote_provisioning.tee.rkp_only=false

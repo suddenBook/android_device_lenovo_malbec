@@ -1458,6 +1458,36 @@ vendor/lib64/vendor.qti.hardware.wifi.wifilearner-V1-ndk.so
 # broken: com.qualcomm.wfd IS on the allowlist that would otherwise fail the
 # build (build/soong/scripts/check_boot_jars/package_allowed_list.txt, "# QC
 # adds"). It would work. It is simply more blast radius than the job needs.
+# ★ The boot animation, extracted from stock and RELOCATED to /product.
+#
+# Stock's is `3504 2190 12` — exactly this device's landscape boot surface — so
+# it is the only animation in existence that fits. PixelOS ships 720/1080/1440
+# portrait assets chosen by TARGET_SCREEN_WIDTH, and none of them can fit:
+# BootAnimation does NOT scale. playAnimation computes
+#
+#     animationY = (display.height - animation.height) / 2
+#
+# and draws at native pixel size (BootAnimation.cpp:1649-1665; ratioW/ratioH are
+# display.width/display.initWidth, i.e. 1.0 here). With the 1080 asset that is
+# (2190 - 2424) / 2 = -117, and the tallest element spans canvas y 658..2320, so
+# 13 px is clipped off the bottom. The 1440 asset is 2404 tall and clips 4 px.
+# Nothing selectable through TARGET_SCREEN_WIDTH fits; a canvas of at least 2450
+# would be needed.
+#
+# ⚠️ Installed to /product/media, not /system/media, and that is load-bearing.
+# BootAnimation::findAnimationFile tries PRODUCT before SYSTEM, and
+# vendor/custom's bootanimation_pixelos is product_specific — so a copy left at
+# /system/media would simply lose. This creates a deliberate duplicate install
+# target with that module, resolved the way this tree resolves the other
+# fourteen: PRODUCT_COPY_FILES is materialised after installs-$(TARGET_PRODUCT).mk
+# (build/make/core/Makefile:148) so Make keeps this recipe. The decision is
+# recorded in work/analysis/blob-ownership.txt and asserted by
+# `30-dup-installs.py --check`.
+#
+# TARGET_SCREEN_WIDTH stays 2190 in device.mk. It is the panel's real width and
+# should not be bent into 720 or 1440 to steer an asset chooser that this line
+# now overrides anyway.
+system/media/bootanimation.zip:product/media/bootanimation.zip
 system/framework/WfdCommon.jar:system_ext/framework/WfdCommon.jar
 system_ext/app/FrameworksUtilsSysService/FrameworksUtilsSysService.apk
 system_ext/bin/wfdservice64
