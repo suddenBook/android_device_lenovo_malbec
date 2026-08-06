@@ -46,6 +46,21 @@ class StylusSettingsFragment : SettingsBasePreferenceFragment() {
             }
         }
 
+        // ★ The only row on this page whose value androidx persists for us; see
+        // the comment in res/xml/stylus_settings.xml. Returning true is what
+        // stores it, and setRefreshRate applies the ARGUMENT rather than
+        // re-reading the preference, because onPreferenceChange runs before the
+        // write lands.
+        findPreference<ListPreference>(Constants.PREF_REFRESH_RATE)?.apply {
+            value = PenModeController.currentRefreshRate(requireContext()).toString()
+            setOnPreferenceChangeListener { _, newValue ->
+                (newValue as String).toFloatOrNull()?.let {
+                    PenModeController.setRefreshRate(requireContext(), it)
+                }
+                true
+            }
+        }
+
         findPreference<SwitchPreferenceCompat>(Constants.PREF_PEN_LOST_ALERT)
             ?.setOnPreferenceChangeListener { _, _ ->
                 // The watcher reads the preference on each event, so nothing has
@@ -93,6 +108,13 @@ class StylusSettingsFragment : SettingsBasePreferenceFragment() {
 
         findPreference<ListPreference>(Constants.PREF_TOUCH_MODE)?.let {
             it.value = PenModeController.currentMode(context)
+        }
+
+        // Re-read rather than trust the stored value: the QS tile and the widget
+        // cannot change this one, but enforceCeiling() can have snapped an
+        // out-of-range leftover, and the row has to agree with the hardware.
+        findPreference<ListPreference>(Constants.PREF_REFRESH_RATE)?.let {
+            it.value = PenModeController.currentRefreshRate(context).toString()
         }
 
         // "Last seen" under the alert switch, the way stock's PrefLostAlert does

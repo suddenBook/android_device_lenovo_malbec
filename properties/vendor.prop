@@ -77,31 +77,38 @@ vendor.display.enable_async_vds_creation=1
 # merged here — blindly importing them will conflict.
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 以下各段是对着出厂 /vendor/build.prop 做差分补进来的（285 条里筛出这些）。
+# Everything below was derived by diffing against stock /vendor/build.prop —
+# these are the entries kept out of its 285.
 #
-# 为什么现在做而不是等首次开机：vendor prop 是给我们**即将随镜像发布的出厂
-# blob** 用的，而 PixelOS 自己几乎不设 vendor 命名空间的属性，所以差分现在就能
-# 静态算出来，等开机不会多出任何信息。framework 侧的 product / system_ext prop
-# 才需要等真机 getprop 对着 PixelOS 默认值筛。
+# Why do this now rather than after first boot: vendor props exist for the stock
+# BLOBS this image ships, and PixelOS itself sets almost nothing in the vendor
+# namespace, so the diff is computable statically and booting would add no
+# information. It is the framework-side product / system_ext props that need a
+# real getprop compared against PixelOS defaults.
 #
-# 筛选规则：
-#   收  —— 我们确实发布的硬件的运行期配置（图形 / 音频 / 显示 / 蓝牙 / 相机 /
-#          编解码 / perf / USB / 存储）
-#   不收 —— 构建系统自己生成的（ro.vendor.build.* / ro.bionic.* / ro.sf.lcd_density /
-#          ro.virtual_ab.* / ro.board.platform）、蜂窝与 IMS（本机 WiFi-only）、
-#          只有 Lenovo 自家 App 读的（ro.vendor.config.lgsi.* / beluga / zui）、
-#          Lenovo 遥测（diag / journey）
+# Selection rule:
+#   IN  — runtime configuration for hardware this image actually ships
+#         (graphics / audio / display / bluetooth / camera / codecs / perf /
+#         USB / storage)
+#   OUT — anything the build system generates itself (ro.vendor.build.*,
+#         ro.bionic.*, ro.sf.lcd_density, ro.virtual_ab.*, ro.board.platform),
+#         cellular and IMS (this device is Wi-Fi only), things only Lenovo's own
+#         apps read (ro.vendor.config.lgsi.*, beluga, zui), and Lenovo telemetry
+#         (diag, journey)
 #
-# ⚠️ 出厂那两条 CPU variant 属性不要抄，改成正确值也不要抄：
+# ⚠️ Do not copy stock's two CPU-variant properties, and do not copy corrected
+# versions of them either:
 #
 #   dalvik.vm.isa.arm64.variant=oryon
 #   ro.bionic.cpu_variant=oryon
 #
-# 先说事实：出厂这两条是**错的**。本机 8 个核的 implementer 全是 0x41（ARM）、
-# part 0xd82/0xd81，即 Cortex-X4 + Cortex-A720，不是高通自研的 Oryon
-# （Oryon 的 implementer 是 0x51）。多半是从 SM8750 的配置抄过来的。
+# The fact first: stock has these WRONG. All eight cores on this device report
+# implementer 0x41 (ARM) and part 0xd82/0xd81 — Cortex-X4 plus Cortex-A720, not
+# Qualcomm's own Oryon, whose implementer is 0x51. Most likely copied over from
+# an SM8750 configuration.
 #
-# 再说为什么连正确值也不写进这里：构建系统自己就会生成这两条，而且已经是对的。
+# Now why not even the corrected values belong here: the build system generates
+# both, and already generates them correctly.
 #
 #   build/make/core/sysprop_config.mk:24
 #       ADDITIONAL_VENDOR_PROPERTIES += ro.bionic.cpu_variant=$(TARGET_CPU_VARIANT_RUNTIME)
@@ -110,24 +117,27 @@ vendor.display.enable_async_vds_creation=1
 #   build/make/core/config.mk:1135
 #       DEX2OAT_TARGET_CPU_VARIANT_RUNTIME := first_non_empty_of_three($(TARGET_CPU_VARIANT_RUNTIME), ...)
 #
-# 从本树生成的 ninja 里读出来的实际值就是 cortex-a76 / cortex-a76 / arm64。
+# Read out of the ninja this tree generates, the actual values are
+# cortex-a76 / cortex-a76 / arm64.
 #
-# 而 ADDITIONAL_VENDOR_PROPERTIES 进的是 **vendor 分区**，和本文件同一个分区。
-# post_process_props.py:112-117：同分区重复定义，值相同才放行，值不同直接报错。
-# 所以在这里手写一遍，最好的情况是冗余（且哪天 TARGET_CPU_VARIANT_RUNTIME 改了
-# 就变成构建失败），最坏的情况是当场构建失败。
+# And ADDITIONAL_VENDOR_PROPERTIES lands in the VENDOR partition — the same
+# partition as this file. post_process_props.py:112-117 allows a same-partition
+# duplicate only when the values agree and hard-fails otherwise. So writing them
+# out here is redundant at best (and becomes a build failure the day
+# TARGET_CPU_VARIANT_RUNTIME changes) and an immediate build failure at worst.
 #
-# 真正的控制点是 BoardConfig.mk 里的 TARGET_CPU_VARIANT_RUNTIME := cortex-a76。
-# 要改就改那里，不要在这里加。
+# The real control point is TARGET_CPU_VARIANT_RUNTIME := cortex-a76 in
+# BoardConfig.mk. Change it there; do not add it here.
 
-# 图形驱动选择 —— 这一段是整个文件里最要紧的
+# Graphics driver selection — the most load-bearing section in this file.
 #
-# frameworks/native/opengl/libs/EGL/Loader.cpp:68-76 按顺序试三个属性来拼驱动
-# 文件名：persist.graphics.egl -> ro.hardware.egl -> ro.board.platform。
-# 本树在这一轮之前**三个都没设**，于是回落到 ro.board.platform = "sun"，
-# 去找 /vendor/lib64/egl/libEGL_sun.so —— 那个文件不存在，驱动是
-# libEGL_adreno.so（已在 proprietary-files.txt:1345 提取）。
-# 结果就是 EGL 加载不到硬件驱动。
+# frameworks/native/opengl/libs/EGL/Loader.cpp:68-76 tries three properties in
+# order to build the driver filename:
+# persist.graphics.egl -> ro.hardware.egl -> ro.board.platform.
+# Before this was added the tree set NONE of the three, so it fell through to
+# ro.board.platform = "sun" and looked for /vendor/lib64/egl/libEGL_sun.so.
+# That file does not exist — the driver is libEGL_adreno.so, extracted at
+# proprietary-files.txt:1345 — so EGL never loaded a hardware driver at all.
 ro.hardware.egl=adreno
 ro.hardware.vulkan=adreno
 ro.opengles.version=196610
@@ -138,7 +148,8 @@ ro.opengles.version=196610
 graphics.gpu.profiler.support=true
 
 # SurfaceFlinger
-# 相位偏移那几条决定合成节奏，出厂按 144 Hz 面板调过，用 AOSP 默认会掉帧。
+# The phase-offset entries set the composition cadence. Stock tuned them for a
+# 144 Hz panel; AOSP's defaults drop frames here.
 debug.sf.use_phase_offsets_as_durations=1
 debug.sf.early.app.duration=13666666
 debug.sf.early.sf.duration=10500000
@@ -196,7 +207,7 @@ ro.surface_flinger.max_virtual_display_dimension=4096
 # and debug.egl.hw on exactly this criterion; these two were missed.
 ro.surface_flinger.wcg_composition_dataspace=143261696
 
-# 显示 HAL
+# Display HAL
 vendor.display.enable_cwb_cpu_boosting=1
 vendor.display.enable_display_extensions=1
 vendor.display.enable_dpps_dynamic_fps=1
@@ -205,10 +216,11 @@ vendor.display.enable_hdr10_gpu_target=1
 vendor.display.enable_optimize_refresh=0
 vendor.display.enable_rc_support=1
 
-# 音频
-# 整条 PAL/AGM/HAL 实现都回到 blob 了（见 device.mk 的 "Audio HAL" 段），
-# 这些就是那批二进制在运行期读的开关。vendor.audio.hal.aidl.enabled 尤其关键：
-# 出厂走的是 AIDL 音频 HAL 路径。
+# Audio
+# The whole PAL/AGM/HAL implementation went back to blobs (see the "Audio HAL"
+# section of device.mk); these are the switches those binaries read at runtime.
+# vendor.audio.hal.aidl.enabled matters most: stock takes the AIDL audio HAL
+# path.
 aaudio.hw_burst_min_usec=2000
 aaudio.mmap_exclusive_policy=2
 aaudio.mmap_policy=2
@@ -241,11 +253,14 @@ vendor.audio_hal.timecheck_timeoutMS=8000
 vendor.qc2audio.per_frame.flac.dec.enabled=true
 vendor.qc2audio.suspend.enabled=true
 
-# Dolby
-ro.vendor.dolby.dax.version=DAX3_3.13.0.9_r1
+# ⚠️ ro.vendor.dolby.dax.version was here and is gone with Dolby Atmos.
+# It had ZERO readers even before the removal: a binary-safe scan of the
+# whole blob set finds the string in no ELF and no config, only in
+# build.prop itself. It was stock parity and nothing more.
 
-# 蓝牙
-# a2dp_offload.cap 是能力清单，蓝牙栈据此决定哪些编解码走 DSP 卸载。
+# Bluetooth
+# a2dp_offload.cap is a capability list; the Bluetooth stack uses it to decide
+# which codecs are offloaded to the DSP.
 ro.bluetooth.a2dp_offload.supported=true
 persist.bluetooth.a2dp_offload.cap=sbc-aac-aptx-aptxhd-ldac
 persist.bluetooth.a2dp_offload.disabled=false
@@ -278,11 +293,11 @@ bluetooth.profile.hap.client.enabled=true
 bluetooth.profile.mcp.server.enabled=true
 bluetooth.profile.vcp.controller.enabled=true
 
-# 相机
+# Camera
 ro.camera.disableHeicUltraHDR=true
 ro.camera.enableCamera1MaxZsl=1
 
-# 编解码 / 媒体
+# Codecs / media
 media.c2.hal.selection=aidl
 debug.c2.use_dmabufheaps=1
 debug.stagefright.c2inputsurface=-1
@@ -303,14 +318,15 @@ debug.stagefright.omx_default_rank=0
 drm.service.enabled=true
 
 # Perf
-# ro.vendor.extension_library 告诉 framework 去 dlopen 高通的 perf 扩展；
-# 不设的话 libqti-perfd-client 那一整套 boost 提示不起作用。
+# ro.vendor.extension_library tells the framework which library to dlopen for
+# Qualcomm's perf extension. Without it the whole libqti-perfd-client boost-hint
+# path does nothing.
 ro.vendor.extension_library=libqti-perfd-client.so
 ro.vendor.perf-hal.ver=3.0
 ro.vendor.perf.scroll_opt=1
 ro.vendor.qspm.enable=true
 
-# 存储 / USB / 其它板级
+# Storage / USB / other board-level
 ro.frp.pst=/dev/block/bootdevice/by-name/frp
 ro.crypto.metadata_init_delete_all_keys.enabled=true
 # ⚠️ external_storage.{casefold,projid,sdcardfs}.enabled used to be set here and are

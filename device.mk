@@ -119,14 +119,19 @@ PRODUCT_PACKAGES += \
 #   android.hardware.health-V4-ndk-source
 #
 # proprietary-files.txt excludes all of them.
-# ⚠️ 这份名单曾经漏了一大半，而漏掉的方式很隐蔽，值得写下来：
-# 生成 proprietary-files.txt 的分类器有一条规则是「模块名定义在启用的 QTI
-# soong 命名空间里 -> 这个 blob 不用提取」。规则本身没错，错在它从没核对过
-# 那个源码模块**是否真的进了 PRODUCT_PACKAGES**。定义 != 构建。
-# 于是 composer / boot control / thermal / 音频 HAL 实现库两头落空：
-# blob 删了、源码也没人装。没有 composer，SurfaceFlinger 起不来，设备是黑屏的。
-# 现在由 work/scripts/24-blob-reconcile.py 做反向对账（出厂有、镜像里没有 =
-# 缺口），这一类不会再无声无息地漏掉。
+# ⚠️ This list was once missing more than half its entries, and the way it went
+# missing is subtle enough to be worth writing down. The classifier that
+# generates proprietary-files.txt had a rule: "the module name is defined in an
+# enabled QTI soong namespace -> this blob does not need extracting". The rule
+# is not wrong; what was wrong is that it never checked whether that source
+# module actually entered PRODUCT_PACKAGES. Defined != built.
+# So composer, boot control, thermal and the audio HAL implementation libraries
+# fell between the two: the blob was dropped and nothing installed the source
+# either. With no composer, SurfaceFlinger does not start and the device is a
+# black screen.
+# work/scripts/24-blob-reconcile.py now does the reverse reconciliation (present
+# in stock, absent from the image = a gap), so this class cannot go silently
+# missing again.
 PRODUCT_PACKAGES += \
     android.hardware.health-service.qti \
     android.hardware.thermal-service.qti \
@@ -137,61 +142,75 @@ PRODUCT_PACKAGES += \
 
 # Display: the whole QTI display stack is a BLOB. Do not move it back to source.
 #
-# ⚠️ 这一段以前写的是「整条显示栈本树都是从源码构建的…… blob 一个都没有，
-# 所以 composer 必须跟着从源码走」。**那个前提是假的**，而且它让第十一轮把
-# 正确答案当成「已排除」，白花了一整轮：
+# ⚠️ This section used to say "the entire display stack is built from source in
+# this tree ... there is not one blob, so the composer has to come from source
+# too". That premise was FALSE, and it is what made session 11 file the correct
+# answer under "already ruled out" and lose a whole round:
 #
-#   · libsdmextension.so（2.3 MB）一直就是 blob，而且是耦合最紧的那一个。
-#     它是 dlopen 进来的（core_impl.cpp:80），**不在任何 DT_NEEDED 里**，
-#     所以按链接图找不到它 —— 这就是当初漏看的原因。
-#   · OPEN-ISSUES #9 的「排除项 3」说 onyx 同样从源码构建这套显示栈。
-#     实测 onyx 把**整簇**当 blob：proprietary-files.txt:2261,2274-2296,2320，
-#     device.mk:130-143 只装外围模块。
+#   · libsdmextension.so (2.3 MB) was always a blob, and it is the most tightly
+#     coupled member of the cluster. It is brought in by dlopen
+#     (core_impl.cpp:80) and appears in NO DT_NEEDED, so a link-graph search
+#     cannot find it. That is exactly why it was missed.
+#   · OPEN-ISSUES #9's "exclusion 3" claimed onyx also builds this display stack
+#     from source. It does not: onyx treats the WHOLE cluster as blobs —
+#     proprietary-files.txt:2261,2274-2296,2320, with device.mk:130-143
+#     installing only the peripheral modules.
 #
-# 出厂的 SDM 是 Lenovo/Motorola 私有分支（SetMotoColor / SetRGBASplit /
-# SetMotoPAHsic，公开 CAF 源码里 0 命中），sdm::DisplayBase 的虚表比本树源码
-# **多 2 个槽**（161 vs 159），数据成员多 48 字节。分支源码不公开，
-# libsdmextension 也没有源码 —— **从源码构建这一半在结构上就不可能正确**。
-# 完整判据与实测数据写在 proprietary-files.txt 的 Display 段。
+# Stock's SDM is a private Lenovo/Motorola fork (SetMotoColor, SetRGBASplit,
+# SetMotoPAHsic — zero hits in the public CAF sources), sdm::DisplayBase's vtable
+# has TWO MORE SLOTS than this tree's source builds (161 vs 159), and its data
+# members are 48 bytes larger. The fork is not published and libsdmextension has
+# no source at all, so building this half from source CANNOT be structurally
+# correct. The full criteria and measurements are in the Display section of
+# proprietary-files.txt.
 #
-# 出厂 ROM 就是存在性证明：出厂指纹 TB390FU:16/... 是 Android 16 框架 +
-# 202404 冻结的 vendor，与本树同一个 Treble 配置。
+# The stock ROM is the existence proof: fingerprint TB390FU:16/... is an
+# Android 16 framework over a 202404-frozen vendor, the same Treble
+# configuration as this tree.
 #
-# 出厂 composer 二进制链 vendor.qti.hardware.display.composer3-V1-ndk.so，
-# 而本树默认只装 V3 —— 这是那 28 个文件的 DT_NEEDED 闭包唯一缺的一个库（实测）。
+# The stock composer binary links vendor.qti.hardware.display.composer3-V1-ndk.so
+# while this tree installs only V3 by default — measured, it is the single
+# library missing from the DT_NEEDED closure of those 28 files.
 #
-# 补法看着简单，实际有两条死路，两条都实测撞过，写下来省得再走一遍：
+# Supplying it looks simple and has two dead ends, both hit for real. Written
+# down so nobody walks them again:
 #
-#   ✗ 直接 `PRODUCT_PACKAGES += vendor.qti.hardware.display.composer3-V1-ndk`
-#     soong bootstrap 失败。commonsys-intf/display/aidl/composer3/Android.bp:22-25
-#     的 versions_with_info 里版本 1 import 的是 android.hardware.graphics.
-#     composer3-**V4**，而 composer blob 自己直接链 composer3-**V3**-ndk.so ——
-#     同一个 aidl_interface 的两个版本进了同一张依赖图，Soong 拒绝。
-#     （出厂那份 V1 是照 V3 编的：readelf -d 它，NEEDED 里就是 composer3-V3-ndk。
-#      树里 V1→V4 这个 import 是上游后来改的，与出厂二进制对不上。）
+#   ✗ Plain `PRODUCT_PACKAGES += vendor.qti.hardware.display.composer3-V1-ndk`
+#     fails soong bootstrap. In versions_with_info at
+#     commonsys-intf/display/aidl/composer3/Android.bp:22-25, version 1 imports
+#     android.hardware.graphics.composer3-**V4**, while the composer blob itself
+#     links composer3-**V3**-ndk.so directly. Two versions of one aidl_interface
+#     in a single dependency graph, which Soong rejects.
+#     (Stock's V1 was compiled against V3: readelf -d it and NEEDED says
+#     composer3-V3-ndk. The V1 -> V4 import in the tree is a later upstream
+#     change and does not match the stock binary.)
 #
-#   ✗ 把出厂的 .so 提取成 blob（含 ;MODULE_SUFFIX=_vendor）
+#   ✗ Extracting stock's .so as a blob (even with ;MODULE_SUFFIX=_vendor) gives
 #     ninja: multiple rules generate .../symbols/vendor/lib64/
-#     vendor.qti.hardware.display.composer3-V1-ndk.so。改模块名躲不开：
-#     ;MODULE_SUFFIX 只改**模块名**，stem 不变，所以安装路径还是同一个；
-#     而源码那个 aidl 模块**本来就有**一条指向该路径的 install 规则
-#     （只是没进 PRODUCT_PACKAGES 所以以前没装进镜像，ninja 的 dupbuild 检查
-#      看的是规则不是打包结果）。这正是 proprietary-files.txt 里那句
-#     「改名只有在树不往那个路径装东西时才成立」的反例。
+#     vendor.qti.hardware.display.composer3-V1-ndk.so. Renaming does not escape
+#     it: ;MODULE_SUFFIX changes the MODULE name only, the stem is unchanged, so
+#     the install path is still the same one — and the source aidl module ALREADY
+#     has an install rule pointing at that path. (It was simply not in
+#     PRODUCT_PACKAGES, so it never reached the image; ninja's dupbuild check
+#     looks at rules, not at what gets packaged.) This is the counterexample to
+#     the line in proprietary-files.txt saying "renaming only works when the tree
+#     installs nothing at that path".
 #
-# 正解是两步：composer blob 打 ;DISABLE_DEPS 切断它那条 aidl 依赖边（冲突就没了），
-# 然后显式装源码构建的 V1 vendor 变体。`.vendor` 后缀是安装 vendor_available
-# 模块的 vendor 变体的正确写法，QTI 自己在
-# commonsys-intf/display/config/display-interfaces-product.mk:40-43 就是这么写的。
+# The answer is two steps: tag the composer blob ;DISABLE_DEPS to cut that aidl
+# dependency edge (which removes the conflict), then explicitly install the
+# source-built V1 vendor variant. The `.vendor` suffix is the correct way to
+# install the vendor variant of a vendor_available module — QTI writes it the
+# same way in
+# commonsys-intf/display/config/display-interfaces-product.mk:40-43.
 #
 # ⚠️ `;DISABLE_DEPS` turns off shared_libs generation AND check_elf_file, so the
 # build goes green while the image is missing libraries — the exact failure mode
 # OPEN-ISSUES #3 documents. The safety net is work/scripts/33-blob-linkcheck.py,
 # and it earned its keep here: with only V1 listed it reported
 #
-#   [vendor] android.hardware.graphics.composer3-V3-ndk.so   整个产物里都没有
-#   [vendor] vendor.qti.hardware.display.aiqe-V2-ndk.so      整个产物里都没有
-#   vendor/bin/hw/vendor.qti.hardware.display.composer-service  6 个符号解析不了
+#   [vendor] android.hardware.graphics.composer3-V3-ndk.so   nowhere in the product
+#   [vendor] vendor.qti.hardware.display.aiqe-V2-ndk.so      nowhere in the product
+#   vendor/bin/hw/vendor.qti.hardware.display.composer-service  6 unresolved symbols
 #
 # Both had been installed only as a side effect of the SOURCE composer depending
 # on them; dropping it took them with it. Run 33 after ANY ;DISABLE_DEPS change.
@@ -205,7 +224,7 @@ PRODUCT_PACKAGES += \
 # stack deleted:
 #
 #   work/scripts/37-layout-skew.py
-#     ✗ vendor/lib64/libgpu_tonemapper.so: android::GraphicBuffer 分配 256 < A16 3376
+#     ✗ vendor/lib64/libgpu_tonemapper.so: android::GraphicBuffer allocates 256 < A16 3376
 #
 # The factory copy is an Android-15 build that does operator new(256) for a class
 # A16 grew to 3376 bytes (frameworks/native df868baf2a added mDependencyMonitor).
@@ -224,93 +243,118 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     libgpu_tonemapper
 
-# Audio HAL 实现库 —— 从源码构建。
-# audiohalservice.qti 是个壳，真正的实现是它 dlopen 的这三个 .so。dlopen 不产生
-# 构建依赖，所以必须显式列出来，否则服务起来了也没有 HAL。它们的 required: 会
-# 带上 manifest_audiocorehal_default.xml / audioeffectservice_qti.xml 两个 VINTF
-# 片段 —— 没有那两个，framework 的 FactoryHal 靠 AServiceManager_isDeclared 找
-# HAL，会认为设备根本没有音频 HAL。
+# Audio HAL implementation libraries — these come from BLOBS, not source.
 #
-# ⚠️ 必须在这里显式钉死走源码还是走 blob，不能交给收敛循环去发现。
-# 两条路各自自洽，但混在一起会来回震荡：blob 生成的 malbec-vendor.mk 会把
-# libaudiocorehal.default 放进 PRODUCT_PACKAGES，不改名时这个名字解析到树内
-# 源码模块，于是树装了这个路径、判据就认为 blob 多余把它删掉；删掉之后又没人
-# 提供，下一轮再放回来。实测来回了三轮。
+# audiohalservice.qti is only a shell; the real implementation is the three .so
+# files it dlopens. dlopen produces no build dependency, so they have to be named
+# explicitly or the service starts with no HAL behind it. Their `required:` pulls
+# in the two VINTF fragments manifest_audiocorehal_default.xml and
+# audioeffectservice_qti.xml — without those the framework's FactoryHal, which
+# looks HALs up with AServiceManager_isDeclared, concludes the device has no
+# audio HAL at all.
 #
-# ⚠️ 上一版在这里选了「从源码构建」，理由是出厂那三个 .so 的 DT_NEEDED 同时链了
-# 同一个 AIDL 接口的多个版本，replace_needed 改不动。那个观察是对的，结论是错的
-# —— 正解是 ;DISABLE_DEPS 加并装旧版接口，onyx 就是这么做的。走源码有两个它没看
-# 到的代价：
+# ⚠️ Source-vs-blob has to be pinned down HERE and cannot be left for a
+# convergence loop to discover. Each choice is self-consistent, but mixing them
+# oscillates: the generated malbec-vendor.mk puts libaudiocorehal.default into
+# PRODUCT_PACKAGES, that name resolves to the in-tree source module when it is
+# not renamed, so the tree installs the path, the criterion decides the blob is
+# redundant and drops it — and then nothing provides it and the next round puts
+# it back. Measured: three round trips.
 #
-#   1. 丢掉 Awinic 智能功放。出厂 libar-pal.so 导出 44 个 aw_ar_dsp_* /
-#      aw_ar_kmsg_* / aw_audioreach_* 符号，CAF 源码里 awinic 相关代码是 0。
-#      本机的功放就是它：设备上 aw882xx_dlkm 已加载（refcount 4），而本树还在发
-#      校准数据 vendor/firmware/aw882xx_acf.bin 和校准工具 vendor/bin/aw882xx_cali
-#      —— 数据和工具都在，消费它们的 API 没了。丢的不只是音质：excursion 和温度
-#      保护也在这套 API 里。
-#      把这个检查推广到全部 330 个「本树从源码构建且出厂也有」的库，扫 OEM 补丁
-#      特征符号，只有 libar-pal.so 中招 —— 所以只有音频要回退，显示栈是干净的。
+# ⚠️ An earlier version chose "build from source" here, on the grounds that the
+# DT_NEEDED of the three stock .so files links several versions of the same AIDL
+# interface at once and replace_needed cannot fix that. The observation was
+# right and the conclusion was wrong — the answer is ;DISABLE_DEPS plus
+# co-installing the older interface, which is what onyx does. Source has two
+# costs that argument missed:
 #
-#   2. 它根本编不过。hardware/qcom-caf/sm8750/audio/pal 在本树里有 8 个 .o 因为
-#      -Wformat 报错（Bluetooth.cpp、ResourceManager.cpp、SessionAlsa*.cpp、
-#      SoundTriggerEngineGsl.cpp、StreamHaptics.cpp、HapticsDevProtection.cpp）。
-#      m nothing 看不到这一层，上一轮的 mka bacon 在 9% 就死了，还没走到这里。
+#   1. It loses the Awinic smart amplifiers. The stock libar-pal.so exports 44
+#      aw_ar_dsp_* / aw_ar_kmsg_* / aw_audioreach_* symbols and the CAF sources
+#      contain zero Awinic code. Those amplifiers are this device's speakers:
+#      aw882xx_dlkm is loaded (refcount 4), and this tree ships their calibration
+#      data (vendor/firmware/aw882xx_acf.bin) and calibration tool
+#      (vendor/bin/aw882xx_cali) — data and tool present, the API that consumes
+#      them gone. What would be lost is not only sound quality: excursion and
+#      temperature protection live in that same API.
+#      Generalising the check to all 330 libraries that this tree builds from
+#      source and stock also ships, scanning for OEM-patch signature symbols,
+#      only libar-pal.so is affected — so audio is the only subsystem that has to
+#      go back to blobs; the display stack is clean.
 #
-# 所以 PAL / AGM / graphservices / 三个 HAL 实现库 / st-hal 全部回到 blob，由
-# proprietary-files.txt 按「树不装这个路径」自动纳入，冲突用 ;DISABLE_DEPS 处理
-# （见 work/scripts/12-gen-proprietary-files.py 的 ENTRY_TAGS）。
+#   2. It does not compile. hardware/qcom-caf/sm8750/audio/pal has 8 objects that
+#      fail -Wformat in this tree (Bluetooth.cpp, ResourceManager.cpp,
+#      SessionAlsa*.cpp, SoundTriggerEngineGsl.cpp, StreamHaptics.cpp,
+#      HapticsDevProtection.cpp). `m nothing` cannot see this layer, and the
+#      previous round's `mka bacon` died at 9%, before reaching it.
 #
-# audiohalservice.qti 留在源码：它只是个壳，dlopen 那三个实现库，不链 PAL，实测
-# 编得过，而且它的 init_rc: 会带出 vendor/etc/init/audiohalservice_qti.rc。
-# libsoundtriggerhal.qti 则必须走 blob —— st-hal-ar/Android.bp:37 明确链 libar-pal。
-# onyx 的分法完全相同。
+# So PAL, AGM, graphservices, the three HAL implementation libraries and st-hal
+# all go back to blobs, picked up by proprietary-files.txt under "the tree does
+# not install this path", with conflicts handled by ;DISABLE_DEPS (see ENTRY_TAGS
+# in work/scripts/12-gen-proprietary-files.py).
+#
+# audiohalservice.qti stays on source: it is only a shell, it dlopens the three
+# implementation libraries, it does not link PAL, it compiles, and its `init_rc:`
+# brings vendor/etc/init/audiohalservice_qti.rc with it.
+# libsoundtriggerhal.qti must be a blob — st-hal-ar/Android.bp:37 links libar-pal
+# explicitly. onyx splits it exactly the same way.
 
-# ★★ 这一条不装的话，机器**开不到 Launcher** ★★
+# ★★ Without this line the device never reaches the launcher ★★
 #
-# `properties/system_ext.prop:16` 设了 `ro.audio.ihaladaptervendorextension_enabled=true`
-# （理由写在那里，是对的），但**实现服务一直没装**。属性设了、实现没有 ——
-# 又是「声明了但没实现」那一类，而这一类在音频上是**致命**的，不是功能缺失：
+# properties/system_ext.prop:16 sets
+# ro.audio.ihaladaptervendorextension_enabled=true (for a reason that is stated
+# there and is correct), but the implementing service was never installed.
+# Property set, implementation absent — the "declared but not implemented" class
+# again, and in audio that class is FATAL rather than merely a missing feature:
 #
 #   frameworks/av/media/libaudiohal/impl/DevicesFactoryHalAidl.cpp:123-136
 #     if (property_get_bool("ro.audio.ihaladaptervendorextension_enabled", false)) {
 #         ... AServiceManager_waitForService(".../IHalAdapterVendorExtension/default")
 #     } else { mVendorExt = nullptr; }
 #
-#   `waitForService` 是**无限等**的。于是实测的调用链是：
+#   waitForService waits FOREVER. The measured chain is:
 #     audioserver: AudioPolicyService::onFirstRef -> createAudioPolicyManager
 #       -> AudioFlinger::getAudioPolicyConfig -> loadHwModule_ll
 #       -> DeviceHalAidl::initCheck -> parseAndGetVendorParameters
-#       -> HalAdapterVendorExtensionWrapper::getService -> 卡死
-#   audioserver 因此永远不注册 IAudioFlingerService，而 system_server 在
+#       -> HalAdapterVendorExtensionWrapper::getService -> stuck
+#   so audioserver never registers IAudioFlingerService, and system_server hangs
+#   the same way in
 #     AudioService.<init> -> readUserRestrictions -> setMicrophoneMuteNoCallerCheck
 #     -> AudioSystem::isMicrophoneMuted -> getService<IAudioFlingerService>
-#   上同样无限等 —— `sys.boot_completed` 永远不出现，开机动画一直转。
-#   servicemanager 每秒打一次 "could not be found trying to start it as a lazy
-#   AIDL service ... but was unable to"，那是症状不是原因。
+#   sys.boot_completed never appears and the boot animation spins forever.
+#   servicemanager printing "could not be found trying to start it as a lazy AIDL
+#   service ... but was unable to" once a second is the symptom, not the cause.
 #
-# 这个服务本树自己就构建（vendor/qcom/opensource/commonsys/audio/hal_adapter/），
-# 它的 .rc 带 `interface aidl android.media.audio.IHalAdapterVendorExtension/default`
-# —— 正是这一行让 servicemanager 的 lazy start 能把它拉起来。
-# 出厂镜像只发了 system_ext/lib64/libaudiohalvendorextn.so，**二进制和 .rc 都没发**
-# （`ls system_ext/bin` 29 个文件里没有它），所以别拿出厂当参照。
-# onyx 是对的：`device.mk:70` 装这个服务，`properties/system_ext.prop:2` 设那个属性
-# —— 两个必须成对。
+# This tree builds the service itself
+# (vendor/qcom/opensource/commonsys/audio/hal_adapter/) and its .rc carries
+# `interface aidl android.media.audio.IHalAdapterVendorExtension/default` — that
+# line is what lets servicemanager lazy-start it.
+# The stock image ships only system_ext/lib64/libaudiohalvendorextn.so and
+# neither the binary nor the .rc (it is not among the 29 files in
+# system_ext/bin), so stock is not a usable reference here.
+# onyx gets it right: device.mk:70 installs the service and
+# properties/system_ext.prop:2 sets the property — the two must come as a pair.
 PRODUCT_PACKAGES += \
     qtiaudiohalvendorextn
 
-# ★★ 承重，别精简 ★★
-# 这一段和下面 199 行开始的那一段，是 `;DISABLE_DEPS` 的**补偿**。
-# `;DISABLE_DEPS` 关掉的是 Soong 的依赖生成，也就是说：这些库 Soong **不会替我们
-# 装**，也**不会报错**。删掉其中任何一行的后果是开机后 dlopen 失败，而 `m nothing`、
-# `m pixelos`、check_elf_file 全都不会有任何反应 —— 构建期完全看不见。
-# 判定这一整套是否还完整，用 `python3 work/scripts/33-blob-linkcheck.py`
-# （它按链接器命名空间求解，不是按分区求并集）。
+# ★★ Load-bearing — do not trim ★★
+# This block, and the display one further up, exist to COMPENSATE for
+# ;DISABLE_DEPS. What ;DISABLE_DEPS turns off is Soong's dependency generation,
+# which means Soong will neither install these libraries for us nor complain
+# about them. Deleting any line here produces a dlopen failure after boot while
+# `m nothing`, `m pixelos` and check_elf_file all stay silent — it is completely
+# invisible at build time.
+# To check whether the set is still complete, run
+# `python3 work/scripts/33-blob-linkcheck.py` (it solves per linker namespace
+# rather than taking a union across partitions).
 #
-# ;DISABLE_DEPS 让 blob 不进 Soong 的依赖图，但运行时它们仍然要在 /vendor/lib64
-# 里找到自己链的那个接口版本。本树解析到的是更新的版本，所以旧版必须显式并装。
-# 版本号来自对出厂二进制逐个 readelf -d 的结果，不是猜的。
-# 多版本共存本来就是支持的，本树已经有先例：android.media.audio.common.types
-# 的 V2 和 V4 现在就同时装着。
+# ;DISABLE_DEPS keeps the blobs out of Soong's dependency graph, but at runtime
+# they still have to find in /vendor/lib64 the exact interface version they were
+# linked against. This tree resolves to a newer version, so the older one has to
+# be co-installed explicitly. The version numbers come from readelf -d on each
+# stock binary, not from guesswork.
+# Multiple versions coexisting is supported by design, and this tree already has
+# a precedent: android.media.audio.common.types V2 and V4 are both installed
+# today.
 PRODUCT_PACKAGES += \
     android.hardware.audio.common-V3-ndk.vendor \
     android.hardware.audio.core-V2-ndk.vendor \
@@ -324,7 +368,8 @@ PRODUCT_PACKAGES += \
     android.media.audio.common.types-V3-ndk.vendor \
     vendor.qti.hardware.paleventnotifier-V2-ndk.vendor
 
-# 出厂音频 blob 依赖的 AOSP 支撑库的 vendor 变体。onyx 列的是同一批。
+# Vendor variants of the AOSP support libraries the stock audio blobs depend on.
+# onyx lists the same set.
 PRODUCT_PACKAGES += \
     libalsautilsv2.vendor \
     libaudioaidlcommon.vendor \
@@ -332,38 +377,38 @@ PRODUCT_PACKAGES += \
     libmemunreachable.vendor \
     libaudioutils_shim
 
-# Dolby Atmos 的设置界面。
+# ⚠️ Dolby Atmos is REMOVED — no app, no effects, no overlay.
 #
-# 这台机器的 Dolby vendor 侧本来就**已经全在树里**了，只差一个前端：
-#   vendor/bin/hw/vendor.dolby.dms.service          DMS HAL
-#   vendor/lib64/vendor.dolby.dms-V1-ndk.so         它的 AIDL
-#   vendor/lib64/soundfx/libswdapaidl.so            全局混音效果实现
-#   vendor/etc/dolby/dax-default.xml                调音参数
-#   vendor/etc/audio/sku_tuna/audio_effects_config.xml:21,78
-#       <library name="dap" path="libswdapaidl.so"/>
-#       <effect name="dap" uuid="9d4921da-8225-4f29-aefa-39537a04bcaa" .../>
-# 也就是说效果一直在跑，只是**没有任何 UI 能调它**，所有参数停在默认值。
+# Music playback stuttered continuously whenever Dolby Atmos was on and was
+# clean the moment it was switched off. Measured on the device, same track,
+# same volume, same thread (AudioOut_15, deep buffer -> speaker, 40 ms period):
 #
-# 前端用 PixelOS 自己的 packages/apps/DolbyAtmos（co.aospa.dolby），不从出厂搬。
-# 逐项核对过它确实是同一个东西，不是"看起来像"：
-#   - 效果 UUID 9d4921da-8225-4f29-aefa-39537a04bcaa 与上面那份 config 逐字符相同
-#   - 参数常量（CPDP_VALUES=5 / PROFILE=0xA000000 / SET_PROFILE_PARAMETER=0x1000000）
-#     和 DsParam ID（101–116）与出厂 daxService 反编译出来的完全一致
-#   - 20 段 GEQ 的频点表一致
+#                    process time      jitter min/max    delayed   underruns
+#   Dolby on         2.91 ms / 18.0    -36.6 / +23.4        0          0
+#   Dolby off        0.48 ms /  6.1    -37.1 / +26.2        0          0
 #
-# 为什么不搬 ZUI 那份：出厂的 Dolby 设置页**不在** daxService.apk 里
-# （那个 APK 的 manifest 只有一个 bound service，没有任何设置 Activity），
-# 而是 Lenovo 写在 ZuiSettings.apk 的 com.lenovo.settings.sound.dolby.*，
-# 用的是 zui.appcompat.preference.SwitchPreference —— ZUI 私有控件，搬不过来，
-# 硬搬也只会是机主明确否掉的"突兀插入"。而 PixelOS 这份是 Material 3 Expressive，
-# 走 com.android.settings.category.ia.sound 注入，不需要动 Settings 源码，
-# 功能上还是超集（11 项 vs 出厂 4 项，多出扬声器/耳机虚拟化、低音增强、
-# 音量均衡、IEQ 预设、自定义 EQ 预设和一个快捷设置磁贴）。
+# Nothing is late — zero delayed writes, zero underruns, and the jitter in the
+# bad case equals the good one. The DAP corrupts the stream in place rather
+# than arriving late, which is why every counter stayed clean while it was
+# audibly broken. Four hypotheses were tested and disproven (CPU starvation,
+# video-decode contention, the tinyxml2 sizeof break, and the app re-writing
+# effect parameters); the amplifiers were cleared as well. The root cause
+# inside libswdapaidl.so was not found, and the owner chose removal over
+# further hunting — which is also this tree's standing rule: shipping a
+# feature guaranteed to fail is worse than not shipping it. The full
+# derivation, including the four dead hypotheses so nobody re-runs them, is on
+# the audio_effects_config.xml fixup in extract-files.py.
 #
-# ⚠️ 不要**同时**装出厂的 daxService：两者都往同一个 global-mix 效果写 profile
-# 参数，而 daxService 是 persistent=true，会互相打架。
-PRODUCT_PACKAGES += \
-    DolbyAtmos
+# What went: libswdapaidl.so, libswgamedapaidl.so, libdlbvolaidl.so,
+# libdlbpreg.so (5.9 MB), their declarations in audio_effects_config.xml, the
+# co.aospa.dolby app and DolbyAtmosOverlayMalbec.
+#
+# What deliberately STAYED, because it is not the same thing:
+#   * The AC3 / E-AC3 / AC4 decoders. A separate stack that merely shares
+#     libdmshal.so with the effects; AOSP ships no replacement, so removing
+#     them would cost every AC3 soundtrack for no reason connected to the bug.
+#   * Dolby Vision (dvs-aidl-service, dolby_vision.cfg, libdolbyeglcore.so).
+#     That is video HDR, which this device is required to support.
 
 # ── MalbecParts: the device's own settings surface ──────────────────────────
 #
@@ -414,26 +459,35 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     libinput_shim
 
-# ── 带 ;DISABLE_DEPS 的 blob 所需、但全树无人提供的 soname ─────────────────
+# ── Sonames that ;DISABLE_DEPS blobs need and nothing in the tree provides ──
 #
-# 这一整类构建期是**查不出来**的：`;DISABLE_DEPS` 同时关掉 shared_libs 生成和
-# check_elf_file，于是 Soong 既不去构建这个依赖也不报错，`m nothing` 和
-# `m pixelos` 全绿，开机后 dlopen 失败。
+# This entire class is INVISIBLE at build time: ;DISABLE_DEPS turns off both
+# shared_libs generation and check_elf_file, so Soong neither builds the
+# dependency nor complains. `m nothing` and `m pixelos` go green and the dlopen
+# fails after boot.
 #
-# 第七个 session 用一次完整扫描定位（3370 个 ELF / 27346 条 DT_NEEDED，按**链接器
-# 命名空间**求解而不是按分区求并集），实测 20 个真缺口。其中 7 个是新的一类：
-# **文件在镜像里，但跨不过 vendor/system 命名空间边界** —— Android 16 没有 VNDK，
-# /vendor 的二进制只看得到 /odm/lib64、/vendor/lib64{,/hw,/egl} 加上
-# system/etc/llndk.libraries.txt 里那 26 个。所以 android.hardware.health@1.0.so
-# 之类「/system/lib64 里明明有」的库，对 vendor 消费者等于不存在，必须装 .vendor 变体。
+# Session 7 located them with one exhaustive scan (3370 ELFs, 27346 DT_NEEDED
+# edges, solved per LINKER NAMESPACE rather than by taking a union across
+# partitions): 20 real gaps. Seven of those were a new category — the file IS in
+# the image but cannot cross the vendor/system namespace boundary. Android 16 has
+# no VNDK, so a /vendor binary sees only /odm/lib64, /vendor/lib64{,/hw,/egl} and
+# the 26 entries in system/etc/llndk.libraries.txt. A library like
+# android.hardware.health@1.0.so, plainly present in /system/lib64, therefore does
+# not exist as far as a vendor consumer is concerned, and the .vendor variant has
+# to be installed.
 #
-# 分法（判据是**谁在消费**，不是这个库长什么样）：
-#   · 冻结的稳定接口（HIDL @x.y / AIDL -Vn-ndk）-> 走树。ABI 由冻结的接口定义，
-#     树的构建与出厂逐符号等价，这一批已逐个对过消费者的未定义符号与提供者导出。
-#   · 不是接口的普通 C++ 库、而消费者是出厂 blob -> 走 blob（在 proprietary-files.txt
-#     里），因为那是 Android 15 的二进制，跨一个大版本的内部 ABI 不保证。
-#     libaudioserviceexampleimpl / libaudioplatformconverter.qti / libnbaio_mono /
-#     qti-audio-types-aidl-V1-ndk / 六个 soundfx AIDL 效果库都属于这一类。
+# How they are split (the criterion is WHO CONSUMES IT, not what the library
+# looks like):
+#   · Frozen stable interfaces (HIDL @x.y, AIDL -Vn-ndk) -> from the tree. The ABI
+#     is defined by the frozen interface, so the tree build and the stock build
+#     are symbol-for-symbol equivalent; each one here was checked by matching
+#     consumer undefined symbols against provider exports.
+#   · An ordinary C++ library that is not an interface, whose consumer is a stock
+#     blob -> from the blob set (in proprietary-files.txt), because that consumer
+#     is an Android 15 binary and internal ABI is not guaranteed across a major
+#     version. libaudioserviceexampleimpl, libaudioplatformconverter.qti,
+#     libnbaio_mono, qti-audio-types-aidl-V1-ndk and the six soundfx AIDL effect
+#     libraries are all this case.
 PRODUCT_PACKAGES += \
     android.hardware.bluetooth.audio@2.0.vendor \
     android.hardware.bluetooth.audio@2.1.vendor \
@@ -456,14 +510,17 @@ PRODUCT_PACKAGES += \
     vendor.qti.hardware.bluetooth.audio-V1-ndk.vendor \
     vendor.qti.hardware.display.allocator@4.0.vendor
 
-# 这两个 VINTF 片段走源码而不是 blob。它们本来是 libaudiocorehal.default /
-# libaudioeffecthal.qti 的 required:，实现库改回 blob 之后就没人带它们了，而出厂
-# 那份提取出来会与源码那份重名（都是有名字的 prebuilt_etc，且
-# ;MODULE_SUFFIX= 对 prebuilt_etc 静默无效）：
+# These two VINTF fragments come from source rather than from the blob set. They
+# used to arrive as `required:` of libaudiocorehal.default / libaudioeffecthal.qti;
+# once those implementation libraries went back to blobs nothing carried them any
+# more, and extracting the stock copies collides with the source modules by name
+# (both are named prebuilt_etc, and ;MODULE_SUFFIX= is silently ineffective on
+# prebuilt_etc):
 #   module "audioeffectservice_qti.xml": found in multiple
 #   namespaces(hardware/qcom-caf/sm8750 and vendor/lenovo/malbec)
-# 两份内容逐字段比对过，声明完全一致，只有注释不同，所以用哪份都行 ——
-# 用源码那份可以避开命名冲突。
+# The two copies were compared field by field: the declarations are identical and
+# only the comments differ, so either would do — taking the source one avoids the
+# name collision.
 PRODUCT_PACKAGES += \
     manifest_audiocorehal_default.xml \
     audioeffectservice_qti.xml
@@ -489,19 +546,22 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     libaudioeffecthal.qti
 
-# IPA（数据路径加速）
+# IPA (data-path acceleration)
 #
-# 两个配置文件必须显式列出来。ipacm 的 Android.bp 没有 required: 带上它们，
-# 而「模块定义了」≠「本产品会构建」—— 这条教训 PROGRESS 第三节记过。
-# 上一次完整构建装了 /vendor/bin/ipacm 却没有任何 IPACM_*.xml，
-# 而 ipacm.rc:42 会 `copy /vendor/etc/IPACM_Filter_cfg.xml`。
+# The two configuration files have to be listed explicitly. ipacm's Android.bp has
+# no `required:` carrying them, and "the module is defined" != "this product
+# builds it" — the lesson recorded in PROGRESS.md section 3. The last full build
+# installed /vendor/bin/ipacm with no IPACM_*.xml at all, while ipacm.rc:42 does
+# `copy /vendor/etc/IPACM_Filter_cfg.xml`.
 #
-# ⚠️ 走树而不是提取出厂那两份，理由是实测出来的：出厂的 IPACM_cfg.xml **没有**
-# wlan0/wlan1/wlan2/wlan3/wigig0 这几个 Iface 条目，树里 sm8750 那份有
-# （25 行差异全在这里）。这是一台 **WiFi-only** 平板，IPA offload 要用的恰恰
-# 是 wlan 接口 —— 出厂那份是 Lenovo 按自己的 SKU 裁过的。
-# IPACM_Filter_cfg.xml 两边逐字节相同，跟着走树保持一对。
-# 而且 ipacm 二进制本身就是从 hardware/qcom-caf/sm8750 编的，配置跟二进制同源。
+# ⚠️ Taken from the tree rather than extracted from stock, for a measured reason:
+# stock's IPACM_cfg.xml has NO wlan0/wlan1/wlan2/wlan3/wigig0 Iface entries and
+# the sm8750 copy in the tree does — all 25 lines of difference are exactly those.
+# This is a Wi-Fi-only tablet, and the wlan interfaces are precisely what IPA
+# offload would use; stock's copy was trimmed by Lenovo for their own SKU.
+# IPACM_Filter_cfg.xml is byte-identical on both sides and follows the tree to
+# keep the pair together. The ipacm binary itself is also built from
+# hardware/qcom-caf/sm8750, so configuration and binary share a source.
 PRODUCT_PACKAGES += \
     ipacm \
     IPACM_cfg.xml \
@@ -546,11 +606,13 @@ PRODUCT_PACKAGES += \
 # package. Without these three the build still produces an OTA zip and the device
 # has nothing able to apply it.
 #
-# android.hardware.boot-service.qti 同样是必需的，而且比上面三个更早出问题：
-# update_engine 拿不到 IBootControl 就无法把当前 slot 标记成 successful，
-# bootloader 的重试计数耗尽后会回滚到另一个 slot。
-# `android.hardware.boot` 在 compatibility_matrix.202404.xml 里没有
-# optional="true"，是强制项。recovery 变体给 sideload 用。
+# android.hardware.boot-service.qti is equally required, and it fails earlier than
+# the three above: without IBootControl, update_engine cannot mark the current
+# slot successful, and once the bootloader's retry counter runs out it rolls back
+# to the other slot.
+# android.hardware.boot carries no optional="true" in
+# compatibility_matrix.202404.xml — it is mandatory. The recovery variant is for
+# sideload.
 PRODUCT_PACKAGES += \
     android.hardware.boot-service.qti \
     android.hardware.boot-service.qti.recovery \
@@ -663,6 +725,69 @@ PRODUCT_COPY_FILES += \
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/partition_order.xml:$(TARGET_COPY_OUT_PRODUCT)/overlay/partition_order.xml
 
+# Game-mode thermal policy, owned by this tree rather than extracted.
+#
+# thermal-engine-v2 reads it by path (init.qcom.rc:516 passes
+# -c /vendor/etc/thermal-engine-malbec-${vendor.thermal.mode}.conf), so
+# installing it here is indistinguishable from the blob at runtime. The other
+# five profiles stay extracted; only this one is tuned, and it is plain-text
+# INI, so keeping it in git is what makes each tuning step a readable diff
+# instead of an opaque 2 KB binary change.
+#
+# ⚠️ The matching line was removed from proprietary-files.txt, so
+# work/analysis/vendor-gap-allowlist.txt carries the entry that keeps
+# 32-acceptance.py check 2 honest about it.
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/configs/thermal/thermal-engine-malbec-game.conf:$(TARGET_COPY_OUT_VENDOR)/etc/thermal-engine-malbec-game.conf
+
+# Two UI sounds that the framework names and this product does not ship.
+#
+# Both are AOSP files, both are declared by AOSP code, and both are absent from
+# the built image — checked in out/, not inferred:
+#
+#   KeypressInvalid.ogg  frameworks/base/core/res/res/xml/audio_assets.xml:34
+#                        <asset id="FX_KEYPRESS_INVALID" .../>  — the only one of
+#                        the six declared keypress assets that is missing, so
+#                        SoundPool silently loads nothing for an invalid keypress.
+#   Trusted.ogg          frameworks/base/packages/SettingsProvider/res/values/
+#                        defaults.xml:81 def_trusted_sound points at the absolute
+#                        path /product/media/audio/ui/Trusted.ogg.
+#
+# The cause is upstream: vendor/pixel/sounds/common/common-vendor.mk lists 22
+# other files from this directory and not these two. Copying them from AOSP's own
+# source is the smaller fix and does not touch a shared makefile.
+PRODUCT_COPY_FILES += \
+    frameworks/base/data/sounds/effects/ogg/KeypressInvalid.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/ui/KeypressInvalid.ogg \
+    frameworks/base/data/sounds/effects/ogg/Trusted.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/ui/Trusted.ogg
+
+# The sinc resampler's coefficient library.
+#
+# AudioResamplerSinc.cpp:104 does dlopen("libaudio-resampler.so") and dlsyms
+# readResamplerCoefficients out of it; without the library the highest-quality
+# resampler quietly falls back to its small built-in coefficient set. It is a
+# plain AOSP module (frameworks/av/media/libaudioprocessing/audio-resampler),
+# not a blob — it is simply not in any makefile this product inherits. AOSP puts
+# it in generic_system.mk:71 and mainline_system.mk:71, neither of which is on
+# this product's inheritance path, so it has never been built here.
+PRODUCT_PACKAGES += \
+    libaudio-resampler
+
+# DisplayDeviceConfig — the auto-brightness debounce, and nothing else.
+#
+# Without this file the device runs auto-brightness with the debounce at -1,
+# which AutomaticBrightnessController uses as an arithmetic offset rather than
+# checking, so every lux sample is allowed to move the backlight. The two
+# framework resources that look like the fix are NOT reachable without a
+# DisplayDeviceConfig file — the loader that reads them only runs from
+# initFromFile(). The file carries the full derivation.
+#
+# ⚠️ Named by PORT, not by display id. The id forms encode the panel model and
+# this tablet ships two panel vendors; the port is the same for both. Every
+# section the file omits keeps its config.xml value, which is why it is safe for
+# it to be four lines long.
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/configs/displayconfig/display_port_147.xml:$(TARGET_COPY_OUT_VENDOR)/etc/displayconfig/display_port_147.xml
+
 # Rootdir
 # fstab.qcom is the one vendor config this port has to change, so the device
 # tree owns it and proprietary-files.txt skips the stock copy.
@@ -683,12 +808,15 @@ PRODUCT_PACKAGES += \
     init.malbec.rc \
     init.recovery.qcom.rc
 
-# ⚠️ 上面那个 prebuilt_etc 只产出 /vendor/etc/fstab.qcom，**开不了机**。
-# 第一阶段挂载的时候 /vendor 正是还没挂上的那个分区，fs_mgr 的 GetFstabPath()
-# （system/core/fs_mgr/libfstab/fstab.cpp）在这一刻只可能读到 ramdisk 里那份。
-# 出厂的 vendor_boot ramdisk 里确实带着 first_stage_ramdisk/fstab.qcom，
-# 而本树之前两个位置都没装 —— ReadDefaultFstab() 失败，init panic。
-# 真机上 /proc/device-tree/firmware/android/ 不存在，所以也没有 DT fstab 那条退路。
+# ⚠️ The prebuilt_etc above only produces /vendor/etc/fstab.qcom, and that alone
+# DOES NOT BOOT. At first-stage mount /vendor is precisely the partition not yet
+# mounted, so fs_mgr's GetFstabPath()
+# (system/core/fs_mgr/libfstab/fstab.cpp) can only read the ramdisk copy at that
+# moment. Stock's vendor_boot ramdisk does carry
+# first_stage_ramdisk/fstab.qcom; this tree previously installed neither location,
+# so ReadDefaultFstab() failed and init panicked.
+# There is no DT-fstab fallback either: /proc/device-tree/firmware/android/ does
+# not exist on this device.
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/rootdir/etc/fstab.qcom:$(TARGET_COPY_OUT_VENDOR_RAMDISK)/first_stage_ramdisk/fstab.qcom
 
@@ -705,11 +833,6 @@ PRODUCT_COPY_FILES += \
 # overlay covers what stock does with four, and which stock values are
 # deliberately left out because their RROs are gated on vendor.sku=sun.
 #
-# DolbyAtmosOverlayMalbec carries one array: the dialogue-enhancer step list,
-# which upstream fills with a ladder this panel's Dolby tuning never uses, so
-# the app showed "Unknown". Derived from vendor/etc/dolby/dax-default.xml —
-# derivation in the overlay's own arrays.xml.
-#
 # SettingsOverlayMalbec removes the refresh-rate picker. On this panel every rate
 # above 120 Hz is measurably worse — it costs the stylus entirely AND halves the
 # finger report rate, 360 Hz -> 185 Hz — so there is no setting to offer. The
@@ -720,7 +843,6 @@ PRODUCT_COPY_FILES += \
 # in from the edit screen first. It overrides both default-tile strings because
 # QSHost.getDefaultSpecs picks between them on an aconfig flag.
 PRODUCT_PACKAGES += \
-    DolbyAtmosOverlayMalbec \
     FrameworkOverlayMalbec \
     SettingsOverlayMalbec \
     SettingsProviderOverlayMalbec \

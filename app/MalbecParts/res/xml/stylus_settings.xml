@@ -5,7 +5,7 @@
 -->
 <PreferenceScreen
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:title="@string/stylus_title">
+    android:title="@string/device_settings_title">
 
     <PreferenceCategory
         android:key="cat_pen_buttons"
@@ -119,6 +119,34 @@
         <com.android.settingslib.widget.FooterPreference
             android:key="touch_mode_footer"
             android:title="@string/touch_mode_footer"
+            android:selectable="false" />
+
+    </PreferenceCategory>
+
+    <!-- ★ persistent="true", unlike every other row on this page.
+         PenModeController.currentRefreshRate() reads this preference and treats
+         it as the source of truth, so androidx storing it here is the mechanism,
+         not an accident: peak_refresh_rate is the thing being driven, and a
+         backup restore or a stray `settings put` must not be able to erase the
+         choice by overwriting it. See the KDoc on currentRefreshRate.
+
+         No defaultValue. An absent preference means "120" via
+         REFRESH_RATE_MAX; declaring "120.0" here as well would put the same
+         constant in two places that must agree. -->
+    <PreferenceCategory
+        android:key="cat_refresh_rate"
+        android:title="@string/refresh_rate_title">
+
+        <ListPreference
+            android:key="refresh_rate"
+            android:title="@string/refresh_rate_title"
+            android:entries="@array/refresh_rate_entries"
+            android:entryValues="@array/refresh_rate_values"
+            android:summary="%s" />
+
+        <com.android.settingslib.widget.FooterPreference
+            android:key="refresh_rate_footer"
+            android:title="@string/refresh_rate_footer"
             android:selectable="false" />
 
     </PreferenceCategory>

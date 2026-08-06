@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+
+     DisplayDeviceConfig for the built-in panel.
+
+     ── What this file is for ────────────────────────────────────────────────
+
+     Exactly one thing: the auto-brightness debounce. Everything else is
+     deliberately absent, and that is load-bearing rather than lazy — see
+     "Why it is this small" below.
+
+     Without this file the device runs auto-brightness with NO debounce at all.
+     Measured on the device before writing it:
+
+         adb shell dumpsys display | grep LightDebounce
+           mAutoBrightnessBrighteningLightDebounce = -1
+           mAutoBrightnessDarkeningLightDebounce   = -1
+           mBrighteningLightDebounceConfig         = -1
+           mDarkeningLightDebounceConfig           = -1
+
+     -1 is INVALID_AUTO_BRIGHTNESS_LIGHT_DEBOUNCE, the field initialiser at
+     DisplayDeviceConfig.java:806-819. It reaches AutomaticBrightnessController
+     unchanged (DisplayPowerController.java:1136-1143) and is used as an
+     arithmetic offset, not checked:
+
+         AutomaticBrightnessController.java:891-892
+             return earliestValidTime + mBrighteningLightDebounceConfig;
+
+     so the "next allowed transition" is always one millisecond in the PAST and
+     every single lux sample is allowed to move the backlight. That is the
+     jumpy-auto-brightness symptom, and it is a defect rather than a preference.
+
+     ⚠️ The obvious fix does not work, and the tree tried it. There ARE two
+     framework resources for this and FrameworkOverlayMalbec used to set them to
+     2000/3000; `cmd overlay lookup android android:integer/
+     config_autoBrightnessBrighteningLightDebounce` on the running device
+     correctly returns 2000. They were still dead, because the ONLY caller of
+     loadAutoBrightnessBrighteningLightDebounce() is loadAutoBrightnessConfigValues()
+     (:2467-2472), which runs from initFromFile() alone. The config.xml path,
+     initFromGlobalXml() (:1947-1959), calls loadAutoBrightnessConfigsFromConfigXml()
+     — which builds only the brightness mapping and never touches the debounce.
+     So the resource fallback inside that loader exists to serve a DDC file that
+     omits the tag; it is not reachable without a DDC file at all. A device with
+     no DisplayDeviceConfig XML cannot have a debounce, whatever it writes in
+     config.xml. This file is the whole fix.
+
+     ── Why port_147 and not an id ───────────────────────────────────────────
+
+     loadConfigFromDirectory (:1052-1075) tries three names in order:
+     display_id_<physicalDisplayId>, display_<id-without-stable-bit>, and
+     display_port_<port>. The first two encode the PANEL MODEL; the third does
+     not. This tablet ships with either a BOE nt36536e or a CSOT nt36536 panel
+     and the tree is not allowed to depend on which (see the note at the top of
+     BoardConfig.mk), so the port form is the only one that can be correct for
+     both. Port 147 is measured, not assumed:
+
+         adb shell dumpsys display | grep 'address {port'
+           address {port=147, model=0x40446d48e02993}
+
+     It also means the three stock display_id_*.xml blobs still win for the units
+     they name, which is what should happen — those carry a full brightness map
+     and this file deliberately does not.
+
+     ── Why it is this small ─────────────────────────────────────────────────
+
+     A DisplayDeviceConfig file REPLACES config.xml piecemeal, per section, and
+     the sections this file omits keep their current, verified values:
+
+       * loadBrightnessMap (:1873-1879) explicitly falls back to
+         loadBrightnessMapFromConfigXml() when <screenBrightnessMap> is absent,
+         so config_screenBrightnessNits / config_screenBrightnessBacklight in
+         FrameworkOverlayMalbec still define the curve. Nothing about the
+         brightness behaviour changes.
+       * loadBrightnessDefaultFromDdcXml (:2010-2024) does the same for
+         <screenBrightnessDefault>.
+       * loadBrightnessConstraintsFromConfigXml() is called on the file path too
+         (:1888), so config_screenBrightnessSettingMinimumFloat = 0.003937008
+         survives — that is the value that stops the panel reaching backlight 0
+         and going black, and losing it would be the expensive mistake here.
+
+     The generated parser tolerates every one of those omissions by construction:
+     DisplayConfiguration.read() is a flat tag-dispatch loop over the children
+     present, and the only exception it can raise is "DisplayConfiguration is not
+     closed" for malformed XML. Unset elements stay null. (Read out of the built
+     parser at out/soong/.intermediates/frameworks/base/services/core/xsd/
+     display-device-config/, not assumed from the .xsd — the .xsd marks
+     screenBrightnessMap as required and the parser does not enforce it.)
+
+     ── HDR ──────────────────────────────────────────────────────────────────
+
+     Owner's decision: keep the default SDR brightness, but HDR must work. Those
+     two are separable, and <hdrBrightnessConfig> is exactly the separation.
+
+     Before this block, mHdrBrightnessData was null on the device. HdrBrightnessData
+     .loadConfig (:173-179) falls back to the <highBrightnessMode> block when
+     there is no <hdrBrightnessConfig>, and with neither present it produced
+     nothing, so HDR content was displayed with no brightness headroom at all —
+     tone-mapped down into the SDR range instead of being allowed above it.
+
+     ★ The reason this does not touch SDR: with no <highBrightnessMode> block,
+     getTransitionPoint (:211-215) returns PowerManager.BRIGHTNESS_MAX. So HDR
+     may boost up to the top of the panel's existing range and no further, and
+     the SDR curve — which still comes from config_screenBrightnessNits, because
+     <screenBrightnessMap> is absent — is untouched. Adding HBM instead would
+     have moved the SDR ceiling too, which is what the owner said not to do.
+
+     Every child element below is mandatory in practice, not by taste:
+     loadConfig dereferences getBrightnessMap(), getBrightnessIncreaseDebounceMillis(),
+     getBrightnessDecreaseDebounceMillis(), getScreenBrightnessRampIncrease() and
+     getScreenBrightnessRampDecrease() unconditionally (:181-207). Omitting any
+     one of them is an NPE inside DisplayDeviceConfig at boot, not a fallback.
+
+     brightnessMap is lux -> maximum brightness allowed for HDR, and the lookup
+     (HdrBrightnessModifier.findBrightnessLimit:380-399) takes the SMALLEST key
+     GREATER than the current ambient lux. Above the highest key it stays at the
+     initialiser, PowerManager.BRIGHTNESS_MAX — unlimited. So this is a cap for
+     dim rooms only, which is the point: HDR highlights at full panel output in
+     a dark room are painful, and in daylight there is nothing to protect
+     against. The two points are AOSP's own documented example values
+     (HdrBrightnessData.java:39-51); they are a starting shape, not a
+     measurement, and the honest way to improve them is to watch real HDR
+     content at night.
+
+     sdrHdrRatioMap has to live HERE rather than being inherited: getSdrHdrRatioSpline
+     (:212-219) falls back to the HBM block's map, and there is no HBM block, so
+     without this element the spline is null and the headroom is 1.0 — i.e. no
+     boost, which is the state being fixed. The two points are Lenovo's own,
+     lifted from the sdrHdrRatioMap inside the highBrightnessMode block of their
+     display_id_*.xml: 8.0x headroom when SDR is at 2 nits, falling to 1.5x at
+     500 nits. That is product tuning for this panel family rather than an
+     invention, and it is the one part of those files worth keeping.
+
+     allowInLowPowerMode is false: Battery Saver should not be spending its
+     savings on HDR highlights.
+
+     ── Deliberately NOT here, and why ───────────────────────────────────────
+
+     The stock blobs carry a 52-point map ending at 782.4283 nits plus an
+     <highBrightnessMode> block, while this device's live ladder stops at 650
+     nits and has no HBM. Copying that in would raise the brightness ceiling by
+     20% — and it is not this panel's curve. All three stock files are
+     byte-identical (md5 e78fa6de4b6f0bef0959fefe6d105219) and are keyed to
+     models 0x446dcbf35481 (ports 130, 131) and 0x446dd4433735 (port 147); this
+     unit is model 0x446d48e02993. So none of them matched on stock ZUI either,
+     which means the 650-nit ladder IS the stock behaviour of this unit and
+     raising it would be a change, not a restoration.
+
+     Whether this panel can actually do 782 nits is unsettled. The composer
+     reports HdrCapabilities mMaxLuminance=800.0, which is suggestive and is not
+     proof — it is the HDR peak, not the SDR ceiling. Settling it needs a
+     luminance measurement or a panel datasheet, and inventing the number would
+     be worse than the 650 that is there now.
+-->
+<displayConfiguration>
+    <name>malbec built-in panel</name>
+
+    <!-- Stock's values for this product. The idle pair is set to the same
+         numbers rather than left out: loadAutoBrightnessBrighteningLightDebounceIdle
+         (:2523+) falls back to whichever interactive value was chosen, so
+         omitting them would behave identically today — stating them keeps the
+         four numbers in dumpsys readable as a set. -->
+    <hdrBrightnessConfig>
+        <brightnessMap>
+            <point>
+                <first>500</first>
+                <second>0.3</second>
+            </point>
+            <point>
+                <first>1200</first>
+                <second>0.6</second>
+            </point>
+        </brightnessMap>
+        <brightnessIncreaseDebounceMillis>1000</brightnessIncreaseDebounceMillis>
+        <screenBrightnessRampIncrease>0.04</screenBrightnessRampIncrease>
+        <brightnessDecreaseDebounceMillis>3000</brightnessDecreaseDebounceMillis>
+        <screenBrightnessRampDecrease>0.03</screenBrightnessRampDecrease>
+        <minimumHdrPercentOfScreenForNbm>0.1</minimumHdrPercentOfScreenForNbm>
+        <minimumHdrPercentOfScreenForHbm>0.1</minimumHdrPercentOfScreenForHbm>
+        <allowInLowPowerMode>false</allowInLowPowerMode>
+        <sdrHdrRatioMap>
+            <point>
+                <first>2.0</first>
+                <second>8.0</second>
+            </point>
+            <point>
+                <first>500.0</first>
+                <second>1.5</second>
+            </point>
+        </sdrHdrRatioMap>
+    </hdrBrightnessConfig>
+
+    <autoBrightness>
+        <brighteningLightDebounceMillis>2000</brighteningLightDebounceMillis>
+        <darkeningLightDebounceMillis>3000</darkeningLightDebounceMillis>
+        <brighteningLightDebounceIdleMillis>2000</brighteningLightDebounceIdleMillis>
+        <darkeningLightDebounceIdleMillis>3000</darkeningLightDebounceIdleMillis>
+    </autoBrightness>
+</displayConfiguration>

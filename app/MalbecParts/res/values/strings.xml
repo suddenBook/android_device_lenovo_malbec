@@ -4,9 +4,15 @@
      SPDX-License-Identifier: Apache-2.0
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="app_name">Stylus and keyboard</string>
+    <string name="app_name">Device settings</string>
 
-    <!-- Settings > Connected devices tile -->
+    <!-- Settings top-level entry. Everything this tablet has that a Pixel does
+         not: the pen, the folio keyboard, and the screen/touch pairing. -->
+    <string name="device_settings_title">Device settings</string>
+    <string name="device_settings_summary">Stylus, folio keyboard, refresh rate and touch mode</string>
+
+    <!-- The same page, reached from Connected devices, where someone looking for
+         the pen or the keyboard would look first. -->
     <string name="stylus_title">Stylus and keyboard</string>
     <string name="stylus_summary">Pen buttons, out-of-range alert, touch mode</string>
     <string name="stylus_default_name">Stylus</string>
@@ -45,7 +51,14 @@
     <string name="touch_mode_daily_toast">Daily mode: the stylus works, and the screen reads finger touches 120 times a second</string>
     <string name="touch_mode_game_toast">Game mode: 360 touch readings a second and full processor clocks for longer. The stylus does not work in this mode.</string>
     <string name="touch_mode_rate_restored_toast">Above 120 Hz the stylus stops working and touch readings drop to 185 a second, so the refresh rate has been set back to 120 Hz</string>
-    <string name="touch_mode_footer">The screen, the touch controller and the thermal policy move together, because the hardware cannot do all of it at once. Game mode reads finger touches 360 times a second instead of 120, and lets the processor hold its full clock until the tablet reaches 48°C rather than stepping down from 42°C — but the touch controller stops scanning for the stylus entirely. Daily is the default and the only mode the stylus works in. Both modes run the screen at 120 Hz: above that the stylus cannot be detected at all and touch readings fall to about 185 a second, which is why this tablet has no refresh-rate setting.</string>
+    <string name="touch_mode_footer">The screen, the touch controller and the thermal policy move together, because the hardware cannot do all of it at once. Game mode reads finger touches 360 times a second instead of 120, and lets the processor hold its full clock until the tablet reaches 48°C rather than stepping down from 42°C — but the touch controller stops scanning for the stylus entirely. Daily is the default and the only mode the stylus works in.</string>
+
+    <!-- Screen refresh rate -->
+    <string name="refresh_rate_title">Screen refresh rate</string>
+    <string name="refresh_rate_60" translatable="false">60 Hz</string>
+    <string name="refresh_rate_90" translatable="false">90 Hz</string>
+    <string name="refresh_rate_120" translatable="false">120 Hz</string>
+    <string name="refresh_rate_footer">This is an upper limit, not a fixed rate — the screen still drops to 30 Hz when nothing is moving, whichever value you pick, and Battery saver caps it at 60 Hz on top of your choice. Lower limits save power on a screen this size. \n\nThe panel can also do 144 Hz and this tablet deliberately does not offer it: above 120 Hz the touch controller cannot detect the stylus at all, and finger readings drop from 360 to 185 times a second. 144 Hz costs the stylus and half the touch sampling to buy 24 frames, so there is no setting here in which it would be the better choice.</string>
 
     <string name="pen_mode_tile_label">Device mode</string>
     <string name="pen_mode_widget_label">Device mode</string>

@@ -21,7 +21,8 @@ import org.pixelos.malbec.parts.R
  * Requested by the owner specifically: one tap from the desktop, and one instance
  * already on the default workspace so it is there the first time the tablet boots
  * after a flash. That placement is not done here — a widget provider cannot place
- * itself — it is in device/lenovo/malbec/app/MalbecLauncherLayout.
+ * itself — it is res/xml/default_layout_6x5_h6.xml, which the launcher picks up
+ * through the marker receiver in launcher/LauncherLayoutMarker.kt.
  */
 class PenModeWidgetProvider : AppWidgetProvider() {
 
@@ -96,6 +97,16 @@ class PenModeWidgetProvider : AppWidgetProvider() {
                 )
                 setTextColor(
                     R.id.mode_detail,
+                    context.getColor(
+                        if (game) R.color.widget_detail_active else R.color.widget_detail
+                    ),
+                )
+                // Same colour as the subtitle, so the affordance stays a hint.
+                setColorInt(
+                    R.id.swap_hint, "setColorFilter",
+                    context.getColor(
+                        if (game) R.color.widget_detail_active else R.color.widget_detail
+                    ),
                     context.getColor(
                         if (game) R.color.widget_detail_active else R.color.widget_detail
                     ),

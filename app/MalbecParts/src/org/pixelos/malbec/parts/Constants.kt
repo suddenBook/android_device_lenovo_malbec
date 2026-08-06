@@ -98,6 +98,19 @@ object Constants {
      * would make `dumpsys input` lie about what is registered, and would break
      * the day something else claims them.
      */
+    /**
+     * Display rotation, 0..3, handed to init so it can write
+     * /proc/panel_direction. See display/PanelDirectionController.kt for why it
+     * goes through a property and why the value needs no translation.
+     *
+     * `sys.` rather than `persist.sys.`: rotation has no meaning across a
+     * reboot (the driver powers up at 0 and the first sync corrects it), and
+     * persisting it would mean a flash write every time the tablet is turned
+     * over. Both prefixes are u:object_r:system_prop:s0, so this needs no new
+     * sepolicy either way.
+     */
+    const val PROP_PANEL_DIRECTION = "sys.malbec.panel_dir"
+
     const val GESTURE_TYPE_SMART_REMOTE_PRIMARY = 0x4D42_0001
     const val GESTURE_TYPE_SMART_REMOTE_NEXT = 0x4D42_0002
     const val GESTURE_TYPE_SMART_REMOTE_PREVIOUS = 0x4D42_0003
@@ -122,6 +135,7 @@ object Constants {
     const val PREF_FOLIO_EVER_SEEN = "folio_ever_seen"
 
     const val PREF_TOUCH_MODE = "touch_mode"
+    const val PREF_REFRESH_RATE = "refresh_rate"
 
     /** Category keys inside the preference XML, for show/hide. */
     const val PREF_CAT_PEN_BUTTONS = "cat_pen_buttons"
@@ -231,11 +245,42 @@ object Constants {
     const val TOUCH_MODE_GAME = "game"
 
     /**
-     * The one refresh rate either mode wants, and the ceiling the pen needs.
-     * Both modes pin peak_refresh_rate here; see the table above for why there is
-     * no second value.
+     * The highest rate this device may ever run at — a CEILING, not a setpoint.
+     *
+     * Both modes need <= 120: Daily because the digitizer cannot see the pen above
+     * it, Game because HighReportRate stops working above it and the finger rate
+     * falls from 360 to 185 Hz. See the table above.
+     *
+     * ⚠️ Ceiling, not setpoint, and the distinction is the whole reason the
+     * refresh-rate choice below can exist. peak_refresh_rate becomes
+     * Vote.forPhysicalRefreshRates(0, peak) — an UPPER BOUND
+     * (DisplayModeDirector.java:1209-1215). min_refresh_rate stays 0, so AOSP's
+     * own idle and content-driven switching still runs underneath: measured 30 Hz
+     * idle, 120 Hz while scrolling. Nothing here pins the panel to one rate.
      */
-    const val REFRESH_RATE_PINNED = 120f
+    const val REFRESH_RATE_MAX = 120f
+
+    /**
+     * What the user may choose as that ceiling, lowest first.
+     *
+     * 144 is absent and that is the finding, not an oversight — see the table
+     * above. The AOSP picker in Settings > Display is switched off
+     * (overlay/SettingsOverlayMalbec) because RefreshRateUtils.getRefreshRates()
+     * builds its list at runtime from Display.getSupportedModes(), so no RRO can
+     * remove 144 from it; a list with a trap in it is worse than no list. This is
+     * that list minus the trap.
+     *
+     * 60 and 90 are here because they are worth real standby power on a 13" LCD
+     * and losing them was the actual cost of switching the AOSP picker off.
+     *
+     * ⚠️ Battery Saver is NOT one of the writers here and must not be confused
+     * with one. It caps the RENDER rate through a vote —
+     * DisplayModeDirector.updateLowPowerModeSettingLocked:1116-1127 posts
+     * Vote.forRenderFrameRates(0, 60) at PRIORITY_LOW_POWER_MODE_RENDER_RATE —
+     * and never touches Settings.System. So it composes with whatever is chosen
+     * here instead of fighting it, and the observer below never sees it.
+     */
+    val REFRESH_RATE_CHOICES = listOf(60f, 90f, 120f)
 
     /**
      * init.malbec.rc turns these into writes to /proc/HighReportRate and

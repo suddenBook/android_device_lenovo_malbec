@@ -1,0 +1,23 @@
+<!--
+     SPDX-FileCopyrightText: The Android Open Source Project
+     SPDX-License-Identifier: Apache-2.0
+
+     Material Symbols "swap_horiz". The widget is a toggle, but a card with an
+     icon and two lines of text is the shape of a STATUS readout — nothing on it
+     said it could be tapped, and on a home screen full of widgets that only
+     report (weather, calendar, clock) that is a real ambiguity. This is the
+     affordance.
+
+     Drawn at the subtitle's colour in both states rather than the title's, so it
+     reads as a hint and does not compete with the mode name. No tint here: the
+     widget sets it per state via setColorInt, the same way it does the mode glyph.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M280,720L120,560L280,400L336,457L273,520L520,520L520,600L273,600L336,663L280,720ZM680,560L624,503L687,440L440,440L440,360L687,360L624,297L680,240L840,400L680,560Z" />
+</vector>

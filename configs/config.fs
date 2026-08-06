@@ -51,11 +51,15 @@ value:2914
 # The prefix is only correct on a device where vendor is a directory inside
 # system (TARGET_COPY_OUT_VENDOR := system/vendor). Do not re-add them.
 
-[vendor/bin/lowi-server]
-mode: 0755
-user: AID_GPS
-group: AID_GPS
-caps: NET_ADMIN
+# ⚠️ [vendor/bin/lowi-server] with AID_GPS + NET_ADMIN was here and is gone with
+# the binary. It was the last AID_GPS entry in this file and the only remaining
+# NET_ADMIN grant outside the networking daemons — for a process that no .rc in
+# the image ever started (the only stanza, init.target.rc:219, is commented out
+# AND names the wrong binary), so it had never once run on this device.
+#
+# A leftover stanza here is not inert: fs_config_generate bakes it into the
+# generated fs_config_files for the vendor image whether or not the path exists,
+# so it survives as a capability grant with no owner.
 
 [vendor/bin/pd-mapper]
 mode: 0755
@@ -75,11 +79,18 @@ user: AID_SYSTEM
 group: AID_SYSTEM
 caps: NET_BIND_SERVICE
 
-[vendor/firmware_mnt/image/*]
-mode: 0771
-user: AID_SYSTEM
-group: AID_SYSTEM
-caps: 0
+# ⚠️ [vendor/firmware_mnt/image/*] 0771 AID_SYSTEM was here and is gone. It can
+# never match. /vendor/firmware_mnt is a SEPARATE vfat mount
+# (rootdir/etc/fstab.qcom:83, uid=1000,gid=1000,dmask=227,fmask=337,
+# context=u:object_r:firmware_file:s0) whose mount point is created by the
+# vendor_firmware_mnt_mountpoint module, so no file under that path is ever
+# inside vendor.img and no fs_config entry for it can ever be consulted --
+# vfat carries no per-file ownership at all; the mount options decide.
+#
+# This is exactly the class the ⚠️ higher up in this file was written about:
+# fs_config_generate bakes a stanza into the generated vendor table whether or
+# not the path exists, so a leftover survives as a permission grant with no
+# owner and no way to fire.
 
 # ⚠️ Six AIDs were removed here: AID_VENDOR_{NXP,THALES}_{STRONGBOX,WEAVER,AUTHSECRET}.
 # This file's own header says "only files this tree actually installs are listed",

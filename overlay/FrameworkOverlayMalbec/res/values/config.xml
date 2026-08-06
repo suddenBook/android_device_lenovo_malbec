@@ -241,10 +241,18 @@
          and stock's own framework-res.apk leaves it at 0dp, so the RRO is where
          it comes from.
 
-         TARGET_SCREEN_DENSITY is now 360, the same as stock, so 45px and 20dp
-         are the same number here. Keep the unit as px anyway: the radius is a
-         property of the glass and must not move if the density is ever
-         retuned. That is the whole point of expressing it in px.
+         ⚠️ This paragraph used to read "TARGET_SCREEN_DENSITY is now 360, the
+         same as stock, so 45px and 20dp are the same number here" — written
+         while the tree was briefly on 360 and never corrected when the owner
+         set 320 and froze it (BoardConfig.mk:227, and the warning 34 lines
+         above). At the shipped 320, stock's 20dp is 40px, not 45px.
+         The shipped value is 33px and is the owner's own choice, arrived at by
+         looking at the glass, so the arithmetic above is background rather than
+         a derivation of it.
+
+         Keep the unit as px regardless: the radius is a property of the glass
+         and must not move if the density is ever retuned. That is the whole
+         point of expressing it in px.
 
          ⚠️ Not 156px, which is what work/reference/hirero-malbec-device puts
          here. At 320 real ppi that would be 12.4 mm of corner masking on a
@@ -331,12 +339,23 @@
          battery icon ~55px from the right. That 20dp step is visible, and it is
          the whole of the complaint.
 
-         45px restores symmetry, and that is the whole justification: minLeft
-         becomes 45px and minRight stays 45px, because 45px is exactly the
-         privacy dot floor (ongoing_appops_dot_min_padding = 20dp at density
-         360). Any value at or above the dot floor makes the two sides equal;
-         45 is the smallest one that does, so it buys symmetry without spending
-         more edge margin than necessary.
+         45px restores symmetry: minLeft becomes 45px and minRight stays 45px,
+         because any value at or above the privacy-dot floor makes the two sides
+         equal.
+
+         ⚠️ The arithmetic in the two paragraphs above is stale and is left
+         corrected rather than deleted, because it is quoted elsewhere. It read
+         "45px is exactly the dot floor (ongoing_appops_dot_min_padding = 20dp at
+         density 360)". This tree ships density 320 (BoardConfig.mk:227, frozen by
+         the owner), where 20dp is 40px, not 45px. So the floor is 40px and the
+         shipped 45px sits 5px above it.
+
+         The BEHAVIOUR is unaffected — max(45, 40) and max(40, 40) are both
+         symmetric — so the value is not being churned for 5px (1.6dp) on a
+         3504px-wide panel that the owner has already looked at and accepted.
+         Recorded here so the next person does not re-derive 45 from a density
+         this device does not use. If it is ever retuned, 40px is the minimum
+         that still buys symmetry at 320.
 
          ⚠️ Deliberately NOT tied to rounded_corner_radius above, even though
          they were briefly the same number and AOSP's own Pixel overlays do set
@@ -572,13 +591,30 @@
         <item>650</item>
     </array>
 
-    <!-- Stability requirements in milliseconds for accepting a new brightness level.  This is used
-         for debouncing the light sensor.  Different constants are used to debounce the light sensor
-         when adapting to brighter or darker environments.  This parameter controls how quickly
-         brightness changes occur in response to an observed change in light level that exceeds the
-         hysteresis threshold. -->
-    <integer name="config_autoBrightnessBrighteningLightDebounce">2000</integer>
-    <integer name="config_autoBrightnessDarkeningLightDebounce">3000</integer>
+    <!-- ⚠️ config_autoBrightness{Brightening,Darkening}LightDebounce were set here
+         to 2000/3000 and are GONE, because on this path they are dead resources.
+         The live values now live in
+         configs/displayconfig/display_port_147.xml, installed to
+         /vendor/etc/displayconfig/.
+
+         They read back correctly — `cmd overlay lookup android
+         android:integer/config_autoBrightnessBrighteningLightDebounce` on the
+         device returned 2000, which is exactly why this looked done — and yet
+         `dumpsys display` reported the debounce as -1. The reason is that the
+         only caller of loadAutoBrightnessBrighteningLightDebounce() is
+         loadAutoBrightnessConfigValues() (DisplayDeviceConfig.java:2467-2472),
+         which runs from initFromFile() alone. Without a DisplayDeviceConfig XML
+         the device takes initFromGlobalXml() (:1947-1959), which calls
+         loadAutoBrightnessConfigsFromConfigXml() — that builds the brightness
+         mapping and nothing else. The resource fallback inside the loader is for
+         a DDC file that omits the tag; it is not a config.xml path.
+
+         Keeping them here as well would be two places that must agree for no
+         benefit, since this copy can never win and can never be reached.
+         This is the same shape as the tree's other "written but not reachable"
+         findings — see the config_defaultNightMode note in
+         configs/partition_order.xml. -->
+
 
     <!-- Note: This setting is deprecated, please use
     config_screenBrightnessSettingMinimumFloat instead -->
@@ -774,5 +810,52 @@
          leaving a Settings entry that fails — an option that is guaranteed to
          fail is worse than an absent one. -->
     <bool name="config_enableWifiDisplay">true</bool>
+
+    <!-- ================================================================== -->
+    <!-- Desktop windowing: off                                             -->
+    <!-- ================================================================== -->
+
+    <!-- Attaching the folio keyboard put every app into a freeform desktop
+         window. That is not this tree's choice and it is not AOSP's default
+         either: core/res/res/values/config.xml:7562,7565 ship both of these as
+         false. They are turned on underneath us by two inherited STATIC
+         overlays, which is why they do not appear anywhere in this device tree:
+
+             vendor/lineage/overlay/common/.../config.xml:90
+                 config_isDesktopModeSupported        -> true   (every device)
+             vendor/custom/overlay/tablet/.../config.xml:19
+                 config_canInternalDisplayHostDesktops -> true  (every tablet)
+
+         Static overlays are baked into framework-res.apk, so an RRO always wins
+         over them — no partition-order question here, unlike config_defaultNightMode.
+         Verified on the device before writing this: `cmd overlay lookup` in
+         verbose mode reported both resolving from framework-res.apk itself with
+         no competing RRO in the chain, while config_showNavigationBar on the
+         same run showed "Overlaid: /vendor/overlay/FrameworkOverlayMalbec.apk".
+         (Spelling the flag out is not an option here: a double hyphen is illegal
+         inside an XML comment and aapt2 only reports it about 73% into a build.)
+
+         The gate is DesktopStateImpl.kt:53-59:
+
+             isDeviceEligibleForDesktopModeDevOption =
+                 if (!enforceDeviceRestrictions) true
+                 else (isDesktopModeSupported && canInternalDisplayHostDesktops)
+                      || isDesktopModeDevOptionSupported
+
+         enforceDeviceRestrictions comes from
+         persist.wm.debug.desktop_mode_enforce_device_restrictions, unset here, so
+         it defaults true and the two resources below are live. The third term,
+         config_isDesktopModeDevOptionSupported, is false in AOSP and nothing in
+         this tree or its inherited overlays sets it — checked, not assumed.
+
+         Both are written even though the expression is an AND and one would do:
+         the intent is "this tablet does not host desktops", and stating it once
+         leaves the next reader wondering whether the other half was missed.
+
+         ⚠️ Known cost, accepted by the owner: desktop windows on an external
+         display go away too. This is a Wi-Fi-only tablet with no wired display
+         output in use. -->
+    <bool name="config_isDesktopModeSupported">false</bool>
+    <bool name="config_canInternalDisplayHostDesktops">false</bool>
 
 </resources>

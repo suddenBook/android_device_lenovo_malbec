@@ -20,7 +20,12 @@
        * No STATE. Both modes rendered identically apart from one word, on a 13"
          screen. Now the icon, its filled circle and the whole card change colour
          together — the same active/inactive language a Quick Settings tile uses,
-         which is what a one-tap toggle should look like.
+         which is what a one-tap toggle should look like. The state contrast lives
+         in the CARD fill, not the icon disc; see res/values/colors.xml for why
+         the first attempt at this did not read from arm's length either.
+       * No AFFORDANCE. Disc + title + subtitle is the shape of a status readout,
+         and it sat next to three widgets (weather, calendar, clock) that are
+         exactly that. The trailing swap glyph says it is a control.
        * Theme attributes rather than the wallpaper palette. RemoteViews are
          inflated in the LAUNCHER's process against the LAUNCHER's theme, so
          ?android:attr/colorBackgroundFloating resolved to whatever the host
@@ -98,5 +103,19 @@
             android:textColor="@color/widget_detail" />
 
     </LinearLayout>
+
+    <!-- The "this is a button" affordance. A disc, a title and a subtitle is the
+         shape of a status readout, and every other widget on this home screen
+         (weather, calendar, clock) is exactly that — so without this there was
+         nothing to say the card could be tapped. importantForAccessibility="no"
+         because the root's contentDescription already ends with "Tap to switch";
+         announcing it twice is worse than not at all. -->
+    <ImageView
+        android:id="@+id/swap_hint"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginStart="10dp"
+        android:src="@drawable/ic_swap"
+        android:importantForAccessibility="no" />
 
 </LinearLayout>

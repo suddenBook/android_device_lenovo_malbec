@@ -5,7 +5,11 @@
 
      Widget colours, dark theme. Same tokens as values/colors.xml with the tonal
      ramp inverted; see that file for why the palette is @android:color/system_*
-     rather than theme attributes.
+     rather than theme attributes, and for what the two states are meant to say.
+
+     The fill-weight contrast survives the inversion: Daily is a dark neutral
+     surface that sits back into a dark wallpaper, Game is a light accent card
+     that comes forward off it. Same relationship, both ends swapped.
 
      Note this device ships config_defaultNightMode = 1 (light) because the panel
      is an LCD — but the user can still switch to dark, and the widget must follow
@@ -13,16 +17,16 @@
 -->
 <resources>
     <!-- Daily (resting) -->
-    <color name="widget_bg">@android:color/system_neutral1_800</color>
-    <color name="widget_icon_bg">@android:color/system_accent2_700</color>
+    <color name="widget_bg">@android:color/system_neutral1_900</color>
+    <color name="widget_icon_bg">@android:color/system_accent1_800</color>
     <color name="widget_title">@android:color/system_neutral1_50</color>
     <color name="widget_detail">@android:color/system_neutral2_200</color>
     <color name="widget_icon">@android:color/system_accent1_200</color>
 
     <!-- Game (active) -->
-    <color name="widget_bg_active">@android:color/system_accent1_700</color>
-    <color name="widget_icon_bg_active">@android:color/system_accent1_200</color>
-    <color name="widget_title_active">@android:color/system_accent1_50</color>
-    <color name="widget_detail_active">@android:color/system_accent1_100</color>
-    <color name="widget_icon_active">@android:color/system_accent1_900</color>
+    <color name="widget_bg_active">@android:color/system_accent1_200</color>
+    <color name="widget_icon_bg_active">@android:color/system_accent1_700</color>
+    <color name="widget_title_active">@android:color/system_accent1_900</color>
+    <color name="widget_detail_active">@android:color/system_accent1_800</color>
+    <color name="widget_icon_active">@android:color/system_accent1_100</color>
 </resources>

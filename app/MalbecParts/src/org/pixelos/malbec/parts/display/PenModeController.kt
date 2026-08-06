@@ -14,6 +14,7 @@ import android.util.Log
 import android.widget.Toast
 import org.pixelos.malbec.parts.Constants
 import org.pixelos.malbec.parts.R
+import org.pixelos.malbec.parts.gesture.GestureBinder
 
 /**
  * The device's two modes: Daily and Game.
@@ -45,15 +46,18 @@ import org.pixelos.malbec.parts.R
  *     passes the byte through unclamped (nvt_high_report_rate_set @0x946c →
  *     {0x76, v}, one hex digit accepted) but the firmware only recognises 1.
  *     There is nothing above 1 to find.
- *  3. Since every rate above 120 is strictly worse here, the refresh-rate picker
- *     is removed from Settings altogether — see
- *     overlay/SettingsOverlayMalbec/res/values/config.xml. Both modes therefore
- *     pin the rate to 120 and the modes differ only in the other three knobs.
+ *  3. Since every rate above 120 is strictly worse here, AOSP's refresh-rate
+ *     picker is switched off — see overlay/SettingsOverlayMalbec — because
+ *     RefreshRateUtils.getRefreshRates() builds its list at runtime from
+ *     Display.getSupportedModes(), so no RRO can take 144 out of it. This app
+ *     offers 60 / 90 / 120 instead: the same power-saving choice without the
+ *     trap. 120 is therefore a CEILING both modes share, not a setpoint, and the
+ *     modes differ only in the other three knobs.
  *
  * ── The two modes ────────────────────────────────────────────────────────
  *
- *   DAILY: peak 120 · support_pen 1 · HighReportRate 0 · thermal normal
- *   GAME:  peak 120 · support_pen 0 · HighReportRate 1 · thermal game
+ *   DAILY: ceiling <= 120 · support_pen 1 · HighReportRate 0 · thermal normal
+ *   GAME:  ceiling <= 120 · support_pen 0 · HighReportRate 1 · thermal game
  *
  * The owner rejected automatic switching: every transition is a mode change in
  * the touch controller, and it would fire every time the pen came into range.
@@ -138,14 +142,57 @@ object PenModeController {
      */
     private fun effectiveRefreshRate(context: Context): Float {
         val cr = context.contentResolver
-        val peak = Settings.System.getFloat(cr, PEAK_REFRESH_RATE, Constants.REFRESH_RATE_PINNED)
+        val peak = Settings.System.getFloat(cr, PEAK_REFRESH_RATE, Constants.REFRESH_RATE_MAX)
         val min = Settings.System.getFloat(cr, MIN_REFRESH_RATE, 0f)
         return maxOf(peak, min)
     }
 
     /** True when something has pushed the panel above the rate the pen needs. */
     private fun aboveStylusLimit(context: Context) =
-        effectiveRefreshRate(context) > Constants.REFRESH_RATE_PINNED + 0.5f
+        effectiveRefreshRate(context) > Constants.REFRESH_RATE_MAX + 0.5f
+
+    /**
+     * The ceiling the user chose, from our own preferences.
+     *
+     * ★ Our SharedPreferences are the source, not a cache — the same rule
+     * GestureBinder states for the key bindings, and for the same reason. If
+     * peak_refresh_rate were the store, then a backup restore, a `settings put`,
+     * or the POSITIVE_INFINITY that PeakRefreshRatePreferenceController can still
+     * write would not merely be overridden, it would DELETE the choice: the clamp
+     * would land on 120 and a user who had picked 60 for battery would silently be
+     * back at 120 with the row agreeing. Keeping the intent separate from the
+     * mechanism is what lets enforceCeiling() restore the right value rather than
+     * the safe one.
+     *
+     * Validated against the list rather than parsed loosely, so an out-of-range
+     * value left by an older build cannot select a row that no longer exists.
+     */
+    fun currentRefreshRate(context: Context): Float =
+        GestureBinder.prefs(context)
+            .getString(Constants.PREF_REFRESH_RATE, null)
+            ?.toFloatOrNull()
+            ?.takeIf { it in Constants.REFRESH_RATE_CHOICES }
+            ?: Constants.REFRESH_RATE_MAX
+
+    /**
+     * The user picked a ceiling in our own page.
+     *
+     * No toast. The owner asked for one on every MODE switch, and this is not one
+     * — the ListPreference summary already shows the new value, and a toast for a
+     * row that visibly updated itself is noise. The toast that does exist on this
+     * path is in onExternalRefreshRateChange, and it fires only when something
+     * took the panel somewhere the pen cannot follow.
+     *
+     * The value is applied here and PERSISTED by the ListPreference itself when
+     * the change listener returns true. Applying the argument rather than
+     * re-reading the preference is deliberate: onPreferenceChange runs before the
+     * write lands, so currentRefreshRate() would still report the old value.
+     */
+    fun setRefreshRate(context: Context, rate: Float) {
+        val ceiling = rate.coerceAtMost(Constants.REFRESH_RATE_MAX)
+        applyCeiling(context, ceiling)
+        Log.i(TAG, "user selected refresh rate ceiling=$ceiling")
+    }
 
     /**
      * The user picked a mode. Always announces.
@@ -158,7 +205,7 @@ object PenModeController {
         val game = mode == Constants.TOUCH_MODE_GAME
         announcedMode = mode
 
-        pinRefreshRate(context)
+        enforceCeiling(context)
         publish(context, mode)
         announce(context, if (game) R.string.touch_mode_game_toast else R.string.touch_mode_daily_toast)
         refreshSurfaces(context)
@@ -173,26 +220,46 @@ object PenModeController {
     }
 
     /**
-     * Bring the refresh rate back to the only value either mode wants.
+     * Put the chosen ceiling back into Settings.System, wherever it drifted from.
      *
-     * Both modes need <= 120: Daily because the digitizer cannot see the pen
-     * above it, Game because HighReportRate stops working above it and the finger
-     * rate falls from 350 to 185 Hz. So this is not a preference being overridden
-     * — with the picker gone from Settings there is no user preference here to
-     * override, and anything that moved the value did so without a UI.
+     * ⚠️ This used to force peak to exactly 120 on any mismatch, which was right
+     * only while 120 was the single legal value. It is not any more: the page now
+     * offers 60 / 90 / 120, and a hard 120 here would have undone the owner's
+     * choice on the next boot, the next mode switch and every process restart —
+     * silently, because reassert() takes this path and is not allowed to toast.
      *
-     * MIN is written only when it is above the ceiling. Leaving a min of 0 alone
-     * preserves AOSP's idle drop to 30 Hz, which is worth real standby power.
+     * The shapes this has to survive, all reachable with no UI at all:
+     *
+     *   * above 120 — a stale 144 from a backup restore, or `settings put`.
+     *   * POSITIVE_INFINITY — PeakRefreshRatePreferenceController:118-120 writes
+     *     it when back_up_smooth_display_and_force_peak_refresh_rate is set, and
+     *     that flag is enabled on this build. DisplayModeDirector:1186-1188
+     *     resolves it to the highest supported rate, i.e. 144.
+     *   * zero or negative — DisplayModeDirector:1197-1200 treats peak == 0 as
+     *     "post no peak vote at all", which UNCAPS the panel; with
+     *     config_defaultRefreshRate also 0 it additionally hits AOSP's own
+     *     "both are 0" error branch at :1231-1237. A restore can produce it.
+     *   * below the choice — nothing legitimate writes this today, but restoring
+     *     upward is the same operation and costs nothing to support.
      */
-    private fun pinRefreshRate(context: Context) {
+    private fun enforceCeiling(context: Context) =
+        applyCeiling(context, currentRefreshRate(context))
+
+    private fun applyCeiling(context: Context, ceiling: Float) {
         val cr = context.contentResolver
-        val rate = Constants.REFRESH_RATE_PINNED
-        val peak = Settings.System.getFloat(cr, PEAK_REFRESH_RATE, rate)
-        // != rather than > : POSITIVE_INFINITY and any stale 144 both need
-        // rewriting, and so does a value someone dropped below 120.
-        if (peak != rate) Settings.System.putFloat(cr, PEAK_REFRESH_RATE, rate)
-        val min = Settings.System.getFloat(cr, MIN_REFRESH_RATE, 0f)
-        if (min > rate + 0.5f) Settings.System.putFloat(cr, MIN_REFRESH_RATE, rate)
+        // Written whenever it differs, including when the stored value is lower
+        // than what is live — that is the restore path, not just a clamp.
+        // NaN-safe by construction: `!(a == b)` and `!(a <= b)` are true for NaN,
+        // where `a != b` reads the same but `a > b` would not.
+        if (!(Settings.System.getFloat(cr, PEAK_REFRESH_RATE, -1f) == ceiling)) {
+            Settings.System.putFloat(cr, PEAK_REFRESH_RATE, ceiling)
+        }
+        // MIN is clamped to the same ceiling and never raised. Leaving a min of 0
+        // alone is what preserves AOSP's idle drop to 30 Hz, which is worth real
+        // standby power; raising it would pin the panel and cost that.
+        if (!(Settings.System.getFloat(cr, MIN_REFRESH_RATE, 0f) <= ceiling)) {
+            Settings.System.putFloat(cr, MIN_REFRESH_RATE, ceiling)
+        }
     }
 
     /**
@@ -207,7 +274,7 @@ object PenModeController {
     fun reassert(context: Context) {
         val mode = currentMode(context)
         announcedMode = mode
-        pinRefreshRate(context)
+        enforceCeiling(context)
         publish(context, mode)
         refreshSurfaces(context)
     }
@@ -215,17 +282,36 @@ object PenModeController {
     /**
      * Something outside this app moved the refresh rate.
      *
-     * With the picker removed from Settings the only remaining routes are
-     * `settings put`, a backup restore, and the POSITIVE_INFINITY that
+     * With AOSP's picker switched off the remaining routes are `settings put`, a
+     * backup restore, and the POSITIVE_INFINITY that
      * PeakRefreshRatePreferenceController can still write. None of them can be
-     * left alone: above 120 the pen stops working and the finger rate halves,
-     * silently, with nothing on screen to say so. So say so, and put it back.
+     * left alone, and they split into two cases that deserve different answers:
+     *
+     *   * ABOVE 120 — the pen stops working and the finger rate halves, silently,
+     *     with nothing on screen to say so. Say so, then put it back.
+     *   * anything else that is not the chosen ceiling — put it back without a
+     *     word. Nothing user-visible broke; a toast here would fire on ordinary
+     *     restores for no reason.
+     *
+     * ⚠️ The early return compares against the CHOSEN ceiling, not against 120.
+     * Comparing against 120 was the obvious version and it leaves a hole: with a
+     * 60 Hz choice, an external write of 90 is below the stylus limit, so it
+     * would be accepted in silence while the picker went on showing 60.
+     *
+     * This cannot loop. applyCeiling writes only when the value differs, so the
+     * write it performs wakes this observer once and the next pass returns at the
+     * first line.
      */
     private fun onExternalRefreshRateChange(context: Context) {
-        if (!aboveStylusLimit(context)) return
-        Log.w(TAG, "refresh rate pushed to ${effectiveRefreshRate(context)}; restoring 120")
-        announce(context, R.string.touch_mode_rate_restored_toast)
-        pinRefreshRate(context)
+        val ceiling = currentRefreshRate(context)
+        if (effectiveRefreshRate(context) <= ceiling + 0.5f) return
+        if (aboveStylusLimit(context)) {
+            Log.w(TAG, "refresh rate pushed to ${effectiveRefreshRate(context)}; restoring $ceiling")
+            announce(context, R.string.touch_mode_rate_restored_toast)
+        } else {
+            Log.i(TAG, "refresh rate drifted to ${effectiveRefreshRate(context)}; restoring $ceiling")
+        }
+        applyCeiling(context, ceiling)
     }
 
     /** Hand the mode to init, which owns the /proc writes and the thermal policy. */

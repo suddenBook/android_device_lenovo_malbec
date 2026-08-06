@@ -177,29 +177,37 @@ lib_fixups: lib_fixups_user_type = {
 # and the alternative would mean co-installing a long tail of display.config and
 # graphics.allocator versions for no benefit.
 blob_fixups: blob_fixups_user_type = {
-    # 出厂 libaudioserviceexampleimpl.so 要 android::audio_utils::mutex_get_enable_flag()，
-    # 那是 Android 15 的 libaudioutils 导出的符号，Android 16 把它删了（出厂 364 个
-    # 导出符号里有，我们树构建的 403 个里没有）。
+    # The stock libaudioserviceexampleimpl.so wants
+    # android::audio_utils::mutex_get_enable_flag(), a symbol Android 15's
+    # libaudioutils exported and Android 16 removed. It is among stock's 364
+    # exports and absent from the 403 this tree builds.
     #
-    # 这条不是「少个库」而是「少个符号」，而且**致命**：该 blob 带 BIND_NOW /
-    # FLAGS_1: NOW，动态链接器在加载期就要解析全部符号，解析不了就 dlopen 失败。
-    # 它的消费者 libaudiocorehal.default.so 在 vendor_audio_interfaces.xml 里是
-    # mandatory="true"，而 Service.cpp:53-77 对 mandatory 的库重试 10 次后
-    # LOG_ALWAYS_FATAL —— audiohalservice.qti 会被 init 无限重启。
+    # This is a missing SYMBOL, not a missing library, and it is FATAL: the blob
+    # carries BIND_NOW / FLAGS_1: NOW, so the dynamic linker resolves everything
+    # at load time and an unresolved symbol means dlopen fails outright. Its
+    # consumer libaudiocorehal.default.so is mandatory="true" in
+    # vendor_audio_interfaces.xml, and Service.cpp:53-77 retries a mandatory
+    # library ten times and then LOG_ALWAYS_FATALs — so audiohalservice.qti ends
+    # up in an init respawn loop.
     #
-    # 不能改用树的 libaudioserviceexampleimpl：它的 vendor 变体在本树编不过
-    # （StreamAlsa/ModulePrimary/DevicePortProxy 等 5 个 .o 报错），而且三个消费者
-    # 从它取用的 104 个符号全是 aidl::...::StreamCommonImpl 的 C++ 内部方法，
-    # 不是稳定接口，换一个大版本的实现风险很高。
+    # Switching to the tree's own libaudioserviceexampleimpl is not an option:
+    # its vendor variant does not compile here (five objects fail, among them
+    # StreamAlsa, ModulePrimary and DevicePortProxy), and the 104 symbols its
+    # three consumers take from it are all C++ internals of
+    # aidl::...::StreamCommonImpl rather than a stable interface, so swapping in
+    # an implementation a major version apart is high risk.
     #
-    # 也不能把出厂 libaudioutils.so 一起提取：vendor 侧的 libaudioutils 有约 30 个
-    # 消费者（24 个是 blob，6 个是树构建），而树的 libaudioutils.vendor 由
-    # libalsautilsv2.vendor 等传递拉入，两者会在同一路径上撞车 —— 实测报
-    # "partition is different: system(libaudioutils) != vendor(prebuilt_libaudioutils)"。
+    # Extracting stock's libaudioutils.so alongside it does not work either: the
+    # vendor-side libaudioutils has about 30 consumers (24 blobs, 6 tree-built),
+    # while the tree's libaudioutils.vendor is pulled in transitively by
+    # libalsautilsv2.vendor and friends. The two collide on one path — measured:
+    # "partition is different: system(libaudioutils) != vendor(prebuilt_libaudioutils)".
     #
-    # 正解是上游早就备好的一行 shim：hardware/lineage/compat/libaudioutils/mutex.cpp
-    # 就是 `bool mutex_get_enable_flag() { return mutex::kDefaultPriorityInheritance; }`。
-    # 这是 Android 16 移植带 Android 15 音频 blob 的通用问题，不是本机特有的。
+    # The right answer is a one-line shim upstream already ships:
+    # hardware/lineage/compat/libaudioutils/mutex.cpp is exactly
+    # `bool mutex_get_enable_flag() { return mutex::kDefaultPriorityInheritance; }`.
+    # This is the generic problem of an Android 16 port carrying Android 15 audio
+    # blobs, not something specific to this device.
     ('vendor/lib64/libaudioserviceexampleimpl.so',): blob_fixup()
         .add_needed('libaudioutils_shim.so'),
 
@@ -451,6 +459,36 @@ blob_fixups: blob_fixups_user_type = {
         .regex_replace(
             r'(?m)^import /vendor/etc/init/hw/init\.qcom\.factory\.rc\n',
             '',
+        )
+        # mlid, disabled because its binary is no longer extracted.
+        #
+        # ⚠️ This one is not the same shape as the `user root` list above and is
+        # the only stanza in all 222 shipped .rc files that the location-stack
+        # removal would have broken. init.qcom.rc:791-795 is
+        #
+        #     service mlid /vendor/bin/mlid
+        #         class late_start
+        #         user gps
+        #         group gps
+        #         socket mlid stream 0666 gps gps
+        #
+        # `class late_start` with NO `disabled`, so class_start late_start calls
+        # Service::Start(), which stats argv[0] and fails. Every other service
+        # this tree has stopped extracting either already carried `disabled` or
+        # got one here; this one had neither, so dropping the binary without
+        # this line would have added an exec failure to every boot — the exact
+        # thing the loc_launcher fixup below this was written to remove.
+        #
+        # mlid is the Measurement Link daemon: it serves Discovery and
+        # RangingScan to lowi-server over /dev/socket/mlid. lowi-server was
+        # already unreachable (no .rc in the image starts it; the only stanza,
+        # init.target.rc:219, is commented out AND names the wrong binary) and
+        # is now gone, so mlid has no possible client. Measured before removing
+        # it: running for an hour with utime=0 stime=0 and its socket in
+        # /proc/net/unix listening with zero peers.
+        .regex_replace(
+            r'(?m)^(service mlid\s(?:[^\n]*\\\n)*[^\n]*\n(?:[ \t]+[^\n]*\n)*)',
+            r'\1    disabled\n',
         ),
 
     # Two edits to init.target.rc:
@@ -561,66 +599,98 @@ blob_fixups: blob_fixups_user_type = {
             r'\g<1>echo 100 > /proc/sys/walt/input_boost/input_boost_ms',
         ),
 
-    # qsap_location is Qualcomm's QESDK precise-positioning service. It cannot
-    # work here and it never stops trying: measured on the running device, init
-    # respawns it every 5.00 s forever (12/min, ~17k/day), each instance dying
-    # in ~12 ms on SIGSYS. libminijail rejects it on `sched_get_priority_min`,
-    # and the seccomp policy it is handed is visibly an ARM32-era file being
-    # applied to ARM64 (it also warns that chown/lchown/mmap2/fstat64/fstatat64/
-    # _llseek are "nonexistent syscall").
+    # ⚠️ The blob_fixups for vendor.qsap.location.rc and loc-launcher.rc were
+    # here and are GONE, because both FILES are gone. A fixup key naming a file
+    # that is no longer extracted is a stale key, which is what
+    # 19-verify-device-tree.py item 11 fails on.
     #
-    # ⚠️ OPEN-ISSUES.md #11 named `rseq` as the blocked syscall. That was wrong;
-    # the log line says sched_get_priority_min.
+    # Both were `disabled` patches on services whose binaries this tree had
+    # already stopped shipping. Removing the files instead is strictly better —
+    # a stanza that does not exist cannot be started — and is only safe now
+    # because the whole location stack went with them:
     #
-    # We disable rather than fix the policy because there is nothing for it to
-    # do: this tablet has no GNSS receiver. ro.boot.vendor.qspa.nav=disabled,
-    # ro.baseband=apq, and `pm list features` has no
-    # android.hardware.location.gps. Network location (which the device does
-    # have) is served by GMS's fused provider, not by this.
+    #   * loc-launcher.rc was kept for one reason, written down at the time: its
+    #     `on post-fs-data` creates /data/vendor/location{,/mq,/xtwifi,/hmac},
+    #     "and those serve the LOWI Wi-Fi-location stack we deliberately keep".
+    #     That premise is now false in both halves. LOWI is gone, and it was
+    #     never reachable to begin with: no .rc in the image ever started
+    #     lowi-server (the only stanza, init.target.rc:219, is commented out and
+    #     names the wrong binary), and its Wi-Fi plugin liblowi_wifihal.so was
+    #     mapped in no process with Wi-Fi fully up. Nothing else wants those
+    #     directories either — every remaining namer of /data/vendor/location
+    #     (xtra-daemon, xtwifi-client, libgnss, libizat_core, libcdfw,
+    #     libengineplugin) is absent from this image, checked one by one.
+    #   * qsap_location is Qualcomm's QESDK precise-positioning service, and on
+    #     the running device init respawned it every 5.00 s forever (12/min,
+    #     ~17k/day), each instance dying in ~12 ms on SIGSYS — libminijail
+    #     rejecting `sched_get_priority_min` against an ARM32-era policy applied
+    #     to ARM64. (OPEN-ISSUES.md #11 named `rseq`; the log line says
+    #     sched_get_priority_min, so that entry is wrong.)
     #
-    # The cost of leaving it is not the ~0.5% CPU, it is that 12 forced wakeups
-    # a minute keep the SoC out of deep idle, and it makes uid gps the single
-    # chattiest uid in the log buffer.
-    ('vendor/etc/init/vendor.qsap.location.rc',): blob_fixup()
-        .regex_replace(
-            r'(?m)^(service vendor\.qsap\.location\s(?:[^\n]*\\\n)*[^\n]*\n(?:[ \t]+[^\n]*\n)*)',
-            r'\1    disabled\n',
-        ),
+    # Neither can do anything on this tablet in any case: no GNSS receiver,
+    # ro.boot.vendor.qspa.nav=disabled, ro.baseband=apq, and no
+    # android.hardware.location.gps feature. Network location, which the device
+    # does have, is served by GMS's fused provider.
+    #
+    # vendor/etc/qspa/nav_disabled.rc STAYS and becomes load-bearing: this unit
+    # reports ro.boot.vendor.qspa.nav=disabled, qspa_vendor.rc imports
+    # nav_${ro.boot.vendor.qspa.nav}.rc, and that file carries an
+    # `override`+`disabled` loc_launcher stanza. It is now the only declaration
+    # of that service left. (Its sibling nsp_disabled.rc is NOT imported —
+    # this unit reports nsp=enabled — and has been dropped.)
 
-    # loc-launcher.rc declares a service whose binary we do not ship.
+    # ★ Strip the Dolby effects from the audio effects config.
     #
-    # Session 13 removed /vendor/bin/loc_launcher (commit 20acb4f, which also
-    # dropped its configs/config.fs stanza) but left the stanza:
+    # The three Dolby effect libraries are no longer extracted, so their
+    # declarations have to go with them: the AIDL effect factory reads this file
+    # at audioserver start and a <library> naming a missing .so is a load failure
+    # on every boot, plus an effect the framework advertises and cannot create.
     #
-    #     service loc_launcher /vendor/bin/loc_launcher
-    #         class late_start
-    #         user gps
-    #         group gps
+    # WHY the libraries went, recorded here because "Dolby was removed" invites
+    # someone to put it back:
     #
-    # `class late_start` with no `disabled` means class_start late_start calls
-    # Service::Start(), which stats argv[0], fails, logs
-    # "Cannot find '/vendor/bin/loc_launcher'" and sets SVC_DISABLED. One error
-    # per boot rather than a respawn loop — but a self-inflicted one, and the
-    # only one of its kind left. Measured: a sweep of every `service` stanza in
-    # all 222 shipped .rc files finds 55 whose binary is absent from our image,
-    # of which 50 are absent from the factory image too (stock boilerplate, and
-    # never started there either). That leaves FIVE we actually dropped —
-    # qsap_location, mmi, mmi_diag, and BOTH copies of loc_launcher — and four
-    # of those five already carry `disabled`. This one is the exception.
+    #   Music playback stuttered continuously with Dolby Atmos on, and was clean
+    #   the instant it was switched off. Measured on the device, same track, same
+    #   volume, same thread (AudioOut_15, deep buffer -> speaker, 40 ms period):
     #
-    # The FILE must stay. Its `on post-fs-data` block is what creates
-    # /data/vendor/location{,/mq,/xtwifi,/hmac}, and those serve the LOWI
-    # Wi-Fi-location stack we deliberately keep (lowi-server is still in
-    # config.fs and still installed). Dropping the file to kill the stanza would
-    # take the mkdirs with it.
+    #                      process time      jitter min/max    delayed   underruns
+    #     Dolby on         2.91 ms / 18.0    -36.6 / +23.4        0          0
+    #     Dolby off        0.48 ms /  6.1    -37.1 / +26.2        0          0
     #
-    # Note vendor/etc/qspa/nav_disabled.rc already has the identical stanza with
-    # `override` + `disabled`, so this only closes the gap between the two copies.
-    ('vendor/etc/init/loc-launcher.rc',): blob_fixup()
-        .regex_replace(
-            r'(?m)^(service loc_launcher\s(?:[^\n]*\\\n)*[^\n]*\n(?:[ \t]+[^\n]*\n)*)',
-            r'\1    disabled\n',
-        ),
+    #   Dolby costs 6x the processing, but NOTHING is late: zero delayed writes,
+    #   zero underruns, and the jitter in the bad case is the same as in the good
+    #   one. So the DAP is corrupting the stream in place rather than arriving
+    #   late, which is why every counter stayed clean while it was audibly broken.
+    #
+    #   Four hypotheses were tested and all four are dead, listed so they are not
+    #   re-run: CPU starvation (all four cpufreq policies at full scaling_max_freq,
+    #   quiet-therm 34-36 C); video decode contention (the AV1 decoder ran at the
+    #   same rate in every capture including screen-locked, and it still stuttered
+    #   with a local MP3 and zero AV1 activity); the tinyxml2 sizeof break that
+    #   killed libquasar (llvm-nm shows the Dolby libraries import no tinyxml2
+    #   symbols at all); and the app re-writing effect parameters
+    #   (DolbyController.kt:30-39 is level-triggered on onPlaybackConfigChanged —
+    #   it looked exactly right, and measured ZERO calls during steady playback,
+    #   with the logging path validated first by provoking 48 lines from the same
+    #   tags). The speaker amplifiers were cleared too: disabling the aw882xx
+    #   monitor on all four changed nothing.
+    #
+    #   Root cause inside libswdapaidl.so is NOT identified. The owner's decision
+    #   after the evidence was to remove it rather than keep hunting, which also
+    #   follows this tree's standing rule that shipping a feature guaranteed to
+    #   fail is worse than not shipping it.
+    #
+    # The AC3 / E-AC3 / AC4 DECODERS are deliberately NOT touched by this. They
+    # are a separate stack that happens to share libdmshal.so with the effects,
+    # and AOSP ships no replacement for them — removing them would cost every
+    # AC3/E-AC3 soundtrack, which has nothing to do with the bug.
+    #
+    # ⚠️ This also drops the `spatializer` declaration, which is a fix rather
+    # than collateral: it names libswspatializeraidl.so, and that file does not
+    # exist in our image OR in the factory image. Lenovo over-declared it.
+    ('vendor/etc/audio/sku_tuna/audio_effects_config.xml',): blob_fixup()
+        .regex_replace(r'(?s)[ \t]*<!--DOLBY DAP-->.*?<!--DOLBY END-->\n', '')
+        .regex_replace(r'(?m)^[ \t]*<apply effect="dlb_music_listener"/>\n', ''),
 
     # Thermal: stop the second, config-less daemon.
     #

@@ -72,36 +72,45 @@
             android:name=".MalbecPartsService"
             android:exported="false" />
 
-        <!-- Settings > Connected devices > "Stylus and folio keyboard".
-             The category constant is SettingsLib's CategoryKey.CATEGORY_CONNECT
-             ("com.android.settings.category.ia.connect"), which is what puts the
-             tile on the Connected devices page with no Settings source change.
-             Stock ZUI uses a private category (…ia.stylus_keyboard) that only
-             its own Settings build knows about. -->
+        <!-- ★ Settings top level, "Device settings".
+             Owner's call: this page collects everything the tablet has that a
+             Pixel does not — the pen, the folio keys, the screen/touch pairing
+             and the refresh-rate ceiling — and burying that under Connected
+             devices made half of it undiscoverable. It is the same complaint
+             that moved the keyboard half here in the first place.
+
+             CategoryKey.CATEGORY_HOMEPAGE
+             (SettingsLib/Tile/.../CategoryKey.java:24) is what
+             DashboardFragmentRegistry:77 maps TopLevelSettings to, so declaring
+             it is the whole mechanism — no Settings source change.
+
+             ⚠️ group_key is not optional here. DashboardFragment:608-616 puts a
+             tile inside a PreferenceCategory only when the tile names one and
+             that name resolves to a PreferenceCategory; otherwise it falls
+             through to screen.addPreference() and lands OUTSIDE every card, at
+             the bottom of an Expressive homepage built entirely out of them.
+             top_level_system_info_category is res/xml/top_level_settings.xml:127
+             — Storage, Battery, System, About device.
+
+             order -15 puts it between System (-20) and About device (-10).
+             META_DATA_KEY_ORDER is TileUtils.java:129; it is an int, so
+             android:value is correct here and android:resource is not. -->
         <activity
             android:name=".stylus.StylusSettingsActivity"
-            android:label="@string/stylus_title"
+            android:label="@string/device_settings_title"
             android:exported="true">
             <intent-filter>
                 <action android:name="com.android.settings.action.IA_SETTINGS" />
             </intent-filter>
-            <!-- Settings > System > Keyboard > Physical keyboard > "Advanced
-                 keyboard settings" lands on this same page. The hook is already
-                 in AOSP: packages/apps/Settings/res/xml/physical_keyboard_settings.xml:83-89
-                 declares a RemotePreference with
-                 settings:requiresAction="org.lineageos.settings.device.ADVANCED_KEYBOARD_SETTINGS"
-                 and hides itself when nothing answers.
-                 ⚠️ It points here rather than at a page of its own because that
-                 page was four levels deep and the owner could not find it, while
-                 this one is one tap from Connected devices and is already titled
-                 "Stylus and keyboard". One page, two doors. -->
-            <intent-filter>
-                <action android:name="org.lineageos.settings.device.ADVANCED_KEYBOARD_SETTINGS" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
             <meta-data
                 android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.connect" />
+                android:value="com.android.settings.category.ia.homepage" />
+            <meta-data
+                android:name="com.android.settings.group_key"
+                android:value="top_level_system_info_category" />
+            <meta-data
+                android:name="com.android.settings.order"
+                android:value="-15" />
             <meta-data
                 android:name="com.android.settings.icon"
                 android:resource="@drawable/ic_stylus" />
@@ -116,8 +125,51 @@
                  TileUtils.java:178-179 says the same for the sibling title key. -->
             <meta-data
                 android:name="com.android.settings.summary"
-                android:resource="@string/stylus_summary" />
+                android:resource="@string/device_settings_summary" />
         </activity>
+
+        <!-- The same page, second door: Settings > Connected devices >
+             "Stylus and keyboard". The pen and the folio ARE connected devices
+             and that is where someone goes looking for them, so promoting the
+             page to the top level is a reason to add an entry point, not to
+             remove one.
+
+             An alias rather than a second activity because TileUtils keys its
+             cache on (packageName, componentInfo.name) — TileUtils.java:400-402 —
+             and for an alias that name is the ALIAS, so the two produce two
+             distinct tiles from one implementation. queryIntentActivitiesAsUser
+             resolves aliases and carries their own meta-data, and resolved.system
+             (:338) holds because this is a system_ext priv-app.
+
+             Settings > System > Keyboard > Physical keyboard > "Advanced keyboard
+             settings" lands here too. That hook is already in AOSP:
+             packages/apps/Settings/res/xml/physical_keyboard_settings.xml:83-89
+             declares a RemotePreference with
+             settings:requiresAction="org.lineageos.settings.device.ADVANCED_KEYBOARD_SETTINGS"
+             and hides itself when nothing answers. It is on the alias rather than
+             on the top-level activity because it is a keyboard-shaped door. -->
+        <activity-alias
+            android:name=".stylus.StylusSettingsConnectedDevicesAlias"
+            android:targetActivity=".stylus.StylusSettingsActivity"
+            android:label="@string/stylus_title"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.android.settings.action.IA_SETTINGS" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="org.lineageos.settings.device.ADVANCED_KEYBOARD_SETTINGS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.connect" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_stylus" />
+            <meta-data
+                android:name="com.android.settings.summary"
+                android:resource="@string/stylus_summary" />
+        </activity-alias>
 
         <!-- ★ Marker that makes this package the launcher's layout customisation
              provider, so res/xml/default_layout_6x5_h6.xml becomes the default

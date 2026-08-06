@@ -14,6 +14,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
+import org.pixelos.malbec.parts.display.PanelDirectionController
 import org.pixelos.malbec.parts.display.PenModeController
 import org.pixelos.malbec.parts.gesture.GestureAction
 import org.pixelos.malbec.parts.gesture.GestureBinder
@@ -67,6 +68,7 @@ class MalbecPartsService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private var watcher: PenPresenceWatcher? = null
     private var observer: PenModeController.RefreshRateObserver? = null
+    private var panelDirection: PanelDirectionController? = null
     private var handlerRegistered = false
 
     private val gestureHandler = InputManager.KeyGestureEventHandler { event, _ ->
@@ -81,6 +83,8 @@ class MalbecPartsService : Service() {
 
         watcher = PenPresenceWatcher(this, handler).also { it.start() }
 
+        panelDirection = PanelDirectionController(this, handler).also { it.start() }
+
         registerGestureHandler()
 
         // The framework's gesture table can be out of step with ours after a
@@ -93,6 +97,7 @@ class MalbecPartsService : Service() {
         Log.i(TAG, "stopping")
         observer?.unregister()
         watcher?.stop()
+        panelDirection?.stop()
         if (handlerRegistered) {
             runCatching {
                 getSystemService(InputManager::class.java)

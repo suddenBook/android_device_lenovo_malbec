@@ -93,6 +93,28 @@ set_prop(dvs_aidl_default, vendor_dolbyv_prop)
 # that already carries the add_service rule.
 type hal_faceunlock_default, domain;
 type hal_faceunlock_default_exec, exec_type, vendor_file_type, file_type;
+# ⚠️ Declared and labelled, deliberately with NO allow rules. Session 18 filed
+# this as a P1 functional gap — "permissive hides it, enforcing breaks face
+# unlock" — and that is wrong; checked before acting on it rather than after:
+#
+#   * Stock's own vendor_sepolicy.cil grants nothing on this type either. The
+#     only arcsoft allow in the whole stock policy is
+#         (allow hal_faceunlock_default vendor_arcsoft_faceunlock (file (read …)))
+#     which is the PROPERTY type, not this one. Two different things with
+#     similar names, which is how the report got written.
+#   * Nothing opens the directory. A binary-safe scan of the entire stock vendor
+#     partition finds the string /data/vendor/arcsoft in exactly two files:
+#     the HAL's own .rc and vendor_file_contexts. No ELF references it.
+#   * The directory is created by INIT, not by the HAL —
+#     android.hardware.biometrics.face@4.0-service.face.rc:13-15 does
+#     mkdir/restorecon/chmod in post-fs-data, and init already has those perms.
+#     On the device it exists as 0775 system:system correctly labelled.
+#
+# So this is a dump path that a debug build of the HAL would use and this one
+# never does. Kept rather than deleted because the label is what stops a future
+# dump landing as unlabelled vendor_data_file, and it costs nothing. Do not add
+# allow rules here on the strength of the name; a real denial is the only thing
+# that should ever put one in.
 type arcsoft_face_dump_file, file_type, data_file_type;
 
 init_daemon_domain(hal_faceunlock_default)
