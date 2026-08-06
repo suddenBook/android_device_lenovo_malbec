@@ -22,15 +22,15 @@
      QUERY_ALL_PACKAGES), dangerous (BLUETOOTH_CONNECT, POST_NOTIFICATIONS),
      signature (MANAGE_KEY_GESTURES, INJECT_EVENTS), signature|role
      (DEVICE_POWER) or signature|preinstalled|appop|pre23|role (WRITE_SETTINGS),
-     and must NOT be listed
+     and must NOT be listed — an entry naming a non-privileged permission is dead
+     weight that later readers will mistake for a requirement.
 
      ⚠️ VIBRATE used to be in that list. It is not declared and must not be: this
      device has no vibration motor at all (dumpsys vibrator_manager reports
      vibratorIds = [], and android.hardware.vibrator is absent from
      pm list features), and the whole vibration path was deliberately removed.
      `dumpsys package` does show VIBRATE granted, but that is the shared uid 1000
-     permission set contributed by other packages, not by this manifest. — an entry naming a non-privileged
-     permission is dead weight that later readers will mistake for a requirement.
+     permission set contributed by other packages, not by this manifest.
 -->
 <permissions>
     <privapp-permissions package="org.pixelos.malbec.parts">

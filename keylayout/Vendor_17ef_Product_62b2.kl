@@ -558,11 +558,21 @@ key usage 0x0c0391 MUTE
 #
 #   InputManager.disableInputDevice    -> works, and was verified to affect only
 #       the folio touchpad (17ef:62b2, SOURCE_TOUCHPAD, external) and never the
-#       panel or the digitiser, which are 0000:0000 internal devices. But it also
-#       drops the tablet out of desktop mode: ShellDesktopMode gates on
-#       hasAnyTouchpadDevice, so turning the touchpad off closes every desktop
-#       window. A key labelled "touchpad" must not do that. Re-enabling was also
-#       unreliable in the owner's hands.
+#       panel or the digitiser, which are 0000:0000 internal devices. But
+#       re-enabling was unreliable in the owner's hands.
+#
+# ⚠️ The second route also used to be rejected because "it drops the tablet out
+# of desktop mode: ShellDesktopMode gates on hasAnyTouchpadDevice, so turning the
+# touchpad off closes every desktop window". THAT REASON IS NOW VOID -- session
+# 19 turned desktop windowing off outright
+# (overlay/FrameworkOverlayMalbec/res/values/config.xml:
+# config_isDesktopModeSupported and config_canInternalDisplayHostDesktops, both
+# false), so there are no desktop windows to close.
+#
+# The outcome is unchanged anyway, for a reason that outranks both: the owner
+# ruled in session 19 that there should be no touchpad-toggle key -- it had been
+# tried and was not useful. Recorded rather than deleted so the next reader does
+# not resurrect the feature on the grounds that the stated obstacle disappeared.
 #
 # So the mapping stays (the key is worth something) and the action does not.
 # ⚠️ Until session 17 this usage was not in this file at all, so the key reached

@@ -179,6 +179,61 @@ on property:persist.sys.malbec.touch_mode=stylus
     setprop vendor.thermal.mode normal
 
 # ---------------------------------------------------------------------------
+# Touch controller edge / palm rejection: follow the display rotation.
+#
+# The Novatek controller does edge and palm rejection in firmware and needs to
+# be told which way up the tablet is. On a plain AOSP userspace nothing tells
+# it, so it sits at its power-on default of 0 degrees -- PORTRAIT -- on a
+# 13-inch tablet that is normally used in landscape with a keyboard attached.
+# Measured on the device with the display at ROTATION_90:
+#
+#     /proc/panel_direction  ->  Vertical Direction!(0 degree)
+#     dumpsys window         ->  mRotation=ROTATION_90
+#
+# The owner independently reported the symptom before this was written: edge
+# rejection was working on the long edges and not on the short ones, which is
+# exactly where portrait bands land on a landscape screen.
+#
+# Stock does this from ZuiPhoneWindowManager's EdgeInhibitionInputPolicy.
+# MalbecParts' PanelDirectionController replaces it and publishes the rotation
+# here; these four triggers do the write, for the same reason the device-mode
+# block above does: /proc/panel_direction is proc_lenovo_touch, a VENDOR type,
+# and the app runs in the core system_app domain.
+#
+# The value needs no translation. nvt_edge_reject_set() sends one byte,
+# 0xBA..0xBD, and the node's domain was measured by writing each value and
+# reading it back:
+#
+#     0 -> Vertical Direction!(0 degree)          3 -> Left Up Direction!(270 degree)
+#     1 -> Right Up Direction!(90 degree)         4 -> Not Support!
+#     2 -> Vertical reverse Direction!(180 degree)
+#
+# i.e. exactly Surface.ROTATION_0..270, same order, same numbering.
+#
+# ⚠️ The firmware rejects on ONE PAIR of edges, and panel_direction selects
+# which pair -- it does not add bands, it moves them. Owner-verified both ways:
+# at 0 the long edges rejected and the short ones did not; at 1 the short edges
+# rejected and the long ones did not. So "all four edges" is not reachable
+# through this node, and following the rotation is the best available answer
+# because it puts the bands where the hands are. `/proc/game_edge` was tried as
+# a candidate for the missing pair and made no difference (owner-verified), so
+# it stays at its default 0, as does /proc/edge_grid_zone at 0,0,0,0.
+#
+# No trigger is needed for the boot case: the controller powers up at 0 and
+# PanelDirectionController syncs once as soon as it starts.
+on property:sys.malbec.panel_dir=0
+    write /proc/panel_direction 0
+
+on property:sys.malbec.panel_dir=1
+    write /proc/panel_direction 1
+
+on property:sys.malbec.panel_dir=2
+    write /proc/panel_direction 2
+
+on property:sys.malbec.panel_dir=3
+    write /proc/panel_direction 3
+
+# ---------------------------------------------------------------------------
 # Per-unit Bluetooth / Wi-Fi MAC address storage.
 #
 # These two directories are where this unit's hardware identity lives:

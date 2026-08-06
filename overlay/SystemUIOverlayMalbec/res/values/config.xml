@@ -24,9 +24,32 @@
          returns exactly AOSP's quick_settings_tiles_new_default
          (internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,
          screenrecord,battery), so QsInCompose is on and the *_new_default string
-         is the one that matters. Both are overridden here anyway: the flag is a
-         build-time read-only value that a later PixelOS merge could flip, and
-         keeping the two lists in step costs one extra element.
+         is the one that matters.
+
+         ⚠️ This paragraph used to end "Both are overridden here anyway: the flag
+         is a build-time read-only value that a later PixelOS merge could flip,
+         and keeping the two lists in step costs one extra element." That is
+         FALSE as built, and the override of quick_settings_tiles_default has
+         been deleted. QsInCompose is a READ_ONLY aconfig flag, so R8 folds the
+         ternary at QSHost.java:45-46 and SystemUI's `shrink_resources: true`
+         strips the now-unreferenced string from the APK entirely:
+
+             aapt2 dump resources SystemUI.apk | grep quick_settings_tiles
+                 string/quick_settings_tiles_new_default
+                 string/quick_settings_tiles_retail_mode
+                 string/quick_settings_tiles_stock          <- no _default
+
+             idmap2 create, target SystemUI.apk, overlay
+             SystemUIOverlayMalbec.apk, policy vendor:
+                 W failed to find resource 'string/quick_settings_tiles_default'
+             (the flags are spelled out rather than typed, because a double
+             hyphen is illegal inside an XML comment)
+
+         A resource that is not in the target APK cannot be overridden by any
+         RRO, so the line was not insurance against a future merge; it was one
+         idmap warning per boot. If PixelOS ever flips the flag the resource
+         comes back into the APK and this override can be re-added then; adding
+         it now buys nothing.
 
          The custom(pkg/cls) syntax is AOSP's own — the stock default list already
          carries custom(com.android.permissioncontroller/...SafetyCenterQsTileService).
@@ -41,9 +64,6 @@
 
          Appended at the end rather than inserted, so nothing the user expects in
          the first row moves. -->
-    <string name="quick_settings_tiles_default" translatable="false">
-        internet,bt,flashlight,dnd,alarm,airplane,controls,wallet,rotation,battery,cast,screenrecord,mictoggle,cameratoggle,custom(com.android.permissioncontroller/.permission.service.v33.SafetyCenterQsTileService),custom(org.pixelos.malbec.parts/org.pixelos.malbec.parts.display.PenModeTileService)
-    </string>
 
     <string name="quick_settings_tiles_new_default" translatable="false">
         internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery,custom(org.pixelos.malbec.parts/org.pixelos.malbec.parts.display.PenModeTileService)

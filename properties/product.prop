@@ -97,6 +97,68 @@ ro.af.client_heap_size_kbyte=7168
 # This device does not — `pm list features` reports only
 # `android.hardware.hardware_keystore=300` with no `android.hardware.strongbox_keystore`
 # — so the flag has to name the TEE instance instead.
-remote_provisioning.enable_rkpd=true
+#
+# ── ⚠️ Session 20: RKP is switched OFF, and the paragraphs above are the
+#    reasoning that led to switching it on. They are kept because they are still
+#    correct about the mechanism; what they could not know is that it does not
+#    work on this device. ────────────────────────────────────────────────────
+#
+# Turning RKP on did not produce attestation. It produced a failure loop.
+# Measured on the running build, every boot, eleven times:
+#
+#     E KeymasterUtils:  IKMHal_sendCmd failed with rsp_header->status: -18
+#     E KeyMasterHalDevice: keymint_generate_csr_v2_FIXED
+#     E android_keymaster: TA call to generate_csr_v2() failed with error: -18
+#     E android.hardware.security.keymint-service-qti: MAC tag mismatch
+#
+# The TA refuses to produce a CSR. rkpd completes a network round trip to
+# Google, gets a challenge, and then fails locally — so the failure is inside
+# TrustZone, which this port does not replace and cannot change. The KeyMint HAL
+# binary and every library under it are stock blobs, and these three properties
+# were byte-identical to stock's, so there is nothing on our side left to vary.
+#
+# The consequence is the part the previous two rounds missed by counting lines
+# instead of following them: **41 attestation-key requests per boot all fail**
+# with OUT_OF_KEYS_TRANSIENT_ERROR. Hardware key attestation does not work on
+# this device today, whatever these properties say. Plain TEE key generation is
+# fine (`keystore_cli_v2 generate --seclevel=tee` succeeds); it is specifically
+# attestation that is dead.
+#
+# So the choice was: keep paying ~780 error lines and a network round trip on
+# every boot for something structurally incapable of succeeding, or stop. The
+# owner chose to stop.
+#
+# TWO changes, and the second matters more than the first:
+#
+#   enable_rkpd=false     stops rkpd. That is the ~780 lines and the network.
+#
+#   tee.rkp_only=false    is NOT a claim that this TEE has a factory attestation
+#                         key. It is what lets keystore2 TRY one:
+#                         attestation_key_utils.rs hard-fails when rkp_only is
+#                         true and RKPD has no keys, and falls back to the
+#                         factory batch key when it is false. With RKP proven
+#                         non-functional here, that fallback is the only route
+#                         attestation has left. If the TEE really has no batch
+#                         key — which is what stock's rkp_only=true asserts —
+#                         nothing is lost, because the alternative was a
+#                         guaranteed failure.
+#
+# ★ ACCEPTANCE, and it doubles as the experiment OPEN-ISSUES.md §14 asks for.
+#   After flashing:
+#       adb logcat -d | grep -c OUT_OF_KEYS
+#   0  -> the TEE did have a factory key. Attestation now works, and stock's
+#         rkp_only=true was over-cautious for this unit. Record it and stop.
+#   >0 -> stock was honest, attestation is genuinely unreachable, and this
+#         configuration is still the right one: same outcome, ~780 fewer lines
+#         and no network call per boot.
+#
+# ⚠️ Do NOT test this with a runtime `setprop`. The 41 requests happen while
+# apps start during boot, so the value has to be in place before
+# sys.boot_completed. Round 20 tried the runtime form and it answered nothing.
+#
+# ⚠️ Leave remote_provisioning.hostname set. It costs nothing with rkpd off, and
+# removing it would put the tree back in the state the paragraphs above
+# diagnosed — which would be an honest-looking way to lose the diagnosis.
+remote_provisioning.enable_rkpd=false
 remote_provisioning.hostname=remoteprovisioning.googleapis.com
-remote_provisioning.tee.rkp_only=true
+remote_provisioning.tee.rkp_only=false

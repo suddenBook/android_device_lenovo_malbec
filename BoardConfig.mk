@@ -311,15 +311,18 @@ BOARD_BOOTCONFIG := \
 #
 # selinux.cpp:102-118 reads androidboot.selinux from bootconfig, and honours it
 # only when ALLOW_PERMISSIVE_SELINUX is compiled in, which it is on userdebug.
-# ⚠️ 第九轮把默认从 `true` 翻成 `false`。上一轮设成 opt-out 的理由是「随手一次裸
-# `m` 会得到 enforcing + 无 adb 的构建，而设备在几百公里外、只有一次刷机机会」——
-# 那个顾虑是真的，但代价是**任何**构建（包括将来给别人的）都默认烤进
-# androidboot.selinux=permissive，而产物里没有任何东西能把它和一台永久 permissive
-# 的 ROM 区分开。
+# ⚠️ Session 9 flipped this default from `true` to `false`. The previous round
+# had made it opt-out for a real reason — a casual bare `m` would produce an
+# enforcing build with no adb, and at that time the device was hundreds of
+# kilometres away with what looked like a single flashing attempt. The concern
+# was genuine; the cost was that EVERY build, including any handed to someone
+# else later, baked in androidboot.selinux=permissive with nothing in the
+# artifact to distinguish it from a permanently permissive ROM.
 #
-# 现在两头都占：work/scripts/40-build.sh 显式 export MALBEC_BRINGUP=${MALBEC_BRINGUP:-true}，
-# 所以照常用那个包装脚本构建拿到的仍然是 permissive + adb；而裸 `m` 得到的是
-# enforcing。开关还在，只是不再是默认。
+# Both halves are now covered: work/scripts/40-build.sh exports
+# MALBEC_BRINGUP=${MALBEC_BRINGUP:-true} explicitly, so building through the
+# usual wrapper still yields permissive + adb, while a bare `m` yields
+# enforcing. The switch is still here; it is simply no longer the default.
 MALBEC_BRINGUP ?= false
 ifeq ($(MALBEC_BRINGUP),true)
 BOARD_BOOTCONFIG += androidboot.selinux=permissive
@@ -536,7 +539,7 @@ BOARD_VENDOR_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/vendor
 # The bulk of the vendor policy comes from device/qcom/sepolicy_vndr above:
 # TARGET_BOARD_PLATFORM is sun, which qcom_defs.mk puts in UM_6_6_FAMILY, so
 # SEPolicy.mk selects the sm8750 tree. sepolicy/vendor here only adds what is
-# specific to this device — the ten Lenovo AIDL HALs, /dev/ttyHS1 and the
+# specific to this device — the eight Lenovo AIDL HALs, /dev/ttyHS1 and the
 # soc:lenovo_kb sysfs subtree.
 
 # Vendor security patch

@@ -1,7 +1,19 @@
 # Verified against the running device with `ls -Z`: every file directly under
 # soc:lenovo_kb/ carries sysfs_kb, except wakeup/, which the kernel's own
-# wakeup-source labelling claims as sysfs_wakeup. The order matters — the more
-# specific wakeup entry has to come after the directory entry.
+# wakeup-source labelling claims as sysfs_wakeup.
+#
+# ⚠️ This used to end "The order matters — the more specific wakeup entry has to
+# come after the directory entry." It does not. Source order in this file has no
+# effect on the result: checkpolicy re-sorts genfscon by DECREASING name length
+# when emitting CIL, and secilc sorts again
+# (external/selinux/libsepol/cil/src/cil_post.c:303-315). Measured on the built
+# policy — vendor/etc/selinux/vendor_sepolicy.cil has .../soc:lenovo_kb/wakeup at
+# line 364 and .../soc:lenovo_kb at line 392, i.e. this file's order INVERTED.
+# The policy also contains a `genfscon sysfs "/"` entry and 592 nested pairs, so
+# specificity is resolved by the compiler and the kernel, not here.
+#
+# The two lines below are still both required and still correct; only the stated
+# reason was wrong. Keeping them adjacent is readability, not semantics.
 genfscon sysfs /devices/platform/soc/soc:lenovo_kb            u:object_r:sysfs_kb:s0
 genfscon sysfs /devices/platform/soc/soc:lenovo_kb/wakeup      u:object_r:sysfs_wakeup:s0
 
