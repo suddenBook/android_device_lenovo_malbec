@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.pixelos.malbec.parts.gesture
+package org.lineageos.malbec.parts.gesture
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -11,7 +11,7 @@ import android.hardware.input.InputGestureData
 import android.hardware.input.InputManager
 import android.util.Log
 import androidx.preference.PreferenceManager
-import org.pixelos.malbec.parts.Constants
+import org.lineageos.malbec.parts.Constants
 
 /**
  * Turns the user's stored choices into framework state.

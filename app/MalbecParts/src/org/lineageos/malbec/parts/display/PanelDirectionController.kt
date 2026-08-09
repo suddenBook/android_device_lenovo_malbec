@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.pixelos.malbec.parts.display
+package org.lineageos.malbec.parts.display
 
 import android.content.Context
 import android.hardware.display.DisplayManager
@@ -11,7 +11,7 @@ import android.os.Handler
 import android.os.SystemProperties
 import android.util.Log
 import android.view.Display
-import org.pixelos.malbec.parts.Constants
+import org.lineageos.malbec.parts.Constants
 
 /**
  * Tell the touch controller which way up the tablet is.

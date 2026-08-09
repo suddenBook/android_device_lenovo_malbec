@@ -3,15 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.pixelos.malbec.parts.display
+package org.lineageos.malbec.parts.display
 
 import android.content.ComponentName
 import android.content.Context
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import org.pixelos.malbec.parts.Constants
-import org.pixelos.malbec.parts.MalbecPartsService
-import org.pixelos.malbec.parts.R
+import org.lineageos.malbec.parts.Constants
+import org.lineageos.malbec.parts.MalbecPartsService
+import org.lineageos.malbec.parts.R
 
 /**
  * One tap to swap between the stylus and the game state.

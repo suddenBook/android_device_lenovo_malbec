@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.pixelos.malbec.parts
+package org.lineageos.malbec.parts
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import org.pixelos.malbec.parts.display.PenModeController
+import org.lineageos.malbec.parts.display.PenModeController
 
 class BootCompletedReceiver : BroadcastReceiver() {
 

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.pixelos.malbec.parts.display
+package org.lineageos.malbec.parts.display
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -12,8 +12,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
-import org.pixelos.malbec.parts.MalbecPartsService
-import org.pixelos.malbec.parts.R
+import org.lineageos.malbec.parts.MalbecPartsService
+import org.lineageos.malbec.parts.R
 
 /**
  * The home-screen half of the Daily/Game switch.
@@ -27,7 +27,7 @@ import org.pixelos.malbec.parts.R
 class PenModeWidgetProvider : AppWidgetProvider() {
 
     companion object {
-        private const val ACTION_TOGGLE = "org.pixelos.malbec.parts.TOGGLE_PEN_MODE"
+        private const val ACTION_TOGGLE = "org.lineageos.malbec.parts.TOGGLE_PEN_MODE"
 
         fun requestUpdate(context: Context) {
             val manager = AppWidgetManager.getInstance(context) ?: return

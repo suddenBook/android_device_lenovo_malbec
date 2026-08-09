@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.pixelos.malbec.parts.stylus
+package org.lineageos.malbec.parts.stylus
 
 import android.content.Intent
 import android.os.Bundle
@@ -13,12 +13,12 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import androidx.preference.SwitchPreferenceCompat
 import com.android.settingslib.widget.SettingsBasePreferenceFragment
-import org.pixelos.malbec.parts.Constants
-import org.pixelos.malbec.parts.MalbecPartsService
-import org.pixelos.malbec.parts.R
-import org.pixelos.malbec.parts.display.PenModeController
-import org.pixelos.malbec.parts.gesture.ActionPickerActivity
-import org.pixelos.malbec.parts.gesture.GestureBinder
+import org.lineageos.malbec.parts.Constants
+import org.lineageos.malbec.parts.MalbecPartsService
+import org.lineageos.malbec.parts.R
+import org.lineageos.malbec.parts.display.PenModeController
+import org.lineageos.malbec.parts.gesture.ActionPickerActivity
+import org.lineageos.malbec.parts.gesture.GestureBinder
 
 class StylusSettingsFragment : SettingsBasePreferenceFragment() {
 

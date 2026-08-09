@@ -4,7 +4,7 @@
      SPDX-License-Identifier: Apache-2.0
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="org.pixelos.malbec.parts"
+    package="org.lineageos.malbec.parts"
     android:sharedUserId="android.uid.system">
 
     <!-- MANAGE_KEY_GESTURES is signature (core/res/AndroidManifest.xml:8945).
@@ -15,7 +15,7 @@
     <uses-permission android:name="android.permission.INJECT_EVENTS" />
     <!-- Reading the foreground package to pick the remote-control profile.
          signature|privileged, so it is also listed in
-         privapp-permissions-org.pixelos.malbec.parts.xml. -->
+         privapp-permissions-org.lineageos.malbec.parts.xml. -->
     <uses-permission android:name="android.permission.REAL_GET_TASKS" />
     <!-- Pen link state, and setMetadata(DEVICE_TYPE_STYLUS) on the bonded pen.
          BLUETOOTH_PRIVILEGED is signature|privileged; likewise allowlisted. -->
@@ -219,8 +219,8 @@
              one-tap-from-the-desktop specifically. -->
         <!-- ⚠️ exported="false". It was true, which let any uid flip the panel
              mode and rewrite /proc with
-                 am broadcast -a org.pixelos.malbec.parts.TOGGLE_PEN_MODE \
-                     -n org.pixelos.malbec.parts/.display.PenModeWidgetProvider
+                 am broadcast -a org.lineageos.malbec.parts.TOGGLE_PEN_MODE \
+                     -n org.lineageos.malbec.parts/.display.PenModeWidgetProvider
              because TOGGLE_PEN_MODE is not a protected broadcast. Neither
              legitimate sender needs it: APPWIDGET_UPDATE comes from system_server
              and the click arrives via a PendingIntent, both uid 1000, and

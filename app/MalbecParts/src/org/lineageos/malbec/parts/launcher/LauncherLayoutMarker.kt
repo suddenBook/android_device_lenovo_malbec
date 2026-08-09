@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.pixelos.malbec.parts.launcher
+package org.lineageos.malbec.parts.launcher
 
 import android.content.BroadcastReceiver
 import android.content.Context

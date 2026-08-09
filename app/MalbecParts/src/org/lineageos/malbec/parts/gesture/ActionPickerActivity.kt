@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.pixelos.malbec.parts.gesture
+package org.lineageos.malbec.parts.gesture
 
 import android.app.Activity
 import android.content.Intent
@@ -16,7 +16,7 @@ import androidx.preference.PreferenceScreen
 import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity
 import com.android.settingslib.widget.SettingsBasePreferenceFragment
 import com.android.settingslib.widget.SelectorWithWidgetPreference
-import org.pixelos.malbec.parts.R
+import org.lineageos.malbec.parts.R
 
 /**
  * "What should this key do?" — one picker, used by all seven call sites (five

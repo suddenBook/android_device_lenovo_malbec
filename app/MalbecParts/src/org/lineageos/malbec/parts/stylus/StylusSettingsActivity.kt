@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.pixelos.malbec.parts.stylus
+package org.lineageos.malbec.parts.stylus
 
 import android.os.Bundle
 import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity
-import org.pixelos.malbec.parts.MalbecPartsService
+import org.lineageos.malbec.parts.MalbecPartsService
 
 /**
  * One page, three doors: Settings > "Device settings" (the top-level entry),

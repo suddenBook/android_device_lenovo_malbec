@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.pixelos.malbec.parts.display
+package org.lineageos.malbec.parts.display
 
 import android.content.Context
 import android.database.ContentObserver
@@ -12,9 +12,9 @@ import android.os.SystemProperties
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
-import org.pixelos.malbec.parts.Constants
-import org.pixelos.malbec.parts.R
-import org.pixelos.malbec.parts.gesture.GestureBinder
+import org.lineageos.malbec.parts.Constants
+import org.lineageos.malbec.parts.R
+import org.lineageos.malbec.parts.gesture.GestureBinder
 
 /**
  * The device's two modes: Daily and Game.

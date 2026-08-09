@@ -118,8 +118,8 @@
          res/xml/pen_mode_widget_info.xml — if those two disagree the launcher
          resizes it on first layout and the grid gets a hole. -->
     <appwidget screen="0" x="0" y="3" spanX="2" spanY="1"
-        packageName="org.pixelos.malbec.parts"
-        className="org.pixelos.malbec.parts.display.PenModeWidgetProvider" />
+        packageName="org.lineageos.malbec.parts"
+        className="org.lineageos.malbec.parts.display.PenModeWidgetProvider" />
 
     <appicon screen="0" x="0" y="4"
         packageName="com.android.vending"

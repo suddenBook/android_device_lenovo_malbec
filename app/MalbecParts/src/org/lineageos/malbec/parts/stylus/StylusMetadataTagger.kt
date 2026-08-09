@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.pixelos.malbec.parts.stylus
+package org.lineageos.malbec.parts.stylus
 
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -12,7 +12,7 @@ import android.content.Context
 import android.hardware.input.InputManager
 import android.util.Log
 import android.view.InputDevice
-import org.pixelos.malbec.parts.Constants
+import org.lineageos.malbec.parts.Constants
 
 /**
  * Two lines of code that unlock a whole AOSP settings page.

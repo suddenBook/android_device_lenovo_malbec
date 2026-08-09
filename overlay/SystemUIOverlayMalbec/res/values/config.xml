@@ -60,12 +60,12 @@
          data wipe, which is exactly the case that matters here (first boot after
          a flash). Criterion after flashing:
              adb shell settings get secure sysui_qs_tiles
-         must contain custom(org.pixelos.malbec.parts/...PenModeTileService).
+         must contain custom(org.lineageos.malbec.parts/...PenModeTileService).
 
          Appended at the end rather than inserted, so nothing the user expects in
          the first row moves. -->
 
     <string name="quick_settings_tiles_new_default" translatable="false">
-        internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery,custom(org.pixelos.malbec.parts/org.pixelos.malbec.parts.display.PenModeTileService)
+        internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery,custom(org.lineageos.malbec.parts/org.lineageos.malbec.parts.display.PenModeTileService)
     </string>
 </resources>

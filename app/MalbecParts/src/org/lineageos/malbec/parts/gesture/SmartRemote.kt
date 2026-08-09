@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.pixelos.malbec.parts.gesture
+package org.lineageos.malbec.parts.gesture
 
 import android.app.ActivityManager
 import android.content.Context
@@ -16,7 +16,7 @@ import android.util.Log
 import android.view.InputDevice
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
-import org.pixelos.malbec.parts.Constants
+import org.lineageos.malbec.parts.Constants
 
 /**
  * The context-aware half of the pen's remote-control mode.

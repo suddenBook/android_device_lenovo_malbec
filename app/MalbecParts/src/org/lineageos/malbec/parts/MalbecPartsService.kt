@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.pixelos.malbec.parts
+package org.lineageos.malbec.parts
 
 import android.app.Service
 import android.content.Context
@@ -14,12 +14,12 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
-import org.pixelos.malbec.parts.display.PanelDirectionController
-import org.pixelos.malbec.parts.display.PenModeController
-import org.pixelos.malbec.parts.gesture.GestureAction
-import org.pixelos.malbec.parts.gesture.GestureBinder
-import org.pixelos.malbec.parts.gesture.SmartRemote
-import org.pixelos.malbec.parts.stylus.PenPresenceWatcher
+import org.lineageos.malbec.parts.display.PanelDirectionController
+import org.lineageos.malbec.parts.display.PenModeController
+import org.lineageos.malbec.parts.gesture.GestureAction
+import org.lineageos.malbec.parts.gesture.GestureBinder
+import org.lineageos.malbec.parts.gesture.SmartRemote
+import org.lineageos.malbec.parts.stylus.PenPresenceWatcher
 
 /**
  * The one long-lived piece of MalbecParts.

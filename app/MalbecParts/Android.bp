@@ -19,10 +19,10 @@
 // that it travels with the app: same directory, same partition flag, and it
 // cannot be left behind if the app ever moves.
 prebuilt_etc {
-    name: "privapp-permissions-org.pixelos.malbec.parts.xml",
+    name: "privapp-permissions-org.lineageos.malbec.parts.xml",
     system_ext_specific: true,
     sub_dir: "permissions",
-    src: "privapp-permissions-org.pixelos.malbec.parts.xml",
+    src: "privapp-permissions-org.lineageos.malbec.parts.xml",
     filename_from_src: true,
 }
 
@@ -33,7 +33,7 @@ android_app {
     // ship the app without it. This is the whole reason the boot loop of
     // session 16 cannot come back: forgetting the XML is no longer possible
     // without also removing the app.
-    required: ["privapp-permissions-org.pixelos.malbec.parts.xml"],
+    required: ["privapp-permissions-org.lineageos.malbec.parts.xml"],
 
 
     srcs: ["src/**/*.kt"],

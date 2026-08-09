@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.pixelos.malbec.parts.stylus
+package org.lineageos.malbec.parts.stylus
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -22,8 +22,8 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import androidx.preference.PreferenceManager
-import org.pixelos.malbec.parts.Constants
-import org.pixelos.malbec.parts.R
+import org.lineageos.malbec.parts.Constants
+import org.lineageos.malbec.parts.R
 
 /**
  * "You left your pen behind."

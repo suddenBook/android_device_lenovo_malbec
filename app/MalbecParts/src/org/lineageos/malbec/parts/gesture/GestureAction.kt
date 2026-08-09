@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.pixelos.malbec.parts.gesture
+package org.lineageos.malbec.parts.gesture
 
 import android.app.role.RoleManager
 import android.content.Context
 import android.hardware.input.AppLaunchData
 import android.hardware.input.KeyGestureEvent
-import org.pixelos.malbec.parts.Constants
-import org.pixelos.malbec.parts.R
+import org.lineageos.malbec.parts.Constants
+import org.lineageos.malbec.parts.R
 
 /**
  * The catalogue of things a pen button or a keyboard app key can be bound to.

@@ -27,23 +27,24 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit_only.mk)
 # policy at all.
 $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base.mk)
 
-# Inherit some common PixelOS stuff.
+# Inherit some common LineageOS stuff.
 # malbec (TB390FU) is a Wi-Fi only tablet, so no telephony is inherited.
-$(call inherit-product, vendor/custom/config/common_full_tablet_wifionly.mk)
+# common_full_tablet_wifionly.mk chains common_mobile_full.mk + tablet.mk +
+# wifionly.mk, i.e. exactly the three axes this device needs, and it is the
+# LineageOS file of the same name the PixelOS port used under vendor/custom.
+$(call inherit-product, vendor/lineage/config/common_full_tablet_wifionly.mk)
 
 # TARGET_SCREEN_WIDTH/HEIGHT live in device.mk, which sets both. This file used
 # to set WIDTH again, with a comment claiming stock ships "an override density
 # of 306". It does not: 306 appears in work/device_dump/display/wm.txt only
 # because a Settings > Display size override happened to be active when that
-# dump was taken. On the device now, `wm density` prints no Override line and
-# both display_density_forced settings read null. 306 is exactly 360 x 0.85,
-# the first step below default that DisplayDensityUtils offers. See the density
-# discussion in BoardConfig.mk.
+# dump was taken. 306 is exactly 360 x 0.85, the first step below default that
+# DisplayDensityUtils offers. See the density discussion in BoardConfig.mk.
 
 # Inherit from malbec device
 $(call inherit-product, device/lenovo/malbec/device.mk)
 
-PRODUCT_NAME := custom_malbec
+PRODUCT_NAME := lineage_malbec
 PRODUCT_DEVICE := malbec
 PRODUCT_MANUFACTURER := Lenovo
 PRODUCT_BRAND := Lenovo
@@ -65,7 +66,12 @@ PRODUCT_MODEL := TB390FU
 #     device reports an unknown fingerprint and the dialog appears on every
 #     Play Store launch until the GSF ID is registered by hand.
 #
-# onyx, an official PixelOS device, carries the equivalent block.
+# This is also standard LineageOS practice, not a PixelOS import: LineageOS
+# device trees routinely carry BuildDesc/BuildFingerprint overrides in
+# PRODUCT_BUILD_PROP_OVERRIDES so the build reports the OEM identity the device
+# was certified under. PRODUCT_SYSTEM_NAME/PRODUCT_SYSTEM_DEVICE are plain AOSP
+# variables (build/make/core/product_config.mk:402-406) and feed
+# ro.product.system.{name,device} via soong_extra_config.mk:26,29.
 #
 # Verify after first boot: `adb shell getprop ro.build.fingerprint` should match
 # the value below on every partition, and Play Store should not show the

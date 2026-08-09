@@ -33,7 +33,7 @@
      permission set contributed by other packages, not by this manifest.
 -->
 <permissions>
-    <privapp-permissions package="org.pixelos.malbec.parts">
+    <privapp-permissions package="org.lineageos.malbec.parts">
         <!-- ActivityManager#getRunningTasks, for "Smart remote": the foreground
              package decides which remote-control profile the pen buttons use.
              SmartRemote.kt:122. -->
