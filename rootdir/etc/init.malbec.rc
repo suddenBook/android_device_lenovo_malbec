@@ -366,18 +366,63 @@ on property:sys.boot_completed=1
 # (:1284), so this runs immediately before the service is started and nowhere
 # else.
 #
-# ★ The timeout is deliberately SHORT. `wait` blocks init's action queue, so a
-# generous one would trade a tombstone for real boot latency on every boot — a
-# bad deal. Two seconds is also the measurement this needs: init logs
+# ⚠️ THE RACE WAS NOT THE CAUSE. The `wait` below was written as a fix and turned
+# out to be only the instrument; the line it prints is what disproved the theory:
 #
-#     init: wait for '/sys/class/backlight/panel0-backlight/hbm' took N ms
+#     init: wait for '/sys/class/backlight/panel0-backlight/hbm' took 0ms
 #
-# and N is the answer the timing above could not pin down. N small => the node
-# lands just after class hal and this line is the whole fix, for ~0 cost.
-# N == 2000 => the node arrives later than that, this line has changed nothing,
-# and the fix has to move the SERVICE instead (an `override` with a later class,
-# in a file that sorts after vendor.lineage.livedisplay-service.sysfs.rc — note
-# init.malbec.rc sorts BEFORE it, so `override` cannot be used from here).
-# Read that line out of the next boot log before believing this is done.
+# 0 ms. The node is already there. Trigger order, measured by writing markers to
+# /dev/kmsg from each trigger in turn and reading them back out of dmesg:
+#
+#     [2.075] sde_backlight_setup creates panel0-backlight
+#     [2.299] on late-fs        [2.876] on post-fs-data
+#     [3.347] on early-boot  <- the wait runs here and finds the node
+#     [3.664] on boot        <- our marker; init.rc's own `on boot` (:1284,
+#                               class_start hal) runs BEFORE it, because init.rc
+#                               is parsed first and same-trigger actions run in
+#                               parse order
+#     ro.boottime.vendor.livedisplay-sysfs = 3.450 s   <- between the two, i.e.
+#                               class_start hal, exactly as expected
+#
+# So the file existed 100 ms before the service opened it, and access() still
+# failed. It is a PERMISSION problem wearing a race's clothes.
+#
+# ★ What actually fixes it is one line, and it is the line below the wait.
+# Measured, four boots, one variable at a time:
+#
+#     wait only ............................ 1 SIGABRT   (repeated, 2 boots)
+#     wait + chown + chmod 0666 ............ 0
+#     wait + chown ......................... 0
+#     wait only (control, re-removed) ...... 1 SIGABRT   <- causality
+#
+# Mechanism: the service runs as uid `system` and probes with
+# access(path, R_OK|W_OK) (SunlightEnhancement.cpp:42-53). At steady state the
+# node reads `0666 root:root`, on which that call from `system` cannot fail — so
+# the node must be MORE RESTRICTIVE at 3.45 s and be relaxed later by the display
+# driver. `chown system system` makes the HAL's own uid the owner, so the owner
+# write bit applies to it from the first attempt instead of the second. The exact
+# early mode was not observed directly (init has no way to report it), so that
+# last step is inference from the four measurements above rather than a reading.
+#
+# This is also exactly what upstream does for the nodes it does know about:
+# hardware/lineage/interfaces/livedisplay/aidl/sysfs/
+# vendor.lineage.livedisplay-service.sysfs.rc:6-16 chowns `system system` onto
+# /sys/devices/.../dsi-display-primary/hbm and the fb0 tuneables. This device is
+# DRM-only with no fb0 and its HBM control lives on the backlight class device,
+# so none of those paths match here and the chown never reached ours.
+#
+# Why it still matters even though init restarts the service four seconds later
+# and the second attempt succeeds: ISunlightEnhancement is DECLARED in the VINTF
+# manifest, and a declared HAL that never registers is an untimed
+# waitForDeclaredService() on system_server's boot thread — the exact hang
+# OPEN-ISSUES #34 describes. One retry is the difference between "self-heals" and
+# "the boot stops", and nothing promises the second attempt wins either.
+#
+# The `wait` stays. It costs 0 ms on this hardware, it is what makes the chown
+# meaningful (chowning a node that does not exist yet is a no-op and init only
+# warns), and if a future kernel ever does move the node later, the number it
+# prints says so immediately. Two seconds, not more, because `wait` blocks init's
+# whole action queue.
 on early-boot
     wait /sys/class/backlight/panel0-backlight/hbm 2
+    chown system system /sys/class/backlight/panel0-backlight/hbm

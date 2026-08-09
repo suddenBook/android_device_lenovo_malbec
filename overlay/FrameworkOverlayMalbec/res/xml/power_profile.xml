@@ -288,4 +288,44 @@
     <!-- 10200 mAh design capacity, confirmed on the running device:
          dumpsys battery -> "Design capacity: 10200000" (uAh). -->
     <item name="battery.capacity">10200</item>
+
+    <!-- ★ Absent cellular has to be stated, not merely omitted.
+         Measured on the flash-2 boot: eight warnings, every boot, one per key —
+
+           W ModemPowerProfile: getAverageBatteryDrainMaH called with unexpected
+             key: 0x10000000, drain:IDLE,RAT:DEFAULT      (and SLEEP, RX, TX 0-4)
+
+         PowerProfile.initModem() (:836-859) calls handleDeprecatedModemConstant()
+         for those eight keys UNCONDITIONALLY — there is no "does this device have
+         a modem" branch anywhere on that path. Each call asks
+         ModemPowerProfile.getAverageBatteryDrainMa(key) first, and :498 logs the
+         warning whenever the key is missing. Leaving the section out does not opt
+         out of the lookups; it only guarantees all eight of them miss.
+
+         ⚠️ This changes NO computed value. Without the block,
+         handleDeprecatedModemConstant falls back to getAveragePower(
+         "modem.controller.*"), which is also absent, so it returns the caller's
+         default of 0 and stores 0.0. With the block, the same eight constants are
+         0 because they say so. Identical end state, eight fewer log lines, and the
+         intent is now written down in the file that BatteryStats actually reads
+         rather than only in the comment at the top.
+
+         <active> carries no rat= attribute on purpose: getTypeFromAttribute
+         (:346-352) returns 0 for an absent attribute, and MODEM_RAT_TYPE_DEFAULT
+         is 0 — which is exactly the key initModem() looks up. Five transmit
+         levels because MODEM_TX_LEVEL_COUNT is 5 (:151); a sixth would be
+         rejected with "Unexpected tx level" and a missing one would leave that
+         key NaN, i.e. the warning back again for that level only. -->
+    <modem>
+        <sleep>0</sleep>
+        <idle>0</idle>
+        <active>
+            <receive>0</receive>
+            <transmit level="0">0</transmit>
+            <transmit level="1">0</transmit>
+            <transmit level="2">0</transmit>
+            <transmit level="3">0</transmit>
+            <transmit level="4">0</transmit>
+        </active>
+    </modem>
 </device>
