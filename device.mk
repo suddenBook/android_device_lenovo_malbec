@@ -341,7 +341,7 @@ PRODUCT_PACKAGES += \
 # ;DISABLE_DEPS. What ;DISABLE_DEPS turns off is Soong's dependency generation,
 # which means Soong will neither install these libraries for us nor complain
 # about them. Deleting any line here produces a dlopen failure after boot while
-# `m nothing`, `m pixelos` and check_elf_file all stay silent — it is completely
+# `m nothing`, a full `m` and check_elf_file all stay silent — it is completely
 # invisible at build time.
 # To check whether the set is still complete, run
 # `python3 work/scripts/33-blob-linkcheck.py` (it solves per linker namespace
@@ -463,7 +463,7 @@ PRODUCT_PACKAGES += \
 #
 # This entire class is INVISIBLE at build time: ;DISABLE_DEPS turns off both
 # shared_libs generation and check_elf_file, so Soong neither builds the
-# dependency nor complains. `m nothing` and `m pixelos` go green and the dlopen
+# dependency nor complains. `m nothing` and a full `m` go green and the dlopen
 # fails after boot.
 #
 # Session 7 located them with one exhaustive scan (3370 ELFs, 27346 DT_NEEDED
@@ -826,7 +826,7 @@ PRODUCT_COPY_FILES += \
 # init.malbec.rc re-enables active-stylus scanning in the touch controller.
 # nvt_touch.ko sends {0x7B, 0x00} ("pen not supported") once at ~7.3 s and never
 # undoes it; on ZUI the framework calls the Lenovo touchscreen HAL to undo it,
-# and PixelOS has no client for that HAL. The rc file carries the full
+# and LineageOS has no client for that HAL. The rc file carries the full
 # derivation, including the boot-log line that shows the driver doing it.
 PRODUCT_PACKAGES += \
     fstab.qcom \
@@ -849,7 +849,7 @@ PRODUCT_COPY_FILES += \
 # Framework RRO. Values are measured from the stock ROM's dumpsys display, not
 # copied from another device — see the comments in its config.xml.
 #
-# WifiOverlayMalbec is not optional decoration on a Wi-Fi-only tablet. PixelOS
+# WifiOverlayMalbec is not optional decoration on a Wi-Fi-only tablet. LineageOS
 # builds the AOSP ServiceWifiResources.apk, and its defaults answer "no" to most
 # capability questions: config_wifi5ghzSupport, config_wifi6ghzSupport,
 # config_wifiSoftap*, config_wifiSaeH2eSupported and MAC randomisation are all

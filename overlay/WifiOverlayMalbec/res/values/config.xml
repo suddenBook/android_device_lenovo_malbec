@@ -14,7 +14,8 @@
                                  policies="odm|product|system|vendor"
      Stock ships Google's ServiceWifiResourcesGoogle.apk
      (com.google.android.wifi.resources) instead, which is why every stock RRO
-     exists twice. PixelOS builds the AOSP one, so a single overlay is enough
+     exists twice. LineageOS builds the AOSP one (ServiceWifiResources is the
+     only such module in the tree), so a single overlay is enough
      and it must target com.android.wifi.resources.
 
      Every value below was read out of the factory RROs with aapt2 and then

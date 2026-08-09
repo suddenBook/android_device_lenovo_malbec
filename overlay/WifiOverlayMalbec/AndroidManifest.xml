@@ -10,7 +10,7 @@
      One overlay is enough. Stock carries every Lenovo value twice — once
      targeting com.android.wifi.resources and once targeting
      com.google.android.wifi.resources — because stock ships Google's
-     ServiceWifiResourcesGoogle.apk. PixelOS builds the AOSP
+     ServiceWifiResourcesGoogle.apk. LineageOS builds the AOSP
      ServiceWifiResources.apk, and the two stock RRO sets were verified to hold
      byte-identical values, so only the AOSP target is needed here.
 

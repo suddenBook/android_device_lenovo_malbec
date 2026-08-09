@@ -166,8 +166,12 @@
 
          AOSP's own default is already 1 / MODE_NIGHT_NO (config.xml:898). Dark
          mode on this device comes from PixelConfigOverlay2021_GMS, which sets
-         this resource to 2 - it is a Pixel behaviour PixelOS ships to every
-         device, not something this port asked for.
+         this resource to 2. ⚠️ On LineageOS the competing value has a different
+         source and PixelConfigOverlay2021_GMS does not exist: it is
+         vendor/lineage/overlay/common/frameworks/base/core/res/res/values/
+         config.xml:153, a STATIC overlay compiled into framework-res.apk.
+         That matters, because an RRO beats a static overlay on any partition —
+         see the ⚠️ further down about partition_order.xml.
 
          It is wrong here on the hardware: this panel is an LCD, not OLED (the
          backlight driver logs [AWNl/E]lcd_brightness_work), so dark mode buys no
@@ -449,7 +453,7 @@
          which is precisely why the bar has to be turned ON.
 
          Stock sets it true from product/overlay/LgsiFrameworksOverlay.apk, and
-         PixelOS replaces the whole product partition, so that RRO is gone.
+         LineageOS replaces the whole product partition, so that RRO is gone.
          Without this the device boots to Launcher and cannot be operated
          without the folio keyboard. onyx's overlay sets it too. -->
     <bool name="config_showNavigationBar">true</bool>
@@ -664,7 +668,9 @@
     <!-- Default files to pin via Pinner Service -->
     <!-- Stock's list has 9 entries. Two of them, /system/framework/arm64/
          boot-QPerformance.oat and boot-UxPerformance.oat, are QTI perf JARs that
-         PixelOS does not build (verified absent from out/target/product/malbec),
+         LineageOS does not build either (QPerformance/UxPerformance appear in no
+         .mk or .bp in the tree; the "verified absent from out/" evidence was
+         gathered on a PixelOS build and wants re-checking after a flash),
          so they are dropped. The remaining 7 were each confirmed present in the
          build tree. -->
     <string-array translatable="false" name="config_defaultPinnerServiceFiles">
@@ -738,7 +744,8 @@
              DisplayColorSetting only has MANAGED/UNMANAGED/ENHANCED, so 256-265
              cast to an out-of-range value that no branch matches. These modes
              exist only in QTI's SurfaceFlinger fork
-             (libsurfaceflingerextension), and PixelOS builds AOSP's.
+             (libsurfaceflingerextension), and LineageOS builds AOSP's —
+             libsurfaceflingerextension appears nowhere in this tree.
              Independently confirmed on the running device: SurfaceFlinger
              reports exactly three supported colour modes — NATIVE, SRGB,
              DISPLAY_P3 — with no vendor entries at all.
@@ -755,7 +762,7 @@
     </integer-array>
 
     <!-- Three values the factory ROM sets through RROs on the *product*
-         partition, which PixelOS replaces. Nothing warns when they disappear:
+         partition, which LineageOS replaces. Nothing warns when they disappear:
          each one silently falls back to the AOSP default and the feature just
          behaves differently. Recovered by dumping every stock RRO that targets
          `android` with aapt2 and diffing against the built framework-res.apk
@@ -796,7 +803,7 @@
          specifically so libwfdnative resolves MotionEvent::initialize on
          Android 16, and libwfdaac_vendor is in PRODUCT_PACKAGES. Stock turns it
          on with persist.debug.wfd.enable=1 in system/build.prop:142 — the
-         partition PixelOS replaces, which is how the switch got lost. The
+         partition LineageOS replaces, which is how the switch got lost. The
          matching vendor-side properties are in properties/system.prop.
 
          The QTI integration point exists in this tree: WifiDisplayController
@@ -817,14 +824,29 @@
 
     <!-- Attaching the folio keyboard put every app into a freeform desktop
          window. That is not this tree's choice and it is not AOSP's default
-         either: core/res/res/values/config.xml:7562,7565 ship both of these as
-         false. They are turned on underneath us by two inherited STATIC
-         overlays, which is why they do not appear anywhere in this device tree:
+         either: core/res/res/values/config.xml:7559,7562 ship both of these as
+         false.
+
+         ONE of them is turned on underneath us by an inherited STATIC overlay,
+         which is why it does not appear anywhere in this device tree:
 
              vendor/lineage/overlay/common/.../config.xml:90
                  config_isDesktopModeSupported        -> true   (every device)
-             vendor/custom/overlay/tablet/.../config.xml:19
-                 config_canInternalDisplayHostDesktops -> true  (every tablet)
+
+         ⚠️ The second line here used to say that
+         "vendor/custom/overlay/tablet/.../config.xml, line 19" sets
+         config_canInternalDisplayHostDesktops true for every tablet — and that
+         is a PixelOS path which does not exist on LineageOS.
+         (Written without the colon-number form on purpose: it is a dead
+         citation, and work/scripts/34-citation-check.py would otherwise try to
+         resolve it forever.)
+         vendor/lineage/overlay/tablet/ contains only two files, both about the
+         glanceable hub, and neither touches this resource — so
+         config_canInternalDisplayHostDesktops is already false from AOSP and the
+         override below is REDUNDANT. It is kept anyway, for the reason stated
+         further down: the intent is "this tablet does not host desktops", and
+         stating it once leaves the next reader wondering whether the other half
+         was missed. Redundant and explicit beats absent and inferred.
 
          Static overlays are baked into framework-res.apk, so an RRO always wins
          over them — no partition-order question here, unlike config_defaultNightMode.

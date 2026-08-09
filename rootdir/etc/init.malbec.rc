@@ -29,7 +29,7 @@
 # ZUI the gap is filled from the framework: Lenovo's services.jar patch
 # (com.zui.server.input.styluspen.pen.bluetooth.policy.BluetoothPenConnectPolicy
 # -> TouchscreenServiceManager.setPenMode(true)) calls the vendor HAL, whose
-# setPenMode() is just writeInt("/proc/support_pen", 1). PixelOS ships that HAL
+# setPenMode() is just writeInt("/proc/support_pen", 1). LineageOS ships that HAL
 # binary but has no client for it -- nothing in the tree ever calls ITouchscreen.
 #
 # Writing the node directly is the same operation the HAL performs, without

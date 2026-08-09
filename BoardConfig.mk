@@ -282,16 +282,26 @@ TARGET_USES_VULKAN := true
 #   - An earlier revision said stock ships a 306 "display size" override, and
 #     derived things from it. Wrong: it is not a stock default.
 #   - The correction that replaced it said `wm density` shows "no Override line".
-#     Also wrong, and checkable in this repo:
-#     work/device_dump/display/wm.txt literally reads
-#         Physical density: 360
-#         Override density: 306
-#     and dumpsys-display.txt:201/:202 shows mBaseDisplayInfo density 360 versus
-#     mOverrideDisplayInfo density 306.
+#     Also wrong: there is an override, and it is whatever the owner last chose
+#     in Settings > Display size.
 #
-# 306 is the owner's Settings > Display size choice on stock (the 0.85 step),
-# not a device property. Nothing is derived from it here; it is only used above
-# to show that 360 is the base that reproduces it.
+# ⚠️ 306 is NOT a constant either, and treating it as one is how this comment
+# went wrong twice. It is one particular Settings > Display size step, captured
+# at one moment. Re-measured on the running stock ROM, session 21
+# (work/device_dump/stock/display/wm.txt):
+#
+#         Physical size: 2190x3504
+#         Physical density: 360
+#         Override density: 269
+#
+# i.e. the owner has since moved further down the scale. Nothing in this tree
+# derives anything from either number.
+#
+# What the new measurement is actually good for: it CORROBORATES 320. The owner's
+# lived-in stock density is 269, well below 360 — so the preference is for more
+# workspace, not less, and on a 320 base the same 269 is roughly one Settings
+# step down rather than several. Shipping 360 would have put the owner three or
+# four steps from where they want to be.
 #
 # Panel is dual sourced (BOE nt36536e / CSOT nt36536), 144 Hz. The bootloader
 # names the panel on the kernel command line
