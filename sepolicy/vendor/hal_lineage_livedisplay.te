@@ -39,3 +39,58 @@
 # Search only. The HAL opens exactly one file in that directory and has no reason
 # to list it.
 allow hal_lineage_livedisplay_sysfs vendor_sysfs_graphics:dir search;
+
+# ⚠️ …and one more, because the genfscon split above DOES NOT TAKE EFFECT on this
+# node. Measured on the running device (session 22):
+#
+#     ls -Z /sys/devices/platform/soc/ae00000.qcom,mdss_mdp/backlight/panel0-backlight/hbm
+#       u:object_r:vendor_sysfs_graphics:s0        <- the PARENT's label
+#
+# i.e. hbm keeps the directory's type and never gets sysfs_livedisplay_tuneable,
+# so the upstream rule that is supposed to cover it —
+# device/lineage/sepolicy/common/vendor/hal_lineage_livedisplay_sysfs.te:10,
+# `allow ... sysfs_livedisplay_tuneable:file rw_file_perms;` — never applies. The
+# result today is one permissive AVC per boot; under enforcing it is a BOOT HANG,
+# by exactly the mechanism OPEN-ISSUES #34 describes: SunlightEnhancement.cpp:42-53
+# probes with access(path, R_OK|W_OK), that goes through inode_permission, the
+# check fails, the constructor calls LOG(FATAL), the service never registers, and
+# ISunlightEnhancement is declared in the VINTF manifest.
+#
+#     avc: denied { write } for comm="vendor.lineage." name="hbm"
+#          scontext=u:r:hal_lineage_livedisplay_sysfs:s0
+#          tcontext=u:object_r:vendor_sysfs_graphics:s0 tclass=file permissive=1
+#
+# ★ This is NOT the usual "the entry is missing" or "the path is wrong". All four
+# things you would check are correct, and each was checked:
+#
+#   1. Both genfscon lines survive into the policy the KERNEL loaded — dumped
+#      with `adb pull /sys/fs/selinux/policy` + `checkpolicy -b -M -C`, not read
+#      out of the source.
+#   2. The path is right: the parent entry matches the same inode (ino 142804,
+#      the one the AVC names), which it could only do by prefix-matching that
+#      exact path.
+#   3. The type exists and is in both the fs_type and sysfs_type attribute sets.
+#   4. Longest-prefix genfscon works fine on this device. Every genfscon entry in
+#      the loaded policy that is strictly longer than another entry that is its
+#      prefix, and whose path exists on the hardware, was checked live: 190 of
+#      198 child entries WIN, including this file's own soc:lenovo_kb /
+#      soc:lenovo_kb/wakeup pair. The other 7 are artefacts of the comparison
+#      (trailing-slash entries and /sys/class symlinks). hbm is the single
+#      genuine failure on the whole device.
+#
+# `chcon` on the node succeeds and sticks, so kernfs is not refusing the label —
+# whatever this is, it is between the kernel's genfs lookup and this one inode,
+# and it was not worth more of flash-2's budget to chase. What matters is that
+# the tree must not DEPEND on that entry.
+#
+# So: grant the write against the type the node actually has. The genfscon line
+# stays — it is correct, it costs nothing, and if the anomaly ever resolves the
+# node lands on the narrower type with no further change.
+#
+# Cost of the widening, stated plainly: this domain can now read and write every
+# vendor_sysfs_graphics file, which on this device includes
+# panel0-backlight/brightness and the sde/drm attributes under
+# ae00000.qcom,mdss_mdp. That is a display HAL being given display sysfs; it is
+# not nothing, and it is the smallest rule that makes Outdoor mode work under
+# enforcing.
+allow hal_lineage_livedisplay_sysfs vendor_sysfs_graphics:file rw_file_perms;

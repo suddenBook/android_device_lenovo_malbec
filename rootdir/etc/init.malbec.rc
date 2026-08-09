@@ -327,3 +327,57 @@ on property:sys.boot_completed=1
     write /sys/class/qcom-battery/charge_control_en 1
     write /sys/class/power_supply/battery/charge_control_end_threshold 100
     write /sys/class/power_supply/battery/charge_control_start_threshold 95
+
+# ---------------------------------------------------------------------------
+# LiveDisplay Outdoor mode: wait for the HBM node before `class hal` starts.
+#
+# vendor.lineage.livedisplay-service.sysfs is `class hal`
+# (hardware/lineage/interfaces/livedisplay/aidl/sysfs/
+#  vendor.lineage.livedisplay-service.sysfs.rc:17-21), and on flash 1 it lost the
+# race and SIGABRTed on every boot:
+#
+#     Abort message: 'None of SunlightEnhancement paths could be opened'
+#     #03 SunlightEnhancement::SunlightEnhancement()+364
+#
+# That constructor is not tolerant: SunlightEnhancement.cpp:42-53 probes its
+# candidate paths with access(R_OK|W_OK) and calls LOG(FATAL) if none opens.
+# init restarts the service four seconds later and the second attempt succeeds,
+# so the ONLY visible cost today is one tombstone and one F-level log per boot —
+# which is why it survived flash 1 unnoticed while the DisplayModes crash next
+# door did not.
+#
+# ⚠️ It is not merely cosmetic, and that is the reason to fix it rather than
+# document it. ISunlightEnhancement is declared in the VINTF manifest, so it is
+# subject to exactly the trap in OPEN-ISSUES #34: a declared HAL that never
+# registers is an untimed waitForDeclaredService() on a system_server thread. One
+# retry is the difference between "self-heals" and "the boot hangs", and nothing
+# guarantees the second attempt wins either.
+#
+# Timing, measured on flash 1 rather than assumed:
+#     kernel 2.129  [drm:sde_backlight_setup] creates panel0-backlight
+#     kernel ~3.5   class hal starts the service -> access() fails -> SIGABRT
+#     kernel  8.475 the restarted instance writes hbm successfully (AVC, permissive)
+# so the backlight DEVICE exists a second before the service runs and the `hbm`
+# ATTRIBUTE does not. The window is somewhere in 3.5-7.5 s; the restart delay
+# hides where.
+#
+# `on early-boot` is the last trigger before `on boot`
+# (system/core/rootdir/init.rc:588-589), and `class_start hal` is inside `on boot`
+# (:1284), so this runs immediately before the service is started and nowhere
+# else.
+#
+# ★ The timeout is deliberately SHORT. `wait` blocks init's action queue, so a
+# generous one would trade a tombstone for real boot latency on every boot — a
+# bad deal. Two seconds is also the measurement this needs: init logs
+#
+#     init: wait for '/sys/class/backlight/panel0-backlight/hbm' took N ms
+#
+# and N is the answer the timing above could not pin down. N small => the node
+# lands just after class hal and this line is the whole fix, for ~0 cost.
+# N == 2000 => the node arrives later than that, this line has changed nothing,
+# and the fix has to move the SERVICE instead (an `override` with a later class,
+# in a file that sorts after vendor.lineage.livedisplay-service.sysfs.rc — note
+# init.malbec.rc sorts BEFORE it, so `override` cannot be used from here).
+# Read that line out of the next boot log before believing this is done.
+on early-boot
+    wait /sys/class/backlight/panel0-backlight/hbm 2

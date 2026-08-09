@@ -950,9 +950,54 @@ PRODUCT_PACKAGES += \
 #        disp_api_get_active_display_mode  disp_api_set_active_display_mode
 #        disp_api_get_global_pa_range      disp_api_set_global_pa
 #
-#    Failure mode if a later firmware drops one: LoadFunction returns nullptr and
-#    every call returns NO_INIT. The service stays up and the feature reports
-#    nothing — it does not crash and it cannot wedge boot.
+#    ⚠️⚠️ THE NEXT PARAGRAPH USED TO SAY THIS, AND IT IS FALSE. It is left here
+#    because it is the exact reasoning that cost flash 1 of session 22 — a boot
+#    that never completed — and the shape of the mistake is worth more than the
+#    correction:
+#
+#        "Failure mode if a later firmware drops one: LoadFunction returns
+#         nullptr and every call returns NO_INIT. The service stays up and the
+#         feature reports nothing — it does not crash and it cannot wedge boot."
+#
+#    Both halves are wrong, and they are wrong in the two places that matter.
+#
+#    · It DOES crash. DisplayModes.cpp:22-24 and PictureAdjustment.cpp:22-25 each
+#      call LOG(FATAL) from the CONSTRUCTOR when isReady() is false, and
+#      service.cpp:26-28 constructs both before registering either. Measured on
+#      the device:
+#
+#          Abort message: 'DisplayModes backend not ready, exiting.'
+#          #03 DisplayModes::DisplayModes(shared_ptr<SDMController>)+388
+#
+#      isReady() is not "did the symbols resolve". It is
+#      CheckFeatureVersion(FEATURE_VER_SW_SAVEMODES_API) == OK AND
+#      getNumDisplayModes() > 0 — a RUNTIME answer from the blob. Six exported
+#      symbols proved the ABI existed and proved nothing about the backend.
+#
+#    · It DOES wedge boot, and this is the general lesson. A HAL declared in the
+#      VINTF manifest but never registered is not a missing feature, it is an
+#      infinite wait: LineageOS's framework LiveDisplayService calls
+#      waitForDeclaredService(), which has no timeout, on a system_server thread
+#      running PHASE_BOOT_COMPLETED. Observed once a second, forever:
+#
+#          W libbinder.ServiceManagerCppClient: Waited one second for
+#            vendor.lineage.livedisplay.IDisplayModes/default
+#
+#      The user-visible symptom is nothing like a display fault: the boot
+#      animation plays, then Settings$FallbackHome sits on a black screen because
+#      user 0 never finishes unlocking, and eventually ANRs. See OPEN-ISSUES #34.
+#
+#    ★ So the rule for this device tree is: DECLARING A HAL IS A PROMISE THAT IT
+#    WILL REGISTER. A service whose readiness depends on a blob has to be
+#    measured on the hardware, not inferred from its symbol table, and the VINTF
+#    fragment has to be removed in the same change that disables the interface —
+#    which is what soong_config enable_dm/enable_pa does (Android.bp:41-52 gates
+#    the fragment and the -DENABLE_* flag off the same variable).
+#
+#    Measured on the hardware, flash 1:
+#        DisplayModes        isReady() false  -> disabled below
+#        PictureAdjustment   registers        -> kept
+#        SunlightEnhancement registers        -> kept (see the sysfs half)
 #
 #    Sepolicy costs nothing here: the domain, the exec label and the
 #    vndbinder/display_vendor_data_file grants are all in
@@ -977,6 +1022,21 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     vendor.lineage.livedisplay-service.sdm \
     vendor.lineage.livedisplay-service.sysfs
+
+# ★ Display modes OFF. Measured, not assumed — see the correction above.
+# DisplayModes::isReady() needs FEATURE_VER_SW_SAVEMODES_API to report a non-zero
+# version AND getNumDisplayModes() > 0; this blob fails that and the constructor
+# calls LOG(FATAL). Turning the soong_config variable off does BOTH halves of the
+# fix at once (Android.bp:41-52): it stops compiling DisplayModes into the binary
+# (-DENABLE_DM=false) and it stops installing
+# vendor.lineage.livedisplay-service.sdm-dm.xml, so nothing declares an interface
+# that will never register. Either half alone leaves the boot hang in place.
+#
+# Picture adjustment stays on: with DM off the same binary comes up and registers
+# IPictureAdjustment/default (verified with `service list` on the device), so this
+# device gets hue/saturation/intensity/contrast and loses only colour profiles —
+# which the hardware never supported.
+$(call soong_config_set_bool,livedisplay_sdm,enable_dm,false)
 
 $(call soong_config_set_bool,livedisplay_sysfs,enable_se,true)
 $(call soong_config_set,livedisplay_sysfs,se_path,/sys/class/backlight/panel0-backlight/hbm)

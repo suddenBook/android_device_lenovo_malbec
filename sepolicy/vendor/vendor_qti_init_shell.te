@@ -1,0 +1,38 @@
+# /vendor/bin/tn_vendor_performance.sh writes the VM dirty-page ratios.
+#
+# Lenovo ships the script and its own init stanza:
+#
+#     /vendor/etc/init/tn_vendor_performance.rc:5
+#         service tn_performance /vendor/bin/sh /vendor/bin/tn_vendor_performance.sh
+#
+# and file_contexts gives /vendor/bin/tn_vendor_performance.sh no exec label of
+# its own, so it lands in the catch-all vendor_qti_init_shell domain. Measured on
+# flash 2, permissive:
+#
+#     avc: denied { write } for comm="sh" name="dirty_background_ratio"
+#          path="/proc/sys/vm/dirty_background_ratio"
+#          scontext=u:r:vendor_qti_init_shell:s0
+#          tcontext=u:object_r:proc_dirty:s0 tclass=file permissive=1
+#     avc: denied { open }  for the same path
+#
+# ★ STOCK GRANTS THIS AND THIS BUILD DOES NOT — the gap is ours, not Qualcomm's.
+# From the factory image's own policy
+# (work/unpacked/parts/vendor/etc/selinux/vendor_sepolicy.cil):
+#
+#     (allow vendor_qti_init_shell proc_dirty_202404 (file (write)))
+#     (allow tn_vendor_performance_shell proc_dirty_202404 (file (write)))
+#
+# Two things follow. First, the rule below is parity with the shipping device
+# rather than an invention. Second, stock also carries a DEDICATED
+# tn_vendor_performance_shell domain for this script, which is the better model —
+# a Lenovo tuning script should not need the catch-all init-shell domain — and it
+# is not reproduced here because it needs an exec label, a domain and a
+# file_contexts entry for a script whose whole job is four sysctl writes. If this
+# device tree ever grows a proper domain for the TN scripts, this rule comes out
+# with them.
+#
+# `open` is granted alongside `write` because the denial pair shows both, and a
+# write with no open is not a thing a shell can do. Stock lists only write; its
+# policy version (proc_dirty_202404) predates the open-permission split that this
+# build's platform policy applies.
+allow vendor_qti_init_shell proc_dirty:file { open write };
