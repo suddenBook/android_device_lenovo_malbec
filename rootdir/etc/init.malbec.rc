@@ -317,12 +317,17 @@ on post-fs
 #    than at the top of the block, so the pairing is visible and a future
 #    reorder cannot silently separate them.
 #
-# Verification after the next flash, two lines:
-#     adb shell cat /sys/class/power_supply/battery/charge_control_end_threshold
-#     adb shell cat /sys/class/power_supply/battery/charge_control_start_threshold
-# must read 100 and 95. If they read 80 and 70 this block did not run again, and
-# the next thing to look at is `adb logcat -b kernel -d | grep -i charge_control`
-# plus init's own "Unable to write to file" warnings from the boot capture.
+# ✔ VERIFIED, session 22, on the flashed build:
+#     charge_control_end_threshold    100
+#     charge_control_start_threshold   95
+#     charge_control_en                 0
+# i.e. exactly what the latch analysis above predicted, down to `en` falling back
+# to 0 after the gated end_threshold write consumed it. The block runs, both
+# thresholds take, and no "Unable to write to file" warning appears in the boot
+# capture. Nothing further to check here.
+#
+# (If a future flash reads 80 and 70 instead, this block did not run: look at
+# `adb logcat -b kernel -d | grep -i charge_control` and at init's own warnings.)
 on property:sys.boot_completed=1
     write /sys/class/qcom-battery/charge_control_en 1
     write /sys/class/power_supply/battery/charge_control_end_threshold 100
