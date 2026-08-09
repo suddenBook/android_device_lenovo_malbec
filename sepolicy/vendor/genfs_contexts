@@ -98,7 +98,7 @@ genfscon sysfs /devices/platform/product-device-info                          u:
 # vendor_sysfs_battery_supply from the QTI policy.
 genfscon sysfs /class/qcom-battery                                           u:object_r:sysfs_qcom_battery:s0
 
-# LiveDisplay Outdoor mode (high brightness mode).
+# LiveDisplay Outdoor mode (high brightness mode), and the recovery backlight.
 #
 # device.mk installs vendor.lineage.livedisplay-service.sysfs with
 # se_path=/sys/class/backlight/panel0-backlight/hbm. That path is a symlink;
@@ -106,18 +106,33 @@ genfscon sysfs /class/qcom-battery                                           u:o
 #   /sys/devices/platform/soc/ae00000.qcom,mdss_mdp/backlight/panel0-backlight
 # (readlink -f on the running device).
 #
-# ⚠️ device/lineage/sepolicy/common/dynamic/genfs_contexts:3-10 already labels
-# sysfs_livedisplay_tuneable, but only under /devices/virtual/graphics/fb0/*.
-# This device has no fbdev graphics node at all — it is DRM only — so none of
-# those eight lines matches anything here and the HAL would be denied on a node
-# stock leaves as vendor_sysfs_graphics.
+# ⚠️ TWO entries, and the split is load-bearing. Session 21 first wrote ONE line
+# labelling the whole directory sysfs_livedisplay_tuneable, and that was wrong
+# in both directions at once:
 #
-# The label has to be the type hal_lineage_livedisplay_sysfs is granted:
-# device/lineage/sepolicy/common/vendor/hal_lineage_livedisplay_sysfs.te:10 is
-# `allow ... sysfs_livedisplay_tuneable:file rw_file_perms;` and nothing grants
-# that domain vendor_sysfs_graphics.
+#   · The HAL could not have used it. Its only grant is
+#     device/lineage/sepolicy/common/vendor/hal_lineage_livedisplay_sysfs.te:10,
+#     `allow ... sysfs_livedisplay_tuneable:file rw_file_perms;` — there is no
+#     :dir rule on that type anywhere, and the blanket
+#     `allow domain sysfs:dir search` (system/sepolicy/private/domain.te:272)
+#     covers PLAIN sysfs only. Upstream gets away with labelling only files
+#     because it leaves their parent directory plain. Relabel the parent and the
+#     HAL loses `search` on the directory it has to traverse.
 #
-# Labelled at the backlight directory rather than the single attribute because
-# genfscon prefix-matches; hbm is the only tuneable this device exposes there
-# today, and a sibling appearing later should be reachable without a second line.
-genfscon sysfs /devices/platform/soc/ae00000.qcom,mdss_mdp/backlight/panel0-backlight u:object_r:sysfs_livedisplay_tuneable:s0
+#   · It took the label recovery needs. init.recovery.qcom.rc:25 writes
+#     panel0-backlight/brightness from the `init` domain (recovery mounts no
+#     /vendor, so there is no vendor_init subcontext), and the only rule that
+#     permits it is device/qcom/sepolicy_vndr/sm8750/generic/vendor/common/
+#     init.te:90-95, `recovery_only(allow init vendor_sysfs_graphics:file
+#     w_file_perms; allow init vendor_sysfs_graphics:dir search;)`. Plain sysfs
+#     cannot be granted instead — private/init.te:862 neverallows
+#     `init sysfs:file { open write }`.
+#
+# So: the directory and brightness get vendor_sysfs_graphics, and only the one
+# tuneable gets the LiveDisplay type. genfscon is longest-prefix, which is the
+# same mechanism the soc:lenovo_kb / soc:lenovo_kb/wakeup pair above relies on.
+#
+# The HAL's missing `search` on the new parent type is granted in
+# sepolicy/vendor/hal_lineage_livedisplay.te — one rule, and it is required.
+genfscon sysfs /devices/platform/soc/ae00000.qcom,mdss_mdp/backlight/panel0-backlight     u:object_r:vendor_sysfs_graphics:s0
+genfscon sysfs /devices/platform/soc/ae00000.qcom,mdss_mdp/backlight/panel0-backlight/hbm u:object_r:sysfs_livedisplay_tuneable:s0

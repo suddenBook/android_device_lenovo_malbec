@@ -164,16 +164,27 @@ data class GestureAction(
                 R.string.action_split_right,
                 KeyGestureEvent.KEY_GESTURE_TYPE_SPLIT_SCREEN_NAVIGATION_RIGHT,
             ),
-            GestureAction(
-                "desktop_mode",
-                R.string.action_desktop_mode,
-                KeyGestureEvent.KEY_GESTURE_TYPE_DESKTOP_MODE,
-            ),
-            GestureAction(
-                "fullscreen",
-                R.string.action_fullscreen,
-                KeyGestureEvent.KEY_GESTURE_TYPE_TOGGLE_FULLSCREEN,
-            ),
+            // ⚠️ "desktop_mode" (52) and "fullscreen" (82) were here and are GONE.
+            // Both were dead, and both for the same root cause: session 19 turned
+            // desktop windowing off, which is an owner-accepted decision, and the
+            // catalogue was not revisited.
+            //
+            //   82  registered ONLY by DesktopModeKeyGestureHandler.kt:62-77,
+            //       which WMShellModule.java:1269 constructs only when
+            //       desktopState.canEnterDesktopMode(). With
+            //       config_isDesktopModeSupported=false it is never registered,
+            //       so KeyGestureController drops the event silently.
+            //   52  IS registered (PhoneWindowManager:4012) but its body is
+            //       statusbar.moveFocusedTaskToDesktop() (:4122-4130), a no-op
+            //       with desktop mode off.
+            //
+            // A picker entry the user can select and that then does nothing is
+            // worse than an absent one. Restore both if desktop mode is ever
+            // enabled — the constants are still valid, only the handlers are gone.
+            //
+            // ⚠️ The mSupportedKeyGestures dump quoted in this file's header
+            // includes 82; that dump predates the desktop-mode decision and is
+            // stale evidence.
             GestureAction(
                 "dnd",
                 R.string.action_dnd,

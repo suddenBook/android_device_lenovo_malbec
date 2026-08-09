@@ -585,7 +585,27 @@ key usage 0x0c0392 F17
 # the key falls through and nothing handles it. Bound through our own picker
 # instead, defaulting to LAUNCH_SEARCH.
 key usage 0x0c0393 F23
-key usage 0x0c0394 FULLSCREEN
+# F9, printed "Full screen". ⚠️ It used to map to KEYCODE_FULLSCREEN and was
+# DEAD, for a chain that is invisible from here:
+#
+#   KeyGestureController.java:871-882 turns KEYCODE_FULLSCREEN into
+#   KEY_GESTURE_TYPE_TOGGLE_FULLSCREEN (82) rather than MULTI_WINDOW_NAVIGATION
+#   (53), because toggle_fullscreen_state_via_fullscreen_key is ENABLED
+#   READ_ONLY in bp4a — verified in
+#   build/release/aconfig/bp4a/com.android.window.flags/.
+#
+#   Gesture 82 has exactly one registrar in the whole tree:
+#   DesktopModeKeyGestureHandler.kt:62-77, and WMShellModule.java:1269 only
+#   constructs it when desktopState.canEnterDesktopMode(). This device sets
+#   config_isDesktopModeSupported=false and config_canInternalDisplayHostDesktops
+#   =false (overlay/FrameworkOverlayMalbec), which is a deliberate, owner-accepted
+#   decision — so 82 is never registered and handleKeyGesture drops it silently.
+#
+# So the key printed "Full screen" did nothing at all. F24 was the one unassigned
+# F-key left (pen holds F13-F16 and F18; this folio holds F17, F19-F23), so the
+# key now goes through MalbecParts' picker like every other ZUI key with no AOSP
+# equivalent — the same treatment 0x0c0395 and 0x0c0397 already get.
+key usage 0x0c0394 F24
 # F10, the split-screen key. It used to map to RECENT_APPS, which is why it
 # opened the recents list instead of splitting the screen — owner-reported, and
 # visible in dumpsys input's last-handled gestures (keycode 312 ->

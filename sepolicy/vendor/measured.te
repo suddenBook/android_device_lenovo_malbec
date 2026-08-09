@@ -153,8 +153,23 @@ get_prop(vendor_qti_init_shell, vendor_lenovotb_init_prop)
 # The lesson generalises: splitting a type out of a generic one is not additive.
 # Anything that reached the old label loses the new one, and a permissive boot is
 # where you find out.
+#
+# ⚠️ And READ IS NOT ENOUGH — this was restored as read-only and the HAL writes.
+# android.hardware.usb-service.qti is built FROM SOURCE here (device.mk), and
+# vendor/qcom/opensource/usb/hal/Usb.cpp's limitPowerTransfer() does
+#     :1298  WriteStringToFile("0", "/sys/class/qcom-battery/restrict_cur")
+#     :1304  WriteStringToFile("1", "/sys/class/qcom-battery/restrict_chg")
+#     :1310  WriteStringToFile("0", "/sys/class/qcom-battery/restrict_chg")
+# Both nodes are real on this unit (work/device_dump/stock/power/qcom-battery.txt).
+# It worked on plain sysfs only because system/sepolicy/private/hal_usb.te:17-20
+# grants `allow hal_usb sysfs:file { read open write getattr }` — on the GENERIC
+# type. Under enforcing every branch of limitPowerTransfer would return
+# Status::ERROR and USB power limiting / contaminant-detection charge
+# restriction would silently stop applying.
+#
+# rw_dir_file subsumes both the search and the r_dir_file above.
 allow vendor_hal_usb_qti sysfs_qcom_battery:dir search;
-r_dir_file(vendor_hal_usb_qti, sysfs_qcom_battery)
+rw_dir_file(vendor_hal_usb_qti, sysfs_qcom_battery)
 
 #####################################
 # Property-area enumeration — dontaudit, and this one is a judgement call worth

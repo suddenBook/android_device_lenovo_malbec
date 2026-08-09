@@ -14,7 +14,7 @@ DEVICE_PATH := device/lenovo/malbec
 #
 # BUILD_BROKEN_DUP_RULES is ON, and here is the proof it is needed.
 #
-# 23 install targets are claimed by two rules. They fall into THREE classes, and
+# 22 install targets are claimed by two rules. They fall into THREE classes, and
 # describing them as one is how the version of this comment that stood until
 # session 21 managed to be wrong in five separate ways at once. Do not edit this
 # from memory -- run the script:
@@ -22,7 +22,7 @@ DEVICE_PATH := device/lenovo/malbec
 #     python3 work/scripts/30-dup-installs.py            # live list + winners
 #     python3 work/scripts/30-dup-installs.py --check    # fail on drift
 #
-# -- A. blob PRODUCT_COPY_FILES vs a Soong install rule -- 14 paths, blob wins all
+# -- A. blob PRODUCT_COPY_FILES vs a Soong install rule -- 13 paths, blob wins all
 #
 #   kati materialises PRODUCT_COPY_FILES from build/make/core/Makefile:148, i.e.
 #   AFTER installs-$(TARGET_PRODUCT).mk, and Make keeps the LAST recipe. The blob
@@ -535,8 +535,17 @@ BOARD_VENDOR_RAMDISK_KERNEL_MODULES_BLOCKLIST_FILE := $(RAMDISK_MODULES_PATH)/mo
 
 # Partitions
 # Sizes are the authoritative values from `fastboot getvar all` on the device,
-# not the factory image file sizes. Note dtbo: the shipped dtbo.img is 48 MiB
-# but the partition is 50 MiB.
+# not the factory image file sizes. Note dtbo: the image we ship is 34.5 MiB
+# while the partition is 50 MiB.
+#
+# ⚠️ This used to say "the shipped dtbo.img is 48 MiB", which described the
+# factory partition DUMP rather than an image. The dump's own
+# dt_table_header.total_size is 36,185,879, and the factory vbmeta's dtbo hash
+# descriptor covers exactly that many bytes — recomputing
+# sha256(salt ‖ dtbo[0:36185879]) reproduces stock's digest byte for byte, while
+# hashing all 50,331,648 does not. The 13.49 MiB tail was partition slack that
+# was being hashed, flashed and carried in every OTA for nothing. Truncated in
+# malbec-kernel; see that repo's README for the derivation.
 BOARD_BOOTIMAGE_PARTITION_SIZE := 100663296
 BOARD_DTBOIMG_PARTITION_SIZE := 52428800
 BOARD_INIT_BOOT_IMAGE_PARTITION_SIZE := 8388608
@@ -701,9 +710,22 @@ BOARD_AVB_ENABLE := true
 # returns true whenever the bootloader is unlocked (unless
 # /metadata/gsi/dsu/avb_enforce exists, which it does not here), so
 # allow_verification_error is set and a verification failure degrades to
-# androidboot.veritymode=eio instead of refusing to boot. The stock ROM on this
-# very unit demonstrates it: ro.boot.veritymode=eio with seven live *-verity dm
-# targets. external/avb/README.md:768-786 says the same thing normatively.
+# androidboot.veritymode=eio instead of refusing to boot.
+# external/avb/README.md:768-786 says the same thing normatively.
+#
+# ⚠️ This used to add "the stock ROM on this very unit demonstrates it:
+# ro.boot.veritymode=eio". It does not, and the dump in this repo says so:
+#
+#     work/device_dump/stock/props/getprop.txt
+#       [ro.boot.verifiedbootstate]: [orange]      <- unlocked, as claimed
+#       [ro.boot.veritymode]:        [enforcing]   <- NOT eio
+#       [ro.boot.veritymode.managed]:[yes]
+#
+# Which is the correct outcome and a better demonstration than the one that was
+# claimed: unlocked does NOT mean verity is off, it means a verity FAILURE is
+# survivable. Stock's hashtrees match its partitions, so nothing fails and the
+# mode stays enforcing. The dm-verity half of the old sentence is right — the
+# device has live *-verity targets (proc/mounts.txt).
 #
 # The real hazard people hit — sitting on the boot logo forever — comes from a
 # MISMATCHED image set (a patched boot, a GSI, or a partial flash against a stale
@@ -814,60 +836,60 @@ include vendor/lenovo/malbec/BoardConfigVendor.mk
 # while the framework here is Android 16. proprietary-files.txt excludes them
 # for that reason; only the per-device tuning files stay as blobs.
 #
-# ⚠️ BOARD_WLAN_CHIP is load-bearing and it needs BOTH halves below.
+# ── ★ ⚠️ SESSION 21: THE VENDOR HAL COMES FROM A DIFFERENT REPO ON LINEAGEOS ──
 #
-# hardware/qcom/wlan carries three generations of the vendor HAL and picks one
-# per chip. The Make side (hardware/qcom/wlan/Android.mk:3-9) switches on
-# BOARD_WLAN_CHIP; the Soong side (hardware/qcom/wlan/Android.bp:65-125) switches
-# on soong_config_variable("qcom_wifi", "board_wlan_chip") -- a *separate*
-# namespace that nothing populates automatically. Setting only BOARD_WLAN_CHIP
-# leaves the Soong side on conditions_default, so this needs the explicit
-# add_soong_config_var_value calls too.
+# Everything this block used to say about BOARD_WLAN_CHIP being "load-bearing"
+# was measured against hardware/qcom/wlan. That repo exists in this checkout and
+# IS NOT THE ONE USED. Ground truth, from the build's own variables file:
 #
-# Leaving both unset is what this tree did until session 11, and the cost was
-# invisible: conditions_default whole-static-links
-# //hardware/qcom/wlan/legacy:libwifi-hal-qcom, i.e. the pre-Wi-Fi-7 HAL, into
-# libwifi-hal.so. It builds, the service starts, wlan0 comes up -- and every
-# Wi-Fi 7 capability silently reports NOT_SUPPORTED because the function
-# pointers are never populated. Measured on the first build:
+#     out/soong/soong.lineage_malbec.variables
+#       NamespacesToExport … hardware/qcom-caf/wlan, hardware/qcom-caf/wlan/qcwcn
+#                            (hardware/qcom/wlan is NOT exported)
+#       VendorVars.qcom_wifi = {"board_wlan_chip": "wcn7760"}
 #
-#   strings out/.../vendor/lib64/libwifi-hal.so | grep -ic 'mlo|11be|eht'  -> 0
-#   same command on the factory libwifi-hal.so                             -> 13
-#   find out/soong/.intermediates/hardware/qcom/wlan -maxdepth 1 -type d   -> legacy only
-#   readelf -d out/.../vendor/lib64/libwifi-hal.so | grep libpasn          -> absent
+# and build/soong/android/namespace.go: the root namespace sees the root plus
+# EXPORTED namespaces only. So `libwifi-hal-qcom` resolves in
+# hardware/qcom-caf/wlan, and the qcom_wifi/board_wlan_chip variable that the
+# two lines below set is read by nobody — its only consumer is
+# hardware/qcom/wlan/Android.bp:41, in a namespace this product does not export.
 #
-# and the legacy tree has no twt.cpp, no nan_pairing*, no
-# wifi_cached_scan_result, no nud_stats -- so no TWT, no Wi-Fi Aware secure
-# pairing, no cached scan results, no PASN, on a Wi-Fi-ONLY tablet.
+# The CAF repo uses a different namespace and a different variable:
+#     hardware/qcom-caf/wlan/Android.bp:10-12  config_namespace "wifi",
+#                                              variable "qcom_wlan_hal"
 #
-# The part is WCN7750 (vendor_dlkm ships qca_cld3_wcn7750.ko and lsmod on the
-# device shows it bound). wcn7760 is the WCN77xx Wi-Fi-7 generation HAL and the
-# closest in-tree match; wcn7850 routes to hardware/qcom/ar1-la3 which is not
-# checked out here.
+# ── The outcome is still correct, and NOT by luck in the way it looks ──
 #
-# Do NOT also set qcom_wifi/libpasn_support. It looks like the right thing to do
-# -- the variable is documented as mirroring $(wildcard
-# external/wpa_supplicant_8/src/pasn/pasn_common.c), and that file is present --
-# but hardware/qcom/wlan/Android.bp declares it as a soong_config_string_variable
-# (:56-62, values "true"/"false") while writing its select branches at :86-90 as
-# unquoted true:/false:, i.e. bool literals. Setting it makes Soong type-check
-# the branches and fail:
+# qcom_wlan_hal is unset, so libwifi-hal-qcom takes conditions_default
+# (Android.bp:64-73), which whole-static-links
+# //hardware/qcom-caf/wlan/qcwcn:libwifi-hal-qcom. That IS the Wi-Fi 7
+# generation — checked in the source rather than assumed: qcwcn/wifi_hal/ has
+# twt.cpp, nan_pairing{,_initiator,_responder}.cpp, wifi_cached_scan_result.cpp
+# and nud_stats.h, and llstats.cpp carries 39 MLO references. Those are exactly
+# the files whose absence the old comment was worried about.
 #
-#   error: frameworks/opt/net/wifi/libwifi_hal/Android.bp:234:16:
-#     module "libwifi-hal" ... shared_libs: Expected all branches of a select on
-#     condition soong_config_variable("qcom_wifi", "libpasn_support") to have
-#     type string, found bool
+# ── ⚠️⚠️ DO NOT "FIX" THIS BY SETTING qcom_wlan_hal ⚠️⚠️ ──
 #
-# Leaving it unset takes the `default: ["libpasn"]` branch, which is what we
-# want anyway -- verified: libpasn.so is in libwifi-hal.so's DT_NEEDED.
+# It is the obvious tidy-up and it would BREAK WI-FI COMPLETELY.
+# hardware/qcom-caf/wlan/Android.bp:64 declares qcom_wlan_hal with
+# conditions_default and NO `qcwcn:` branch, even though "qcwcn" is its only
+# declared value (:52-56). Setting it therefore selects an EMPTY branch:
+# whole_static_libs and shared_libs both vanish and libwifi-hal.so is built with
+# no QCOM HAL inside it at all. Unset is the only correct state.
 #
-# Verified after this change: .intermediates/hardware/qcom/wlan/wcn7760/qcwcn/
-# wifi_hal exists, libwifi-hal.so grew 472016 -> 687392 bytes, and its MLO
-# symbols (_ZN14LLStatsCommand5isMloEv, copyMloStats, copyMloPeerStats,
-# "No link id for peer in MLO connection") now match the factory library exactly.
+# BOARD_WLAN_CHIP is kept below because it is free and it records the part, but
+# nothing in this tree reads it. BOARD_WLAN_DEVICE is the one that does real
+# work — it selects lib_driver_cmd_qcwcn for wpa_supplicant and hostapd, and it
+# reaches Soong as wifi/board_wlan_device.
+#
+# ★ The empirical check, after any change here, is in work/scripts/50-validate.sh
+# and it is a runtime one because no build-time check can see this:
+#
+#     strings /vendor/lib64/libwifi-hal.so | grep -ciE "mlo|11be|eht"
+#
+# Zero means the legacy HAL got linked: the service still starts, wlan0 still
+# comes up, and every Wi-Fi 7 capability silently reports NOT_SUPPORTED. On a
+# Wi-Fi-ONLY tablet that is the whole point of the device.
 BOARD_WLAN_CHIP := wcn7760
-$(call add_soong_config_namespace,qcom_wifi)
-$(call add_soong_config_var_value,qcom_wifi,board_wlan_chip,$(BOARD_WLAN_CHIP))
 
 BOARD_WLAN_DEVICE := qcwcn
 BOARD_HOSTAPD_DRIVER := NL80211

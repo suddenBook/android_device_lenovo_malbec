@@ -40,12 +40,52 @@
      Copying it verbatim would have produced a hotseat with a hole in it and a
      Google folder with two apps in it.
 
-     Every component below was resolved on the running device with
-     `cmd package resolve-activity` (brief form) against ACTION_MAIN plus
-     CATEGORY_LAUNCHER for each package, and every widget provider was confirmed
-     present in `dumpsys appwidget`.
-     A component that later stops resolving is not fatal — AppShortcutParser
-     (:421-423) logs "Favorite not found" and skips that one row.
+     ── ★ ⚠️ SESSION 21 — THIS FILE WAS A PIXEL/GApps LAYOUT AND MOSTLY DEAD ──
+
+     Every component was originally resolved on a running GMS build. On
+     LineageOS there is no GMS tree at all: vendor/ holds only apn, codeaurora,
+     crowdin, lenovo, lineage and qcom, and vendor/lineage/config/partner_gms.mk
+     is gated on WITH_GMS, which nothing sets. Measured — of the 14 packages this
+     file named, TWELVE do not exist in this build. Only com.android.settings and
+     org.lineageos.aperture did.
+
+     That is not a cosmetic problem, because the two element types fail
+     differently:
+
+       * a missing appicon IS skipped — AppShortcutParser:422-424 logs
+         "Favorite not found" and returns -1;
+       * a missing appwidget is NOT. PendingWidgetParser.verifyAndInsert
+         (:544-563) never checks the provider. It writes RESTORED =
+         FLAG_ID_NOT_VALID|FLAG_PROVIDER_NOT_READY|FLAG_DIRECT_CONFIG and inserts
+         the row anyway, so the user gets a permanent grey "pending" tile that
+         nothing will ever fill.
+
+     So the first boot would have shown a hotseat with three holes — exactly what
+     this file exists to prevent — plus three dead 2x2 grey tiles, and a folder
+     that FolderParser:677-679 would have deleted for having one usable child,
+     promoting a lone Settings icon in its place.
+
+     Rewritten against what this ROM actually installs. Every package below was
+     verified present in the tree, and every className is the fully-qualified
+     activity carrying CATEGORY_LAUNCHER in its own AndroidManifest:
+
+       org.lineageos.{jelly,aperture,glimpse,twelve,etar,recorder}
+       com.android.{settings,deskclock,contacts,calculator2}
+
+     ⚠️ Fully qualified, not the manifest's shorthand. A manifest may write
+     android:name=".MainActivity" or "Settings" and have it expanded against its
+     own package; AppShortcutParser does `new ComponentName(packageName,
+     className)` with no such expansion, so a leading dot here would simply not
+     resolve.
+
+     ⚠️ Only THREE widget providers are used, and each was read out of its own
+     manifest rather than assumed, because this is the class that leaves visible
+     wreckage:
+       com.android.deskclock       com.android.alarmclock.AnalogAppWidgetProvider
+       org.lineageos.etar          com.android.calendar.widget.CalendarAppWidgetProvider
+       org.lineageos.malbec.parts  ...display.PenModeWidgetProvider
+     Note Etar keeps the AOSP com.android.calendar.* class names under a LineageOS
+     package name — the pair that looks wrong and is right.
 
      ── Grid ──────────────────────────────────────────────────────────────────
 
@@ -80,41 +120,42 @@
      ── Layout ────────────────────────────────────────────────────────────────
 
          y=0   (left empty, as the launcher's own layout does — the search row)
-         y=1   [ clock 2x2 ]            .    .    [ weather 2x2 ]
-         y=2      (clock)               .    .       (weather)
-         y=3   [ Device mode 2x1 ]  .   .    [ calendar 2x2 ]
-         y=4   Play  Google folder   .  .       (calendar)
+         y=1   [ clock 2x2 ]            .    .    [ calendar 2x2 ]
+         y=2      (clock)               .    .       (calendar)
+         y=3   [ Device mode 2x1 ]  .   .    .     .
+         y=4   Settings  Tools folder   .   .     .
+
+         hotseat   Jelly  Aperture  Glimpse  Twelve   .   .
 -->
 <workspace>
 
     <!-- Hotseat. Four of six, matching how many the launcher's own 6x5 layout
-         fills; Camera takes the slot YouTube had, since YouTube is not in this
-         build and a tablet with a stylus is a device people photograph notes with. -->
+         fills. Browser, camera, gallery, music — the four a tablet gets picked up
+         for, and all four are LineageOS's own apps, so none of them can disappear
+         with a GApps decision the way the previous four did. -->
     <appicon container="hotseat" rank="0"
-        packageName="com.android.chrome"
-        className="com.google.android.apps.chrome.Main" />
+        packageName="org.lineageos.jelly"
+        className="org.lineageos.jelly.MainActivity" />
     <appicon container="hotseat" rank="1"
-        packageName="com.google.android.gm"
-        className="com.google.android.gm.ConversationListActivityGmail" />
-    <appicon container="hotseat" rank="2"
-        packageName="com.google.android.apps.photos"
-        className="com.google.android.apps.photos.home.HomeActivity" />
-    <appicon container="hotseat" rank="3"
         packageName="org.lineageos.aperture"
         className="org.lineageos.aperture.CameraLauncher" />
+    <appicon container="hotseat" rank="2"
+        packageName="org.lineageos.glimpse"
+        className="org.lineageos.glimpse.MainActivity" />
+    <appicon container="hotseat" rank="3"
+        packageName="org.lineageos.twelve"
+        className="org.lineageos.twelve.MainActivity" />
 
-    <!-- Widgets. -->
+    <!-- Widgets. Three, all verified providers — a wrong one here leaves a
+         permanent grey tile, see the warning in the header. -->
     <appwidget screen="0" x="0" y="1" spanX="2" spanY="2"
-        packageName="com.google.android.deskclock"
+        packageName="com.android.deskclock"
         className="com.android.alarmclock.AnalogAppWidgetProvider" />
     <appwidget screen="0" x="4" y="1" spanX="2" spanY="2"
-        packageName="com.google.android.googlequicksearchbox"
-        className="com.google.android.apps.search.assistant.verticals.snapshot.widgets.weather.WeatherWidget_Receiver" />
-    <appwidget screen="0" x="4" y="3" spanX="2" spanY="2"
-        packageName="com.google.android.calendar"
+        packageName="org.lineageos.etar"
         className="com.android.calendar.widget.CalendarAppWidgetProvider" />
 
-    <!-- ★ The reason this file exists. 2x1, matching targetCellWidth in
+    <!-- The reason this file exists. 2x1, matching targetCellWidth in
          res/xml/pen_mode_widget_info.xml — if those two disagree the launcher
          resizes it on first layout and the grid gets a hole. -->
     <appwidget screen="0" x="0" y="3" spanX="2" spanY="1"
@@ -122,29 +163,28 @@
         className="org.lineageos.malbec.parts.display.PenModeWidgetProvider" />
 
     <appicon screen="0" x="0" y="4"
-        packageName="com.android.vending"
-        className="com.android.vending.AssetBrowserActivity" />
+        packageName="com.android.settings"
+        className="com.android.settings.Settings" />
 
     <!-- titleText and not title: title takes a resource id resolved against THIS
          package (FolderParser :604-609), and there is no reason to add a
-         translated string for a folder the user will rename or delete. -->
-    <folder screen="0" x="1" y="4" titleText="Google">
-        <appicon packageName="com.google.android.googlequicksearchbox"
-            className="com.google.android.googlequicksearchbox.SearchActivity" />
-        <appicon packageName="com.google.android.apps.maps"
-            className="com.google.android.maps.MapsActivity" />
-        <appicon packageName="com.google.android.calendar"
-            className="com.android.calendar.AllInOneActivity" />
-        <appicon packageName="com.google.android.deskclock"
+         translated string for a folder the user will rename or delete.
+
+         Five children, all installed. FolderParser:677-679 deletes a folder that
+         ends up with fewer than two usable ones and promotes the survivor, which
+         is exactly what would have happened to the old "Google" folder: seven of
+         its eight apps are not in this build. -->
+    <folder screen="0" x="1" y="4" titleText="Tools">
+        <appicon packageName="com.android.deskclock"
             className="com.android.deskclock.DeskClock" />
-        <appicon packageName="com.google.android.contacts"
+        <appicon packageName="org.lineageos.etar"
+            className="com.android.calendar.AllInOneActivity" />
+        <appicon packageName="com.android.contacts"
             className="com.android.contacts.activities.PeopleActivity" />
-        <appicon packageName="com.google.android.calculator"
+        <appicon packageName="com.android.calculator2"
             className="com.android.calculator2.Calculator" />
-        <appicon packageName="com.google.android.apps.weather"
-            className="com.google.android.apps.weather.home.HomeActivity" />
-        <appicon packageName="com.android.settings"
-            className="com.android.settings.Settings" />
+        <appicon packageName="org.lineageos.recorder"
+            className="org.lineageos.recorder.RecorderActivity" />
     </folder>
 
 </workspace>

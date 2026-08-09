@@ -42,15 +42,19 @@
 #                descriptor for it — the mount could only fail AVB verification.
 #   vm-bootsys   mounted at /product/vm-system for the Gunyah trusted-UI VM.
 #                The factory package ships no image for it, the partition is
-#                zero on device, and PixelOS builds no /product/vm-system.
+#                zero on device, and this ROM builds no /product/vm-system —
+#                re-checked on LineageOS 23.2: nothing under
+#                packages/modules/Virtualization, vendor/lineage or
+#                build/make/target produces one.
 #   vm-persist   mounted at /mnt/product/vm-persist, the companion state
 #                partition for that same VM. With vm-bootsys gone it has no
 #                consumer left. It also has no label to mount under: the only
 #                mnt_vendor_vm_file definition in device/qcom/sepolicy_vndr is
 #                under sm8650/, and this device selects the sm8750 tree.
 #   lenovocust   ZUI channel customisation data — preinstall lists, operator
-#                configuration. Nothing in PixelOS reads it.
-#   blackbox     Lenovo crash-log collection. Nothing in PixelOS reads it.
+#                configuration. Nothing in this ROM reads it (re-checked on
+#                LineageOS: no .mk, .rc or .te anywhere references it).
+#   blackbox     Lenovo crash-log collection. Nothing in this ROM reads it.
 #
 # The last three are dropped for the same underlying reason: stock labels them
 # from vendor_sepolicy.cil, and this tree rebuilds vendor policy from source

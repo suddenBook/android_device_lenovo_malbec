@@ -1265,6 +1265,11 @@ vendor/etc/perf/targetresourceconfigs.xml
 vendor/etc/perf/targetsysnodesconfigs.xml
 vendor/etc/powerhint.xml
 vendor/etc/sensors/config/bonito_power_0.json
+vendor/etc/thermal-engine-malbec-audio.conf
+vendor/etc/thermal-engine-malbec-camera.conf
+vendor/etc/thermal-engine-malbec-floating.conf
+vendor/etc/thermal-engine-malbec-off.conf
+vendor/etc/thermal-engine-malbec-skynet.conf
 vendor/etc/thermal-engine-malbec-normal.conf
 vendor/etc/thermal-engine.conf
 vendor/lib64/liblmthermallistner.so

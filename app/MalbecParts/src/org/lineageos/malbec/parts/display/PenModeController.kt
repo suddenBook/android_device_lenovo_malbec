@@ -263,6 +263,21 @@ object PenModeController {
     }
 
     /**
+     * Exactly the condition applyCeiling would act on — nothing more.
+     *
+     * Kept as a mirror of applyCeiling's two tests, including the `!(a == b)` /
+     * `!(a <= b)` spelling, so the pair cannot drift apart. That equivalence is
+     * also what makes the observer terminate: applyCeiling leaves peak == ceiling
+     * and min <= ceiling, so the write it performs wakes the observer once and
+     * the next pass reads false here and returns.
+     */
+    private fun needsCeiling(context: Context, ceiling: Float): Boolean {
+        val cr = context.contentResolver
+        return !(Settings.System.getFloat(cr, PEAK_REFRESH_RATE, -1f) == ceiling) ||
+            !(Settings.System.getFloat(cr, MIN_REFRESH_RATE, 0f) <= ceiling)
+    }
+
+    /**
      * Re-assert the mode on the hardware without claiming the user just chose it.
      *
      * Called at boot and whenever this process starts. It writes the property
@@ -298,13 +313,34 @@ object PenModeController {
      * 60 Hz choice, an external write of 90 is below the stylus limit, so it
      * would be accepted in silence while the picker went on showing 60.
      *
-     * This cannot loop. applyCeiling writes only when the value differs, so the
-     * write it performs wakes this observer once and the next pass returns at the
-     * first line.
+     * ★ ⚠️ SESSION 21 — the guard did not match the contract two paragraphs up,
+     * and the case it missed is the dangerous one. It read
+     *
+     *     if (effectiveRefreshRate(context) <= ceiling + 0.5f) return
+     *
+     * which restores only what is ABOVE the ceiling, while the documented rule is
+     * "anything else that is not the chosen ceiling — put it back". The gap is
+     * peak_refresh_rate = 0:
+     *
+     *   · effectiveRefreshRate() is max(peak, min), so a stored 0 makes it 0 —
+     *     the REFRESH_RATE_MAX default only applies when the key is ABSENT, not
+     *     when it is present and zero;
+     *   · 0 <= 120.5, so the observer returned and did nothing;
+     *   · and DisplayModeDirector.java:1202-1206 posts NO physical vote at all
+     *     for peak == 0, which does not mean "60" — it means the panel is
+     *     uncapped and free to run 144.
+     *
+     * So the one write that silently kills the stylus was the one write this
+     * function ignored. enforceCeiling() already handled it (its own KDoc lists
+     * "zero or negative" explicitly) but that only runs at boot and on a mode
+     * switch, so the panel stayed uncapped until the next reboot.
+     *
+     * The guard is now needsCeiling(), which is applyCeiling's own condition. It
+     * still cannot loop, and the reason is unchanged — see needsCeiling.
      */
     private fun onExternalRefreshRateChange(context: Context) {
         val ceiling = currentRefreshRate(context)
-        if (effectiveRefreshRate(context) <= ceiling + 0.5f) return
+        if (!needsCeiling(context, ceiling)) return
         if (aboveStylusLimit(context)) {
             Log.w(TAG, "refresh rate pushed to ${effectiveRefreshRate(context)}; restoring $ceiling")
             announce(context, R.string.touch_mode_rate_restored_toast)

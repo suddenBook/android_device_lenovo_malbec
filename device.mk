@@ -750,13 +750,29 @@ PRODUCT_COPY_FILES += \
 # thermal-engine-v2 reads it by path (init.qcom.rc:516 passes
 # -c /vendor/etc/thermal-engine-malbec-${vendor.thermal.mode}.conf), so
 # installing it here is indistinguishable from the blob at runtime. The other
-# five profiles stay extracted; only this one is tuned, and it is plain-text
+# SIX profiles stay extracted; only this one is tuned, and it is plain-text
 # INI, so keeping it in git is what makes each tuning step a readable diff
 # instead of an opaque 2 KB binary change.
 #
-# ⚠️ The matching line was removed from proprietary-files.txt, so
-# work/analysis/vendor-gap-allowlist.txt carries the entry that keeps
-# 32-acceptance.py check 2 honest about it.
+# ★ ⚠️ SESSION 21: five of those six were NOT being extracted, and the gap had
+# teeth. Stock ships seven malbec profiles — normal, audio, camera, floating,
+# game, off, skynet — and proprietary-files.txt carried only `normal`. The
+# hazard is the ordering in init.qcom.rc:523-526, which does
+#
+#     stop thermal-engine
+#     start thermal-switch-engine
+#
+# so setting vendor.thermal.mode to any of the five missing values would have
+# left thermal-engine-v2 exiting with "No platform thermal config file" AND the
+# fallback daemon already stopped — i.e. no userspace thermal mitigation at all.
+# Latent only because init.malbec.rc sets nothing but `game` and `normal`, and
+# every comment in this tree that said otherwise was inviting the trap.
+#
+# audio, camera, floating, off and skynet are now extracted verbatim: 6,927
+# bytes in total for five plain-text INI files.
+#
+# ⚠️ The matching line for the GAME profile is deliberately absent from
+# proprietary-files.txt, because this tree owns that one.
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/thermal/thermal-engine-malbec-game.conf:$(TARGET_COPY_OUT_VENDOR)/etc/thermal-engine-malbec-game.conf
 

@@ -1,0 +1,41 @@
+# LiveDisplay — one rule, and it is required.
+#
+# device.mk installs two LiveDisplay services:
+#
+#   vendor.lineage.livedisplay-service.sdm     display modes + picture adjustment
+#   vendor.lineage.livedisplay-service.sysfs   outdoor mode (HBM)
+#
+# The SDM half needs nothing here. device/lineage/sepolicy/qcom/ already carries
+# its domain, its exec label (file_contexts:2) and its vndbinder /
+# display_vendor_data_file grants, and BOARD_VENDOR_SEPOLICY_DIRS picks that
+# directory up through device/qcom/sepolicy_vndr/SEPolicy.mk.
+#
+# The sysfs half needs exactly one rule, for a reason that is easy to get wrong
+# in both directions — see the long note on the two backlight entries in
+# genfs_contexts.
+#
+# Upstream's policy (device/lineage/sepolicy/common/vendor/
+# hal_lineage_livedisplay_sysfs.te:10) grants only
+#
+#     allow hal_lineage_livedisplay_sysfs sysfs_livedisplay_tuneable:file rw_file_perms;
+#
+# — a FILE rule and no :dir rule at all. That is sufficient upstream because the
+# tuneables it labels all live under /devices/virtual/graphics/fb0/, whose parent
+# directory stays plain `sysfs`, and every domain already has
+# `allow domain sysfs:dir search` (system/sepolicy/private/domain.te:272).
+#
+# This device is DRM-only and has no fb0. Its HBM node is
+# /devices/platform/soc/ae00000.qcom,mdss_mdp/backlight/panel0-backlight/hbm, and
+# that parent directory cannot be left plain: recovery writes brightness in the
+# same directory from the `init` domain, which is permitted only against
+# vendor_sysfs_graphics (device/qcom/sepolicy_vndr/sm8750/generic/vendor/common/
+# init.te:90-95, recovery_only) and can never be permitted against plain sysfs
+# (private/init.te:862 neverallows `init sysfs:file { open write }`).
+#
+# So the parent is vendor_sysfs_graphics, and the traversal has to be granted
+# explicitly — there is no blanket `sysfs_type:dir search` for arbitrary domains,
+# only per-domain ones (apexd, priv_app, system_server, gmscore_app).
+#
+# Search only. The HAL opens exactly one file in that directory and has no reason
+# to list it.
+allow hal_lineage_livedisplay_sysfs vendor_sysfs_graphics:dir search;

@@ -191,7 +191,42 @@
         </sdrHdrRatioMap>
     </hdrBrightnessConfig>
 
-    <autoBrightness>
+    <!-- ★ ⚠️ enabled="true" IS NOT OPTIONAL, and leaving it off does the exact
+         opposite of what this whole file is for.
+
+         The XSD says the attribute defaults to true
+         (frameworks/base/services/core/xsd/display-device-config/
+          display-device-config.xsd:687, use="optional" default="true").
+         xsdc DOES NOT IMPLEMENT ATTRIBUTE DEFAULTS. Two proofs, both in-tree:
+
+           · XsdHandler.java:275-283 reads `default` only for xs:element, and
+             throws on it. Nothing ever reads an attribute's default.
+           · JavaCodeGenerator.java:475-479 emits, for a primitive boolean,
+                 public boolean getEnabled() { if (enabled == null) return false; ... }
+             i.e. a missing attribute reads back FALSE, not true.
+
+         And DisplayDeviceConfig.java:3026-3037 keys off the ELEMENT, not the
+         attribute:
+
+             mDdcAutoBrightnessAvailable = true;                 // the "no tag" default
+             if (autobrightness != null) {                       // our tag IS present
+                 mDdcAutoBrightnessAvailable = autobrightness.getEnabled();   // -> false
+             }
+             mAutoBrightnessAvailable = config_automatic_brightness_available
+                                        && mDdcAutoBrightnessAvailable;
+
+         FrameworkOverlayMalbec sets config_automatic_brightness_available=true,
+         so the && was decided entirely by this attribute — and with it absent,
+         DisplayPowerController.java:1074-1077 returns before building any
+         BrightnessMappingStrategy or AutomaticBrightnessController.
+
+         Net effect of the missing attribute: ADAPTIVE BRIGHTNESS OFF ENTIRELY,
+         and the four debounce values below — the only reason this file exists —
+         dead. Stock sidesteps it by omission: all three factory
+         vendor/etc/displayconfig/display_id_*.xml contain zero autoBrightness
+         elements, so they take the "no tag" branch and keep the default. We
+         cannot, because we need the debounce values. -->
+    <autoBrightness enabled="true">
         <brighteningLightDebounceMillis>2000</brighteningLightDebounceMillis>
         <darkeningLightDebounceMillis>3000</darkeningLightDebounceMillis>
         <brighteningLightDebounceIdleMillis>2000</brighteningLightDebounceIdleMillis>
