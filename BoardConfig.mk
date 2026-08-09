@@ -14,60 +14,135 @@ DEVICE_PATH := device/lenovo/malbec
 #
 # BUILD_BROKEN_DUP_RULES is ON, and here is the proof it is needed.
 #
-# 14 paths have both a blob PRODUCT_COPY_FILES entry and a Soong install rule.
-# Run `python3 work/scripts/30-dup-installs.py` for the live list with the winner
-# of each; do not trust the count in this comment over that output. As of the
-# current tree the blob wins 11 and the tree wins 3:
+# 23 install targets are claimed by two rules. They fall into THREE classes, and
+# describing them as one is how the version of this comment that stood until
+# session 21 managed to be wrong in five separate ways at once. Do not edit this
+# from memory -- run the script:
 #
-#   blob wins  etc/init/{memtrack_qti, qspa_vendor,
-#                        vendor.qti.audio-adsprpc-service, vndservicemanager}.rc
-#              etc/permissions/android.hardware.hardware_keystore.xml
-#              etc/usb_compositions.conf
-#              etc/wifi/wpa_supplicant.conf
-#              etc/aidl/hfp/hfp_codec_capabilities.xml
-#              etc/aidl/le_audio/aidl_audio_set_{configurations,scenarios}.bfbs
-#              etc/vintf/manifest/face-default.xml
-#   tree wins  etc/vintf/manifest/{manifest_audio_qti_services,memtrack_qti,
-#                                  soundtrigger.qti}.xml
+#     python3 work/scripts/30-dup-installs.py            # live list + winners
+#     python3 work/scripts/30-dup-installs.py --check    # fail on drift
 #
-# Why each side is right:
-#   - the four .rc files start binaries we ship as blobs (verified: each .rc's
-#     `service` line names a binary whose only install rule comes from
-#     vendor/lenovo/malbec),
-#   - hardware_keystore.xml declares feature version 300 to match the blob
-#     KeyMint service, which our manifest declares at V3; the tree's copy claims 400,
-#   - usb_compositions.conf carries Lenovo's USB VID 0x17EF and the Lenovo-only
-#     `readyfor` compositions; the tree's generic QTI copy uses 0x05C6,
-#   - face-default.xml: the AOSP reference face HAL leaks its vintf fragment into
-#     the build, but the only face service we install is the ArcSoft blob,
-#   - the three the tree wins are byte-equivalent in the only fields that matter
-#     (HAL name, version, fqname); they differ in comments and the schema
-#     attribute assemble_vintf normalises anyway.
+# -- A. blob PRODUCT_COPY_FILES vs a Soong install rule -- 14 paths, blob wins all
 #
-# ⚠️ vendor.qti.hardware.vibrator.service.rc used to be in this list. It is gone —
-# the whole vibrator stack was removed once the tablet was confirmed to have no
-# motor. If it reappears here, something re-added the stack.
+#   kati materialises PRODUCT_COPY_FILES from build/make/core/Makefile:148, i.e.
+#   AFTER installs-$(TARGET_PRODUCT).mk, and Make keeps the LAST recipe. The blob
+#   therefore wins every one of these, which is what we want. Without this flag
+#   build/soong/ui/build/kati.go:253-256 adds --werror_overriding_commands and
+#   the build simply stops.
 #
-# kati materialises PRODUCT_COPY_FILES from build/make/core/Makefile:148, i.e.
-# after installs-$(TARGET_PRODUCT).mk, and Make keeps the LAST recipe -- so the
-# blob wins all seven, which is what we want. Without this flag
-# build/soong/ui/build/kati.go:253-256 adds --werror_overriding_commands and the
-# build simply stops.
+#     etc/init/{memtrack_qti, qspa_vendor, vendor.qti.audio-adsprpc-service}.rc
+#     etc/init/init.qti.display_boot.rc
+#     etc/init/vendor.qti.hardware.display.{allocator,composer,demura}-service.rc
+#     etc/permissions/android.hardware.hardware_keystore.xml
+#     etc/usb_compositions.conf
+#     etc/wifi/wpa_supplicant.conf
+#     etc/aidl/hfp/hfp_codec_capabilities.xml
+#     etc/aidl/le_audio/aidl_audio_set_{configurations,scenarios}.bfbs
 #
-# What replaces the lost error: work/scripts/30-dup-installs.py lists every
-# duplicate target with both sources AND which side kati keeps, and
-# `--check work/analysis/blob-ownership.txt` fails if any winner stops matching
-# the recorded decision. That is strictly stronger than the kati error, which
-# only said "there is a tie" and never said who won.
+#   Why the blob is right: the .rc files start binaries we ship as blobs (each
+#   one's `service` line names a binary whose only install rule comes from
+#   vendor/lenovo/malbec); hardware_keystore.xml declares feature version 300 to
+#   match the blob KeyMint service, which our manifest declares at V3, while the
+#   tree's copy claims 400; usb_compositions.conf carries Lenovo's USB VID 0x17EF
+#   and the Lenovo-only `readyfor` compositions where the generic QTI copy uses
+#   0x05C6. composer-service.rc is the one pair whose sides genuinely differ --
+#   tree uses `task_profiles ServiceCapacityLow`, blob uses
+#   `writepid /dev/cpuset/system-background/tasks` -- and the blob is
+#   byte-identical to stock.
 #
-# Note this is NOT the 58-duplicate problem that blocked sessions 3-5. Those
-# were blob-vs-tree Soong rules caused by 70 misused ;MODULE_SUFFIX= tags
-# dragging the tree's source audio stack into the build; removing the tags took
-# 58 -> 0 and needed no BUILD_BROKEN_* at all.
+#   /!\ vndservicemanager.rc was listed here and no longer collides.
+#   /!\ product/media/bootanimation.zip was here until session 21 and is gone:
+#       the stock animation was dropped for LineageOS's generated one, which is
+#       sized from TARGET_SCREEN_{WIDTH,HEIGHT} and therefore actually fits.
+#
+# -- B. Soong install rule vs Soong install rule -- 3 paths, blob wins all
+#
+#     bin/init.qti.display_boot.sh
+#     etc/vintf/manifest/face-default.xml
+#     etc/vintf/manifest/vendor.qti.hardware.display.composer-service3_v3.xml
+#
+#   Both sides are ordinary install rules in installs-$(TARGET_PRODUCT).mk, so
+#   the winner is whichever module Soong visited LAST. That is deterministic for
+#   a fixed tree and NOT contractual -- which is exactly why the winners are
+#   recorded in work/analysis/blob-ownership.txt rather than left to luck.
+#   face-default.xml matters because the AOSP reference face HAL leaks its vintf
+#   fragment into the build while the only face service installed is the ArcSoft
+#   blob (checked against the vendor image input list: the AOSP binary is not
+#   packaged at all). composer-service3_v3.xml matters because device.mk pins the
+#   whole QTI display stack to blobs. init.qti.display_boot.sh is the one whose
+#   two candidates are functionally different -- the blob adds kera soc_ids
+#   720/721/731/732 to the `sun` case, and that case has no `*)` default -- so a
+#   flip there is not cosmetic.
+#
+# -- C. Soong install rule vs a `vintf_fragments:` rule -- 6 paths, tree wins all
+#
+#     etc/vintf/manifest/manifest_audio_qti_services.xml
+#     etc/vintf/manifest/mapper.qti.xml
+#     etc/vintf/manifest/memtrack_qti.xml
+#     etc/vintf/manifest/soundtrigger.qti.xml
+#     etc/vintf/manifest/vendor.qti.hardware.display.allocator-service.xml
+#     etc/vintf/manifest/vendor.qti.hardware.display.demura-service.xml
+#
+#   *** This class is STRUCTURAL and cannot be changed from this device tree.
+#   build/soong/android/module.go:2216-2228 turns a module's `vintf_fragments:`
+#   into a katiVintfInstall, and build/soong/android/makevars.go:552-564 writes
+#   those into a SEPARATE block appended after every normal install rule. Last
+#   recipe wins, so a vintf_fragments-derived rule ALWAYS beats a
+#   prebuilt_etc_xml install of the same path. The only lever is removing
+#   `vintf_fragments:` from the source module, i.e. patching shared HAL repos.
+#
+#   It is also harmless. The recipe is `assemble_vintf`
+#   (build/make/core/definitions.mk:3209-3215), not a copy -- the same
+#   normalisation that produced stock's own copies -- and all six were compared
+#   tuple-by-tuple on (format, name, version, fqname) against the extracted stock
+#   vendor image and are semantically identical. In each of the six, the source
+#   module that wins is itself replaced by a `prefer: true` blob and ships no
+#   binary; only its manifest fragment reaches the image.
+#
+# /!\ vendor.qti.hardware.vibrator.service.rc used to be in class A. It is gone
+# -- the whole vibrator stack was removed once the tablet was confirmed to have
+# no motor, and session 21 re-confirmed that the hard way: stock runs a
+# COMPLETE, LIVE vibrator stack (service running, IVibrator registered, nine
+# primitives, a real PMIC node at pm7550ba@7:qcom,vibrator@df00) and the owner
+# still feels nothing, because Lenovo shares one vendor image across SKUs. If it
+# reappears here, something re-added the stack.
+#
+# What replaces the lost kati error: work/scripts/30-dup-installs.py lists every
+# duplicate target with both sources AND which side kati keeps, and `--check`
+# fails if any winner stops matching work/analysis/blob-ownership.txt. That is
+# strictly stronger than the kati error, which only said "there is a tie" and
+# never said who won.
+#
+# /!\ The claim that used to end this block -- "this is NOT the 58-duplicate
+# problem ... removing the tags took 58 -> 0 and needed no BUILD_BROKEN_* at
+# all" -- was FALSE for classes B and C: nine paths collide Soong-against-Soong
+# today. The ;MODULE_SUFFIX= story is still true as history; the "took it to
+# zero" conclusion never was.
 BUILD_BROKEN_DUP_RULES := true
 
 # A/B
 AB_OTA_UPDATER := true
+
+# ★ Both names, and it has to be both.
+#
+# lineage_malbec.mk deliberately reports the stock ZUI identity, and
+# PRODUCT_BUILD_PROP_OVERRIDES += DeviceName=TB390FU feeds
+# build/make/core/sysprop.mk:39 directly:
+#
+#     ro.product.$(1).device=$${DeviceName:-$(TARGET_DEVICE)}
+#
+# so this build ships ro.product.device=TB390FU while ro.lineage.device=malbec.
+# With TARGET_OTA_ASSERT_DEVICE unset, ota_override_device is absent from
+# misc_info (build/make/core/Makefile:6239-6241) and releasetools falls back to
+# ro.product.device (build/make/tools/releasetools/common.py:448) — so every
+# package would assert TB390FU and nothing else.
+#
+# That is self-consistent only for as long as the spoof never changes. The day
+# the fingerprint block is dropped, ro.product.device becomes malbec and every
+# previously built OTA refuses to install with "device is TB390FU, package is
+# for malbec" — and the reverse for packages built before it was added. Naming
+# both costs nothing and removes the trap in both directions.
+TARGET_OTA_ASSERT_DEVICE := malbec,TB390FU
 AB_OTA_PARTITIONS := \
     boot \
     dtbo \
@@ -225,6 +300,23 @@ TARGET_USES_VULKAN := true
 # panel specific values anywhere here, and do not key anything off
 # ro.boot.lcd_type: it reads "glossy", a surface finish, not a vendor.
 TARGET_SCREEN_DENSITY := 320
+
+# The panel's real pixel count, in the framework's (portrait) frame — the same
+# frame TARGET_SCREEN_DENSITY is expressed in. The DRM connector scans out
+# 3504x2190 landscape; ro.surface_flinger.primary_display_orientation=ORIENTATION_270
+# in vendor.prop is what turns that into 2190x3504 for everything above it.
+#
+# Read by vendor/lineage/config/BoardConfigSoong.mk:27-28, which feeds the
+# LineageOS boot-animation generator. gen-bootanimation.sh:35-52 takes
+# min(HEIGHT, WIDTH) = 2190 and emits 2190x730 frames — so unlike PixelOS's
+# fixed 720/1080/1440 assets, the animation is built to fit this panel and there
+# is nothing to extract from stock.
+#
+# ⚠️ Do NOT bend these to steer an asset chooser. Earlier notes considered
+# setting WIDTH to 720 or 1440 for exactly that reason; on LineageOS it would
+# only produce a smaller animation on a 3.5K panel.
+TARGET_SCREEN_HEIGHT := 3504
+TARGET_SCREEN_WIDTH := 2190
 
 # Filesystem
 TARGET_FS_CONFIG_GEN := $(DEVICE_PATH)/configs/config.fs
@@ -492,6 +584,35 @@ TARGET_VENDOR_PROP += $(DEVICE_PATH)/properties/vendor.prop
 BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := true
 TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/rootdir/etc/fstab.qcom
 TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
+
+# ⚠️ TARGET_RECOVERY_DEFAULT_ROTATION is deliberately NOT set, and the reasoning
+# for setting it is good enough that it needs writing down as refuted.
+#
+# The argument was: the panel scans out 3504x2190, every framework client is
+# turned round by ro.surface_flinger.primary_display_orientation=ORIENTATION_270
+# (vendor.prop), and the boot animation by ro.bootanim.set_orientation_logical_0
+# (system.prop) — and minui reads NEITHER of those. It reads
+# ro.minui.default_rotation / ro.minui.default_touch_rotation
+# (bootable/recovery/minui/graphics.cpp:480,492, recovery_ui/screen_ui.cpp
+# :1810-1813), which build/make/core/sysprop_config.mk:43-51 emits only from
+# TARGET_RECOVERY_DEFAULT_{,TOUCH_}ROTATION. So recovery must be rotated too.
+#
+# It must not. Measured, rather than reasoned: the STOCK recovery ramdisk
+# (work/backup/stock-preflash/recovery_a.img, unpacked to
+# work/unpacked/recovery/) contains exactly one minui property in prop.default:
+#
+#     ro.minui.pixel_format=RGBX_8888          # :399
+#
+# and NO ro.minui.default_rotation at all — `grep -rn minui` over the whole
+# ramdisk finds only that line plus three plat_property_contexts declarations.
+# Lenovo's own recovery therefore runs unrotated, i.e. the panel's native
+# landscape raster IS the correct orientation for recovery on this device, and
+# adding a rotation would turn it 90° away from the one arrangement known to
+# work. (It also confirms TARGET_RECOVERY_PIXEL_FORMAT above matches stock
+# byte-for-byte.)
+#
+# If recovery ever does come up sideways, re-measure before setting this — the
+# variable is right, the value is not obvious, and stock is the reference.
 
 # Flashing
 # Ship our own fastboot-info.txt instead of the one the build synthesises at

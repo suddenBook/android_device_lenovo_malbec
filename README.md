@@ -48,14 +48,31 @@ malbec/
 
 ```bash
 source build/envsetup.sh
-lunch custom_malbec-bp4a-userdebug     # or: breakfast malbec
+lunch lineage_malbec bp4a userdebug
 mka bacon
 ```
+
+or, equivalently, `bash work/scripts/40-build.sh`, which also exports
+`MALBEC_BRINGUP`.
+
+⚠️ Use the **three-argument** form of `lunch`, not
+`lunch lineage_malbec-bp4a-userdebug`. `build/envsetup.sh:588` decides between
+the legacy and modern argument forms with `local legacy=$(echo $1 | grep "-")`.
+Any `grep` that treats a bare `-` as an option rather than a pattern — `ugrep`,
+and any shell function forwarding to it — returns empty, envsetup takes the
+modern branch, and the whole combo string becomes the product name:
+
+```
+build/make/core/product_config.mk:226: error: Cannot locate config makefile
+for product "lineage_malbec-bp4a-userdebug".
+```
+
+which reads exactly like a missing device tree and is not one.
 
 The release config is **`bp4a`**. `bp1a` also lunches without an error but
 silently produces a different configuration — a 13-month-stale
 `RELEASE_PLATFORM_SECURITY_PATCH` and no `aconfig_value_set-lineage-bp4a`, so
-every LineageOS/PixelOS feature flag falls back to its default. The authority is
+every LineageOS feature flag falls back to its default. The authority is
 `vendor/lineage/vars/aosp_target_release` and
 `vendor/lineage/release/release_config_map.textproto`.
 

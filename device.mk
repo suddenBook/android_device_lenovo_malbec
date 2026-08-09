@@ -709,19 +709,39 @@ PRODUCT_COPY_FILES += \
 
 # RRO partition precedence.
 #
-# This tree's overlays are in /vendor/overlay, which AOSP orders BELOW
-# /product/overlay - so every GMS overlay silently outranks ours. Measured, not
-# assumed: `cmd overlay list android` prints in increasing priority and puts
-# android.overlay.malbec first, ahead of com.google.android.overlay.pixelconfig*.
-# The case that surfaced it is config_defaultNightMode, which
-# PixelConfigOverlay2021_GMS pins to 2 (dark) - adding it to our overlay would
-# simply have lost.
+# ⚠️ SESSION 21: on LineageOS this file is INERT, and it is kept only because it
+# costs nothing and becomes load-bearing again the moment GApps are added. The
+# reasoning it used to carry does not survive the move and is recorded here as
+# refuted rather than deleted, because it is the obvious thing to re-derive.
 #
-# OverlayConfig.java:76 hardcodes the path to /product/overlay, which is why a
-# device-tree file lands on the product partition. The file itself carries the
-# format rules (a typo makes it silently ignored) and the measurement showing our
-# 71 resources and the product overlays' 595 currently have an EMPTY
-# intersection, i.e. this reorder changes nothing else today.
+# What it used to say: this tree's overlays are in /vendor/overlay, which AOSP
+# orders BELOW /product/overlay, so every GMS overlay silently outranks ours —
+# measured with `cmd overlay list android`, which prints in increasing priority
+# and put android.overlay.malbec ahead of com.google.android.overlay.pixelconfig*.
+# The case that surfaced it was config_defaultNightMode, which
+# PixelConfigOverlay2021_GMS pins to 2 (dark).
+#
+# On this tree:
+#   · there is no vendor/gms, vendor/google or vendor/partner_gms, and nothing
+#     in this device's makefiles inherits GApps — PixelConfigOverlay2021_GMS
+#     does not exist, so there is no /product RRO to lose to;
+#   · the competing config_defaultNightMode=2 comes from
+#     vendor/lineage/overlay/common/frameworks/base/core/res/res/values/config.xml:153,
+#     which vendor/lineage/config/common.mk:277-279 adds to
+#     PRODUCT_PACKAGE_OVERLAYS. That is a STATIC overlay compiled into
+#     framework-res.apk, not an RRO — and an RRO beats the target APK's own
+#     resource table on any partition. FrameworkOverlayMalbec's 1 wins with no
+#     reordering at all;
+#   · LineageOS's own product-partition RROs (DocumentsUIOverlay, Launcher3Overlay,
+#     NetworkStackOverlay, PermissionControllerOverlay) target
+#     com.android.{documentsui,launcher3,networkstack,permissioncontroller} —
+#     none of them targets framework-res, so the intersection with this device's
+#     71 resources is empty;
+#   · LineageOS ships no partition_order.xml of its own, so nothing collides.
+#
+# OverlayConfig.java:76 still hardcodes the path to /product/overlay, which is
+# why a device-tree file lands on the product partition, and the file's own
+# format rules still apply (a typo makes it silently ignored).
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/partition_order.xml:$(TARGET_COPY_OUT_PRODUCT)/overlay/partition_order.xml
 
@@ -740,25 +760,30 @@ PRODUCT_COPY_FILES += \
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/thermal/thermal-engine-malbec-game.conf:$(TARGET_COPY_OUT_VENDOR)/etc/thermal-engine-malbec-game.conf
 
-# Two UI sounds that the framework names and this product does not ship.
+# ⚠️ KeypressInvalid.ogg and Trusted.ogg used to be copied here. They are gone —
+# on LineageOS the gap they filled does not exist, and the lines were exact
+# duplicates of what the product already installs.
 #
-# Both are AOSP files, both are declared by AOSP code, and both are absent from
-# the built image — checked in out/, not inferred:
+# The original reasoning was sound for the ROM it was written against: both
+# files are named by AOSP code (frameworks/base/core/res/res/xml/audio_assets.xml
+# :34 declares FX_KEYPRESS_INVALID; SettingsProvider defaults.xml:81 points
+# def_trusted_sound at the absolute path /product/media/audio/ui/Trusted.ogg),
+# and vendor/pixel/sounds/common/common-vendor.mk omitted them both.
 #
-#   KeypressInvalid.ogg  frameworks/base/core/res/res/xml/audio_assets.xml:34
-#                        <asset id="FX_KEYPRESS_INVALID" .../>  — the only one of
-#                        the six declared keypress assets that is missing, so
-#                        SoundPool silently loads nothing for an invalid keypress.
-#   Trusted.ogg          frameworks/base/packages/SettingsProvider/res/values/
-#                        defaults.xml:81 def_trusted_sound points at the absolute
-#                        path /product/media/audio/ui/Trusted.ogg.
+# LineageOS does not use that file. vendor/lineage/config/common_mobile.mk:5
+# inherits frameworks/base/data/sounds/AudioPackage14.mk, whose EFFECT_FILES
+# (:15-16) contains KeypressInvalid and Trusted, and whose :29-30 expands to
+# copy pairs that are string-identical to the two removed here.
+# build/make/core/Makefile:142-144 dedupes identical pairs before the
+# destination-collision check, so the duplication was completely silent — no
+# warning, no product_copy_files_ignored.txt entry, nothing.
 #
-# The cause is upstream: vendor/pixel/sounds/common/common-vendor.mk lists 22
-# other files from this directory and not these two. Copying them from AOSP's own
-# source is the smaller fix and does not touch a shared makefile.
-PRODUCT_COPY_FILES += \
-    frameworks/base/data/sounds/effects/ogg/KeypressInvalid.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/ui/KeypressInvalid.ogg \
-    frameworks/base/data/sounds/effects/ogg/Trusted.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/ui/Trusted.ogg
+# Related, and worth knowing before assuming anything else about
+# /product/media/audio: LineageOS deliberately skips AOSP's AllAudio.mk.
+# build/make/target/product/full_base.mk:48-50 guards it with
+# `ifeq ($(LINEAGE_BUILD),)`, and LINEAGE_BUILD is exported by
+# vendor/lineage/build/envsetup.sh. The sound set comes from AudioPackage14.mk
+# plus vendor/lineage/config/{aosp,lineage}_audio.mk instead.
 
 # The sinc resampler's coefficient library.
 #
@@ -840,14 +865,82 @@ PRODUCT_COPY_FILES += \
 #
 # SystemUIOverlayMalbec puts the Device mode tile in the DEFAULT Quick Settings
 # panel, so it is reachable from inside a full-screen game without being dragged
-# in from the edit screen first. It overrides both default-tile strings because
-# QSHost.getDefaultSpecs picks between them on an aconfig flag.
+# in from the edit screen first.
+#
+# ⚠️ It overrides ONE default-tile string, not both — this line said both until
+# session 21, while the overlay's own comment already documented dropping the
+# other. QSHost.java:45-46 picks between quick_settings_tiles_new_default and
+# quick_settings_tiles_default on `QsInCompose`, which is not itself an aconfig
+# flag but `QSComposeFragment.isEnabled || SceneContainerFlag.isEnabled`; the
+# real flag is qs_ui_refactor_compose_fragment
+# (frameworks/base/packages/SystemUI/aconfig/systemui.aconfig:930-934), ENABLED
+# and READ_ONLY in the bp3a config that bp4a inherits. So only the `new_default`
+# string is ever read, and overriding the other one produced an idmap warning
+# per boot and nothing else.
 PRODUCT_PACKAGES += \
     FrameworkOverlayMalbec \
     SettingsOverlayMalbec \
     SettingsProviderOverlayMalbec \
     SystemUIOverlayMalbec \
     WifiOverlayMalbec
+
+# ── LiveDisplay ─────────────────────────────────────────────────────────────
+#
+# New in session 21. LineageOS ships a display-tuning framework that PixelOS has
+# no equivalent of, and this device can drive two thirds of it with hardware it
+# already has and blobs it already extracts. Nothing here is a port; both
+# services are upstream LineageOS code enabled by configuration.
+#
+# 1. The SDM half — Display modes (screen colour profiles) and Picture
+#    adjustment (hue/saturation/intensity/contrast).
+#
+#    hardware/lineage/interfaces/livedisplay/aidl/sdm/ builds
+#    vendor.lineage.livedisplay-service.sdm with both interfaces on by default
+#    (Android.bp:39-52). Its ONLY runtime dependency is a dlopen of
+#    libsdm-disp-vndapis.so (SDMController.cpp:47-49), which this tree already
+#    extracts — proprietary-files.txt:1188.
+#
+#    ⚠️ That dlopen is the reason this needed checking rather than assuming.
+#    proprietary-files.txt documents at length that this device's SDM stack is a
+#    private Lenovo/Motorola fork whose vtables and symbol sets differ from the
+#    public CAF sources, so "the library is present" does not imply "it exports
+#    the API LiveDisplay calls". Measured against the extracted blob before
+#    enabling — all six entry points the controller resolves are exported:
+#
+#        disp_api_init                     disp_api_get_num_display_modes
+#        disp_api_get_active_display_mode  disp_api_set_active_display_mode
+#        disp_api_get_global_pa_range      disp_api_set_global_pa
+#
+#    Failure mode if a later firmware drops one: LoadFunction returns nullptr and
+#    every call returns NO_INIT. The service stays up and the feature reports
+#    nothing — it does not crash and it cannot wedge boot.
+#
+#    Sepolicy costs nothing here: the domain, the exec label and the
+#    vndbinder/display_vendor_data_file grants are all in
+#    device/lineage/sepolicy/qcom/, which BOARD_VENDOR_SEPOLICY_DIRS already
+#    picks up through device/qcom/sepolicy_vndr/SEPolicy.mk.
+#
+# 2. The sysfs half — Outdoor mode (high brightness mode).
+#
+#    Measured on the running stock ROM:
+#        /sys/class/backlight/panel0-backlight/hbm  exists, 0666, reads 0
+#        echo 1 > hbm  -> reads back 1;  echo 0 -> reads back 0
+#    i.e. it is a live control, not a stub.
+#
+#    ⚠️ SE_PATH is NOT optional on this device. SunlightEnhancement.cpp:26-56
+#    probes /sys/class/graphics/fb0/hbm and a qcom,dsi-display-primary path when
+#    SE_PATH is undefined, and this is a DRM-only device with neither — and the
+#    constructor ends in LOG(FATAL) if nothing opens. Shipping the service
+#    without se_path would abort it on every start.
+#
+#    The two services register disjoint interfaces (DM/PA vs SE), so they
+#    coexist; nothing arbitrates between them.
+PRODUCT_PACKAGES += \
+    vendor.lineage.livedisplay-service.sdm \
+    vendor.lineage.livedisplay-service.sysfs
+
+$(call soong_config_set_bool,livedisplay_sysfs,enable_se,true)
+$(call soong_config_set,livedisplay_sysfs,se_path,/sys/class/backlight/panel0-backlight/hbm)
 
 # Charging control — "Charging optimisation" in Settings > Battery.
 #
@@ -930,8 +1023,15 @@ $(call soong_config_set_bool,lineage_health,charging_control_supports_bypass,fal
 $(call soong_config_set_bool,lineage_health,charging_control_supports_limit,false)
 
 # Screen
-TARGET_SCREEN_HEIGHT := 3504
-TARGET_SCREEN_WIDTH := 2190
+# ⚠️ TARGET_SCREEN_HEIGHT/WIDTH moved to BoardConfig.mk in session 21, next to
+# TARGET_SCREEN_DENSITY where every other LineageOS tree keeps all three.
+#
+# They worked here, but only by an ordering accident worth not depending on:
+# vendor/lineage/config/common.mk:137-138 sets `TARGET_SCREEN_WIDTH ?= 1080`,
+# and lineage_malbec.mk inherits device.mk AFTER common_full_tablet_wifionly.mk,
+# so this file's `:=` happened to land second. Anything that reordered those two
+# inherit-product lines would have silently given the boot animation generator a
+# 1080-wide panel.
 
 # WiFi
 # Built from source, not carried as blobs — see the WiFi section of
@@ -950,15 +1050,30 @@ PRODUCT_PACKAGES += \
 
 # ⚠️ BRING-UP ONLY — root shell on first boot, gated on MALBEC_BRINGUP.
 #
-# `adb root` does NOT work on this ROM, and the reason is not what the build
-# script's comment used to say. PixelOS patches init: SetSafetyNetProps()
-# (system/core/init/property_service.cpp:1377-1389) hard-codes ro.debuggable=0,
-# ro.build.type=user and ro.build.tags=release-keys before bootconfig is even
-# parsed, and ro.* is write-once, so the userdebug values from build.prop are
-# silently rejected. That is deliberate upstream behaviour for app-facing root
-# detection, and PixelOS patched the consumers to compensate: adbd is compiled
-# with ANDROID_DEBUGGABLE=1 on userdebug (packages/modules/adb/Android.bp:47-56),
-# so it ignores ro.debuggable entirely.
+# ⚠️ SESSION 21: the reason this block used to give is FALSE on LineageOS, and
+# the property may well be unnecessary now. Kept for the first flash only, and
+# to be re-tested on it.
+#
+# What it used to say: "`adb root` does NOT work on this ROM, because PixelOS
+# patches init — SetSafetyNetProps() (system/core/init/property_service.cpp
+# :1377-1389) hard-codes ro.debuggable=0 before bootconfig is parsed, and ro.* is
+# write-once. PixelOS compensates by compiling adbd with ANDROID_DEBUGGABLE=1
+# (packages/modules/adb/Android.bp:47-56)."
+#
+# Both halves are wrong here:
+#   · `SetSafetyNetProps` does not exist anywhere in this tree. It was a PixelOS
+#     init patch; LineageOS does not carry it, so on a LineageOS userdebug build
+#     ro.debuggable=1 propagates normally and `adb root` should just work.
+#   · The adbd citation is not a PixelOS patch either — Android.bp:47 defaults
+#     `-DANDROID_DEBUGGABLE=0` and :49-56 flips it from the `debuggable` product
+#     variable. That is stock AOSP.
+#
+# ★ TEST ON THE FIRST BOOT: `adb root && adb shell id`. If it returns uid=0, the
+# whole block can go; delete it rather than leave a workaround for a problem this
+# ROM does not have.
+#
+# The one reason that survives is the narrow one at the end of this comment: it
+# avoids `ctl.restart adbd`. Read that before deciding.
 #
 # What actually gates root is packages/modules/adb/daemon/main.cpp:66-96:
 #

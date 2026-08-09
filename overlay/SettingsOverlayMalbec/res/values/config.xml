@@ -23,15 +23,47 @@
          costs the stylus and half the touch sampling to buy 24 extra frames.
          There is no configuration in which a user is better off there.
 
-         The list itself cannot be filtered: RefreshRateUtils.getRefreshRates()
-         (packages/apps/Settings/.../display/RefreshRateUtils.java:45-49) builds it
-         at runtime from Display.getSupportedModes(), so no RRO can remove one
-         entry. Removing the mode from the panel timings would mean patching
-         dtbo.img — panel-specific, and this device has two panel suppliers whose
-         timings differ, so it would break the rule that no device-tree file may
-         hardcode a panel. Hiding the control is the only panel-agnostic lever,
-         and it is a real one: RefreshRatePreferenceController.getAvailabilityStatus
-         (:84-88) is gated on exactly this boolean.
+         The list itself cannot be filtered: the picker builds its entries at
+         runtime from Display.getSupportedModes(), so no RRO can remove one entry.
+         Removing the mode from the panel timings would mean patching dtbo.img —
+         panel-specific, and this device has two panel suppliers whose timings
+         differ, so it would break the rule that no device-tree file may hardcode
+         a panel. Hiding the control is the only panel-agnostic lever.
+
+         ── ⚠️ SESSION 21: THIS OVERLAY WAS INERT AND IS NOW REAL ────────────
+         Everything above was written against PixelOS and stayed correct about
+         the hardware. What it got wrong is the resource name. It overrode
+
+             config_show_advanced_refresh_rate
+
+         which appears EXACTLY ONCE in the whole LineageOS 23.2 tree — in this
+         file. It is not a Settings resource here, and neither
+         RefreshRateUtils.java nor RefreshRatePreferenceController.java exists in
+         packages/apps/Settings at all. The RRO built, idmap2 warned once a boot,
+         and the picker was hidden only by LineageOS's own defaults — the same
+         silent-no-op failure mode this tree's SystemUI overlay documents for
+         quick_settings_tiles_default.
+
+         LineageOS 23.2 has THREE separate refresh-rate controls, each with its
+         own gate, and all three already default to hidden:
+
+           config_show_smooth_display          packages/apps/Settings/res/values/
+                                               config.xml:577            -> false
+             the classic Smooth display toggle (PeakRefreshRateSwitchPreference)
+
+           config_show_peak_refresh_rate_switch  .../res/values/
+                                                 lineage_config.xml:36   -> false
+             LineageOS's advanced picker, PeakRefreshRateListPreferenceController
+             :108-114 returns UNSUPPORTED_ON_DEVICE unless this is true
+
+           config_show_min_refresh_rate_switch   lineage_config.xml:39   -> false
+             MinRefreshRatePreferenceController :50, a LineageOS-only control
+             that did not exist under PixelOS
+
+         All three are restated below rather than left to upstream. Depending on
+         an upstream default is not the same as stating a device requirement: if
+         LineageOS ever flips one, the picker returns, a user selects 144 Hz, and
+         the stylus stops working with nothing in this tree to explain why.
 
          ── ⚠️ The trap, for whoever revisits this ───────────────────────────
          The obvious "safer" variant — hide the advanced list and let the classic
@@ -48,10 +80,9 @@
              rate.
 
          So that toggle would offer 60 or 144 — the one value we are removing.
-         It is moot only because PixelOS ships config_show_smooth_display=false
-         (packages/apps/Settings/res/values/config.xml:577), which makes the
-         fallback controller UNSUPPORTED too. Do not "restore the toggle" by
-         setting that to true without re-reading both files.
+         That is why config_show_smooth_display is pinned false below rather than
+         left alone: it is the fallback controller's gate, and "restore the
+         toggle" is the change that looks safest and is not.
 
          ── What the user is left with ───────────────────────────────────────
          No refresh-rate control in Settings at all. The rate is owned by
@@ -67,5 +98,7 @@
          put`, a backup restore, or a POSITIVE_INFINITY left by the flag above can
          still move it, and the observer is what keeps /proc coherent if that
          happens. -->
-    <bool name="config_show_advanced_refresh_rate">false</bool>
+    <bool name="config_show_smooth_display">false</bool>
+    <bool name="config_show_peak_refresh_rate_switch">false</bool>
+    <bool name="config_show_min_refresh_rate_switch">false</bool>
 </resources>

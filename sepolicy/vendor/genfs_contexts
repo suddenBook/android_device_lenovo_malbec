@@ -97,3 +97,27 @@ genfscon sysfs /devices/platform/product-device-info                          u:
 # sysfs. The threshold nodes themselves already carry
 # vendor_sysfs_battery_supply from the QTI policy.
 genfscon sysfs /class/qcom-battery                                           u:object_r:sysfs_qcom_battery:s0
+
+# LiveDisplay Outdoor mode (high brightness mode).
+#
+# device.mk installs vendor.lineage.livedisplay-service.sysfs with
+# se_path=/sys/class/backlight/panel0-backlight/hbm. That path is a symlink;
+# genfscon matches the REAL device path, which on this unit is
+#   /sys/devices/platform/soc/ae00000.qcom,mdss_mdp/backlight/panel0-backlight
+# (readlink -f on the running device).
+#
+# ⚠️ device/lineage/sepolicy/common/dynamic/genfs_contexts:3-10 already labels
+# sysfs_livedisplay_tuneable, but only under /devices/virtual/graphics/fb0/*.
+# This device has no fbdev graphics node at all — it is DRM only — so none of
+# those eight lines matches anything here and the HAL would be denied on a node
+# stock leaves as vendor_sysfs_graphics.
+#
+# The label has to be the type hal_lineage_livedisplay_sysfs is granted:
+# device/lineage/sepolicy/common/vendor/hal_lineage_livedisplay_sysfs.te:10 is
+# `allow ... sysfs_livedisplay_tuneable:file rw_file_perms;` and nothing grants
+# that domain vendor_sysfs_graphics.
+#
+# Labelled at the backlight directory rather than the single attribute because
+# genfscon prefix-matches; hbm is the only tuneable this device exposes there
+# today, and a sibling appearing later should be reachable without a second line.
+genfscon sysfs /devices/platform/soc/ae00000.qcom,mdss_mdp/backlight/panel0-backlight u:object_r:sysfs_livedisplay_tuneable:s0
