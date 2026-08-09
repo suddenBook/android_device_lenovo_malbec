@@ -44,6 +44,23 @@ malbec/
 └── proprietary-files.txt
 ```
 
+## Repositories
+
+| repo | path in tree |
+|---|---|
+| [`android_device_lenovo_malbec`](https://github.com/suddenBook/android_device_lenovo_malbec) | `device/lenovo/malbec` |
+| [`android_device_lenovo_malbec-kernel`](https://github.com/suddenBook/android_device_lenovo_malbec-kernel) | `device/lenovo/malbec-kernel` |
+| [`proprietary_vendor_lenovo_malbec`](https://github.com/suddenBook/proprietary_vendor_lenovo_malbec) | `vendor/lenovo/malbec` |
+
+All three track **`lineage-23.2`**, and that name is load-bearing rather than
+decorative. `lineage.dependencies` names the two dependency repos without a
+`branch` field, so `roomservice.py:282-292` resolves one itself: it `git
+ls-remote`s the repo, looks for the manifest's default revision — `lineage-23.2`,
+per `.repo/manifests/default.xml` — and **bails** if it is not there
+(`:349`, "Default revision ... not found ... Bailing."). The PixelOS-era
+`sixteen-qpr2` branches are kept for history but a fresh `breakfast malbec`
+cannot use them.
+
 ## Building
 
 ```bash
