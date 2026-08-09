@@ -865,6 +865,47 @@ PRODUCT_PACKAGES += \
     init.malbec.rc \
     init.recovery.qcom.rc
 
+# ★ Recovery graphics: the QTI backend, because the generic one does not work on
+# this panel. OPEN-ISSUES #15 predicted this risk and left it untested; flash 1
+# of session 22 confirmed it — recovery renders a plain GREY SCREEN.
+#
+# Diagnosed from recovery's own log rather than from the symptom, which is worth
+# stating because "recovery is blank" has a dozen plausible causes and this is
+# only one of them. `adb shell cat /tmp/recovery.log` from the running recovery
+# (possible at all only because #33 gave recovery an authorised root adb):
+#
+#     Display Mode 0 resolution: 3504 x 2190 @ 60 FPS
+#     Choosing display mode #0
+#     Allocating buffer with resolution 3504 x 2190 pitch: 14080 bpp: 32
+#     Failed to drmModeSetCrtc(67)
+#     cannot open any framebuffer: No such file or directory
+#
+# and the kernel's side of the same instant:
+#
+#     [drm:dsi_display_prepare] *ERROR* DMS not supported on first frame
+#     [drm:dsi_bridge_pre_enable] *ERROR* DSI display prepare failed, rc=-22
+#
+# So minui finds the connector, reads the mode and allocates the framebuffer
+# correctly — 3504x2190 is exactly this panel — and then the LEGACY modeset call
+# is rejected with EINVAL. graphics_drm.cpp:160 uses drmModeSetCrtc(), and
+# Qualcomm's DSI bridge treats a full mode set on the first frame as a dynamic
+# mode switch, which it does not support. MinuiBackendDrmQti drives the same
+# hardware through the ATOMIC API instead — drmModeAtomicAddProperty over the
+# SDE planes, with the topology and SPR blobs the driver expects — which is the
+# path the vendor composer also takes.
+#
+# graphics.cpp:397-410 is the whole switch: the flag decides which of the two
+# MinuiBackend subclasses `create_backend(GraphicsBackend::DRM)` returns.
+# graphics_drm_qti.cpp is in libminui's srcs unconditionally (minui/Android.bp
+# :37-44) and its object already builds today, so this changes selection only —
+# no new sources, no new headers, no build risk.
+#
+# ⚠️ Verify it the same way it was diagnosed, not by looking at the screen: boot
+# to recovery and re-read /tmp/recovery.log. `Failed to drmModeSetCrtc` and
+# `cannot open any framebuffer` must both be GONE. A screen that still looks
+# wrong with a clean log is a different bug.
+$(call soong_config_set_bool,recovery,target_recovery_uses_qti_drm,true)
+
 # ⚠️ The prebuilt_etc above only produces /vendor/etc/fstab.qcom, and that alone
 # DOES NOT BOOT. At first-stage mount /vendor is precisely the partition not yet
 # mounted, so fs_mgr's GetFstabPath()
