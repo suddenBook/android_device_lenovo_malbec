@@ -370,6 +370,22 @@ PRODUCT_PACKAGES += \
 
 # Vendor variants of the AOSP support libraries the stock audio blobs depend on.
 # onyx lists the same set.
+#
+# ⚠️ libaudioutils_shim has NO build-time dependency edge, and the asymmetry with
+# libinput_shim is invisible. extract-files.py adds it to
+# libaudioserviceexampleimpl.so's DT_NEEDED, but that blob carries ;DISABLE_DEPS,
+# so extract_utils/makefiles.py:135-137 sets gen_deps=False and check_elf=False
+# and the generated Android.bp entry has no shared_libs at all. This
+# PRODUCT_PACKAGES line is the ONLY thing installing it.
+#
+# Deleting the line goes green and then fails at runtime: the blob carries
+# BIND_NOW, so an unresolved symbol makes dlopen fail outright, its consumer is
+# mandatory="true" in vendor_audio_interfaces.xml, and Service.cpp:53-77 retries
+# ten times and then LOG_ALWAYS_FATALs — audiohalservice.qti in an init respawn
+# loop. work/scripts/33-blob-linkcheck.py is the only guard.
+#
+# libinput_shim is NOT ;DISABLE_DEPS and does get a real edge, which is why it
+# looks like this line is equally safe to remove. It is not.
 PRODUCT_PACKAGES += \
     libalsautilsv2.vendor \
     libaudioaidlcommon.vendor \
@@ -893,8 +909,15 @@ PRODUCT_COPY_FILES += \
 # and READ_ONLY in the bp3a config that bp4a inherits. So only the `new_default`
 # string is ever read, and overriding the other one produced an idmap warning
 # per boot and nothing else.
+#
+# LineageSDKOverlayMalbec exists for one integer: this tablet has NO notification
+# LED, and lineage-sdk defaults config_deviceLightCapabilities to 8
+# (LIGHTS_PULSATING_LED). Left alone, LineageOS offers notification-light
+# settings for hardware that is not there. Owner-confirmed — see the overlay's
+# own comment for why the sysfs evidence pointed the other way.
 PRODUCT_PACKAGES += \
     FrameworkOverlayMalbec \
+    LineageSDKOverlayMalbec \
     SettingsOverlayMalbec \
     SettingsProviderOverlayMalbec \
     SystemUIOverlayMalbec \

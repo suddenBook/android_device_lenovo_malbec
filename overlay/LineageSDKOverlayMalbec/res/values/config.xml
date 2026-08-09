@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- ★ THIS TABLET HAS NO NOTIFICATION LED. Owner-confirmed, session 21.
+
+         lineage-sdk defaults this to 8 = LIGHTS_PULSATING_LED
+         (lineage-sdk/lineage/res/res/values/config.xml:98), and
+         LightsCapabilities.java:56,62 is what reads it. Left at the default,
+         LineageOS offers notification-light settings for hardware that does not
+         exist, and every one of them does nothing.
+
+         ⚠️ The evidence pointed the other way, which is exactly why this needed
+         asking rather than deducing. /sys/class/leds/ has `blue` and `green`,
+         both with max_brightness 255, and on the stock ROM `green` reads 255
+         while charging — a textbook charge-LED signature. A QTI lights HAL is
+         installed and android.hardware.light@2 ILights/default is registered.
+
+         None of that is evidence about THIS model. Lenovo ships one vendor
+         image across several SKUs, so /vendor carries drivers and HAL services
+         for hardware this tablet does not have. The vibrator is the same story
+         told once already: complete live stack, registered IVibrator, nine
+         primitives, a real PMIC node — and no motor. See OPEN-ISSUES.md #6, #14.
+
+         0 = no light capabilities at all. -->
+    <integer name="config_deviceLightCapabilities">0</integer>
+</resources>

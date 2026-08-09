@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+     Local manifest for malbec (Lenovo TB390FU) on LineageOS 23.2.
+
+     Copy to .repo/local_manifests/malbec.xml in a fresh checkout, then
+     `repo sync`.
+
+     ⚠️ WHY THIS FILE EXISTS INSTEAD OF `breakfast malbec`
+
+     `lineage.dependencies` is the LineageOS-native mechanism and it CANNOT work
+     for a personal fork. vendor/lineage/build/tools/roomservice.py hardcodes the
+     LineageOS organisation in two places:
+
+         line 222   'name': f'LineageOS/{repo_name}'
+         line 327   git ls-remote https://:@github.com/LineageOS/<repo_name>
+
+     and the `remote` escape at lines 226 to 233 applies only to `aosp-*`
+     remotes; for anything else it sets project.remote and leaves the
+     LineageOS-prefixed name in place. So a dependency written as
+
+         "repository": "suddenBook/proprietary_vendor_lenovo_malbec"
+
+     is probed as `LineageOS/suddenBook/proprietary_vendor_lenovo_malbec`, comes
+     back with no branches, and roomservice.py line 349 exits with
+
+         Default revision lineage-23.2 not found in ... Bailing.
+
+     Moving the three repos onto the `lineage-23.2` branch was a real and
+     separate bug, and fixing it was necessary but not sufficient: the
+     organisation prefix cannot be fixed from the device tree at all. Hence this
+     file.
+
+     `lineage.dependencies` is kept as it is. It is correct, and it starts
+     working the day these repos live under LineageOS.
+
+     ⚠️ AFTER SYNCING, BEFORE BUILDING
+
+     One blob (libarcsoft_faceid.so, 134 MB) is above GitHub's per-file limit and
+     is stored with Git LFS. Run the two LFS commands in the device tree's
+     README before the first build. Skipping them leaves a 134-byte text file in
+     place of the library and the build stops with "must have a valid ELF magic
+     word", which reads like a corrupt blob rather than a missing object.
+-->
+<manifest>
+  <remote name="suddenBook"
+          fetch="https://github.com/suddenBook"
+          revision="refs/heads/lineage-23.2" />
+
+  <project path="device/lenovo/malbec"
+           name="android_device_lenovo_malbec"
+           remote="suddenBook" />
+
+  <project path="device/lenovo/malbec-kernel"
+           name="android_device_lenovo_malbec-kernel"
+           remote="suddenBook" />
+
+  <project path="vendor/lenovo/malbec"
+           name="proprietary_vendor_lenovo_malbec"
+           remote="suddenBook" />
+</manifest>

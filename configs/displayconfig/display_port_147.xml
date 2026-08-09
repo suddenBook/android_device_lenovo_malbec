@@ -154,7 +154,12 @@
      be worse than the 650 that is there now.
 -->
 <displayConfiguration>
-    <name>malbec built-in panel</name>
+    <!-- ⚠️ <name> was here and is GONE (session 21, owner's call).
+         It is user-visible — LocalDisplayAdapter.java:829 uses it and
+         "Built-in Screen" is only the null fallback — and it contradicted this
+         file's own policy two paragraphs up: exactly one thing, everything else
+         deliberately absent. A cosmetic string is how that policy stops being
+         believed. -->
 
     <!-- Stock's values for this product. The idle pair is set to the same
          numbers rather than left out: loadAutoBrightnessBrighteningLightDebounceIdle

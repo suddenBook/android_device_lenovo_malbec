@@ -52,14 +52,51 @@ malbec/
 | [`android_device_lenovo_malbec-kernel`](https://github.com/suddenBook/android_device_lenovo_malbec-kernel) | `device/lenovo/malbec-kernel` |
 | [`proprietary_vendor_lenovo_malbec`](https://github.com/suddenBook/proprietary_vendor_lenovo_malbec) | `vendor/lenovo/malbec` |
 
-All three track **`lineage-23.2`**, and that name is load-bearing rather than
-decorative. `lineage.dependencies` names the two dependency repos without a
-`branch` field, so `roomservice.py:282-292` resolves one itself: it `git
-ls-remote`s the repo, looks for the manifest's default revision — `lineage-23.2`,
-per `.repo/manifests/default.xml` — and **bails** if it is not there
-(`:349`, "Default revision ... not found ... Bailing."). The PixelOS-era
-`sixteen-qpr2` branches are kept for history but a fresh `breakfast malbec`
-cannot use them.
+All three track **`lineage-23.2`**.
+
+## ⚠️ `breakfast malbec` cannot fetch these repos. Use the local manifest.
+
+`lineage.dependencies` is the LineageOS-native mechanism and it **cannot** work
+for a fork outside the LineageOS organisation.
+`vendor/lineage/build/tools/roomservice.py` hardcodes the org in two places:
+
+```
+:222   'name': f'LineageOS/{repo_name}'
+:327   git ls-remote https://:@github.com/LineageOS/<repo_name>
+```
+
+and the `remote` escape at `:226-233` applies only to `aosp-*` remotes. So
+`"repository": "suddenBook/…"` is probed as `LineageOS/suddenBook/…`, returns no
+branches, and `:349` exits with *"Default revision lineage-23.2 not found …
+Bailing."*
+
+The branch name is a **separate** requirement and was also wrong until session 21
+— `roomservice.py:282-292` resolves an unspecified branch from the manifest
+default. Fixing that was necessary and not sufficient; the org prefix cannot be
+fixed from a device tree at all.
+
+**So:**
+
+```bash
+cp device/lenovo/malbec/malbec.xml .repo/local_manifests/malbec.xml
+repo sync
+```
+
+`lineage.dependencies` is kept as-is: it is correct, and it starts working the
+day these repos live under LineageOS.
+
+## ⚠️ Then, before the first build
+
+```bash
+cd vendor/lenovo/malbec && git lfs install --local && git lfs pull
+```
+
+`libarcsoft_faceid.so` is 134 MB — over GitHub's per-file limit — so it is the
+one path under Git LFS. Without this you get a **134-byte text file** and the
+build stops with `must have a valid ELF magic word`, which reads like a corrupt
+blob rather than a missing object. `git lfs pull` **on its own is not enough**:
+it prints *"Skipping object checkout, Git LFS is not installed for this
+repository"* and exits **0**.
 
 ## Building
 

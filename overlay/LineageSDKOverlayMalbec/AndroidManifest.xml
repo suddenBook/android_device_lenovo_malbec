@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+
+     Targets lineageos.platform, which is the package name declared by
+     lineage-sdk/lineage/res/AndroidManifest.xml:10 for the resource APK that
+     Soong builds as org.lineageos.platform-res. Those two names differ and only
+     the manifest one works here.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="org.lineageos.platform.malbec">
+    <overlay android:targetPackage="lineageos.platform"
+             android:isStatic="true"
+             android:priority="1" />
+</manifest>
