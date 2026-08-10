@@ -692,6 +692,50 @@ blob_fixups: blob_fixups_user_type = {
         .regex_replace(r'(?s)[ \t]*<!--DOLBY DAP-->.*?<!--DOLBY END-->\n', '')
         .regex_replace(r'(?m)^[ \t]*<apply effect="dlb_music_listener"/>\n', ''),
 
+    # ★ Strip the 8K camcorder profiles. Six blocks, three cameras, one sensor
+    # that is 4208 pixels wide.
+    #
+    # This file only started mattering in session 25. Until then nothing selected
+    # it: MediaProfiles.cpp reads `ro.media.xml_variant.profiles`, Qualcomm's rc
+    # files set only the `codecs` and `codecs_performance` siblings, and the
+    # profiles variant fell back to the generic 1080p-capped
+    # media_profiles_V1_0.xml. rootdir/etc/init.malbec.rc now sets the third
+    # property, which is what unlocks 4K recording — and which also makes every
+    # over-declaration in here real for the first time.
+    #
+    #   cameraId 0   27 profiles, max width 7680   <- rear, sensor is 4208x3120
+    #   cameraId 1   21 profiles, max width 1920   <- front, sensor is 3264x2448
+    #   cameraId 2   31 profiles, max width 7680   } no such camera; dumpsys
+    #   cameraId 3   31 profiles, max width 7680   } media.camera reports 2
+    #   cameraId 4   25 profiles, max width 4096   }
+    #
+    # 7680x4320 cannot be produced by a 4208-wide sensor and cannot be encoded by
+    # this SoC (`performance-point-3840x2160-range 60-60` is the ceiling the codec
+    # advertises). CamcorderProfile.hasProfile(0, QUALITY_8KUHD) would return TRUE
+    # and CamcorderProfile.get() would hand back 7680x4320, so a MediaRecorder app
+    # that checks before it asks — i.e. a well-written one — gets a configuration
+    # that fails at start(). CameraX/Aperture is safe because it filters against
+    # StreamConfigurationMap, but "safe in the one app we ship" is not the bar.
+    #
+    # ★ The vendor agrees, one revision later: media_profiles_tuna_v1.xml, which
+    # ships alongside and is selected on units whose sku_version reads 1, contains
+    # ZERO 8kuhd rows. This removes rows Qualcomm themselves removed next time.
+    #
+    # cameraId 2/3/4 are left alone deliberately. They are unreachable —
+    # Camera.getNumberOfCameras() returns 2, so nothing can ask for a profile on
+    # them — and deleting three whole <CamcorderProfiles> blocks is a much larger
+    # regex against a 54 KB file for no behavioural gain. 4kdci (4096x2160) stays
+    # on all of them because the rear sensor can genuinely crop to it.
+    #
+    # Verified before shipping: 6 blocks removed, `8kuhd` count 0 afterwards, and
+    # BOTH the before and after parse under ElementTree — a mangled profiles file
+    # would leave the device with no camcorder profiles at all, which is worse
+    # than the bug being fixed.
+    ('vendor/etc/media_profiles_tuna_v0.xml',): blob_fixup()
+        .regex_replace(
+            r'(?s)[ \t]*<EncoderProfile quality="(?:8kuhd|timelapse8kuhd)".*?'
+            r'</EncoderProfile>\n', ''),
+
     # Thermal: stop the second, config-less daemon.
     #
     # Lenovo's MALBECW-799 patch (init.qcom.rc:516-528) adds

@@ -9,6 +9,14 @@
        xmltree`. Those are chassis properties: this panel, this Wi-Fi front end,
        this 10200 mAh cell. Lenovo measured them on this machine.
 
+       ⚠️ That sentence was true of every scalar EXCEPT the five
+       wifi.controller.* keys, which stock sets and this file did not carry until
+       session 25 — the one group Android 16 actually reads on this chip, so
+       Wi-Fi drain was attributed as exactly zero. Re-derived by diffing the
+       whole scalar group against stock's apk key by key; everything else matched
+       byte for byte. **If you add a value here, diff the group, do not spot-check
+       it.**
+
      * The CPU TABLES are NOT. The stock profile's cpu.speeds.cluster* lists
        (18 / 32 / 29 / 35 entries, topping out at 2265.6 / 3148.8 / 2956.8 /
        3302.4 MHz) match no cpufreq policy on this silicon. The device really
@@ -57,10 +65,58 @@
     <item name="wifi.on">2</item>
     <item name="wifi.active">77.58</item>
     <item name="wifi.scan">150.15</item>
+
+    <!-- ★ The controller group, and on THIS device it is the only Wi-Fi group
+         that gets read. Added session 25; without it, Settings > Battery
+         attributed exactly nothing to Wi-Fi on a Wi-Fi-only tablet — measured,
+         `dumpsys batterystats --checkin | grep '^9,0,l,pwi,wifi'` returned
+         `9,0,l,pwi,wifi,0,0,0,0`.
+
+         Android 16 has no legacy WifiPowerCalculator left (there is no
+         *PowerCalculator.java in frameworks/base at all). The only path is
+         WifiPowerStatsProcessor, which branches on
+         `mHasWifiPowerController = mStatsLayout.isPowerReportingSupported()`,
+         fed from WifiPowerStatsCollector via
+         `WifiManager.isEnhancedPowerReportingSupported()` =
+         `isFeatureSupported(WIFI_FEATURE_LINK_LAYER_STATS)`. This chip HAS that
+         feature — `dumpsys wifi` lists WIFI_FEATURE_LINK_LAYER_STATS and reports
+         real radioOnTime/radioTxTime/radioRxTime — so the controller branch is
+         taken and `wifi.active` above becomes DEAD. It is kept only because it is
+         stock's value and the `else` branch would need it on a chip without LLS.
+
+         PowerProfile.getAveragePower() returns 0.0 for an absent key, and
+         WifiPowerStatsProcessor's ODPM rescue cannot help either
+         (`if (totalPower == 0) return 1;`), so a missing key is a silent zero
+         rather than a fallback. All five values are stock's own, read out of the
+         ZUI framework-res.apk with aapt2, like every other scalar in this file.
+
+         ⚠️ wifi.controller.voltage is not decoration: BatteryStatsImpl divides
+         monitoredRailChargeConsumedMaMs by it OUTSIDE the `if (opVolt != 0)`
+         guard, so a missing value can put Long.MAX_VALUE into battery history the
+         moment rail stats are populated. -->
+    <item name="wifi.controller.idle">1</item>
+    <item name="wifi.controller.rx">176</item>
+    <item name="wifi.controller.tx">200</item>
+    <array name="wifi.controller.tx_levels">
+        <value>1</value>
+    </array>
+    <item name="wifi.controller.voltage">3700</item>
+
     <item name="audio">48</item>
     <item name="video">70</item>
     <item name="camera.flashlight">147</item>
     <item name="camera.avg">874</item>
+
+    <!-- ⚠️ GNSS: there is no receiver on this tablet. `android.hardware.location.gps`
+         is absent from `pm list features` on stock AND on ours; only
+         `android.hardware.location` and `.location.network` are declared. These
+         three are stock's values, carried with the rest of the scalar group, and
+         they are inert — GnssPowerStatsProcessor multiplies them by a duration
+         that is always zero. Kept for stock parity rather than removed, but
+         recorded here so the absence is a stated fact and not an oversight: this
+         block does NOT follow the same "declare the absence explicitly" rule the
+         cellular note above does, because unlike a radio power model there is no
+         way for these to attribute drain to hardware that is not there. -->
     <item name="gps.on">13.7</item>
     <item name="gps.voltage">0</item>
 

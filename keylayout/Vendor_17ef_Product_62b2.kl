@@ -10,11 +10,27 @@
 # BAD_VALUE on an unknown label and abandons the *whole file*, so shipping the
 # stock layout unchanged would leave the keyboard with no layout at all.
 #
-# Remapped to their nearest AOSP equivalent:
-#   LENOVO_VOLUME_MUTE -> VOLUME_MUTE     SCREEN_LOCK   -> LOCK
-#   GLOBAL_SEARCH      -> SEARCH          FULL_SCREEN   -> FULLSCREEN
-#   ZUI_SETTING        -> SETTINGS        SPLIT_SCREEN  -> RECENT_APPS
-#   APP1               -> F19             APP2          -> F20
+# Remapped, stock's label -> what this file actually emits -> where:
+#
+#   LENOVO_VOLUME_MUTE -> VOLUME_MUTE   scancode 113   :253
+#   SCREEN_LOCK        -> LOCK          usage 0x0c038e :619
+#   TP_MUTE            -> F17           usage 0x0c0392 :653
+#   GLOBAL_SEARCH      -> F23           usage 0x0c0393 :659
+#   FULL_SCREEN        -> F24           usage 0x0c0394 :680
+#   SPLIT_SCREEN       -> F21           usage 0x0c0395 :687
+#   SUPER_CONNECT      -> F22           usage 0x0c0397 :691
+#   APP1               -> F19           usage 0x0c0398 :700
+#   APP2               -> F20           usage 0x0c0399 :701
+#   ZUI_SETTING        -> SETTINGS      usage 0x0c039b :702
+#
+# ⚠️ REWRITTEN session 25, and it is the third time a table in this file has been
+# found stale. It used to claim GLOBAL_SEARCH -> SEARCH, FULL_SCREEN -> FULLSCREEN
+# and SPLIT_SCREEN -> RECENT_APPS, and to list TP_MUTE and SUPER_CONNECT as
+# "dropped" -- five rows contradicted by the correct per-key comments 500 lines
+# below them. #43 is exactly this failure with teeth: the F-key allocation table
+# said F24 was free after session 21 had taken it, and a keycap stayed dead for two
+# sessions. **This header is the first thing anyone reads and has historically been
+# the least accurate part of the file. Re-derive it, do not trust it.**
 #
 # ★★ APP1/APP2 were MACRO_1/MACRO_2 until session 16, and that was a dead end.
 # PhoneWindowManager.java:5124-5129 clears ACTION_PASS_TO_USER for MACRO_1..4 in
@@ -49,7 +65,7 @@
 #     F21            this keyboard, split-screen key (F10 keycap)
 #     F22            this keyboard, PC-link key (F11 keycap)
 #     F23            this keyboard, Fn + APP1 (search)
-#     F24            this keyboard, full-screen key (F9 keycap) — see :608
+#     F24            this keyboard, full-screen key (F9 keycap) — see :680
 #   (⚠️ this list said "F21..F24 unallocated" for four sessions after they were
 #    allocated. Nothing free remains.)
 #
@@ -113,11 +129,14 @@
 # get close-to-sleep / open-to-wake without patching the framework; that file
 # documents the evidence, including how the polarity was measured.
 #
-# Dropped, with no sensible AOSP equivalent:
+# Dropped entirely, with no sensible AOSP equivalent and no F-key either:
 #   FN_LOCK           handled inside the keyboard firmware
-#   TP_MUTE           AOSP has no touchpad toggle keycode
-#   SUPER_CONNECT     Lenovo device linking
 #   FN_Q              Lenovo private
+#
+# ⚠️ TP_MUTE and SUPER_CONNECT used to be in this list and are NOT dropped -- both
+# reach a spare F-key so the owner can bind them (see the table above). AOSP still
+# has no touchpad-toggle keycode, which is why TP_MUTE gets no default action; that
+# is a different thing from not being mapped.
 #
 key 1     ESCAPE
 key 2     1
@@ -537,17 +556,64 @@ key 583   ASSIST
 # same keycode.
 
 # Keys defined by HID usages
-key usage 0x0c0067 WINDOW
-key usage 0x0c006F BRIGHTNESS_UP
-key usage 0x0c0070 BRIGHTNESS_DOWN
-key usage 0x0c0079 KEYBOARD_BACKLIGHT_UP
-key usage 0x0c007A KEYBOARD_BACKLIGHT_DOWN
-key usage 0x0c007C KEYBOARD_BACKLIGHT_TOGGLE
-key usage 0x0c0173 MEDIA_AUDIO_TRACK
-key usage 0x0c019C PROFILE_SWITCH
-key usage 0x0c01A2 ALL_APPS
-key usage 0x0d0044 STYLUS_BUTTON_PRIMARY
-key usage 0x0d005a STYLUS_BUTTON_SECONDARY
+#
+# ★ FALLBACK_USAGE_MAPPING on every one of these, added session 25 to match
+# AOSP's current frameworks/base/data/keyboards/Generic.kl:436-458, which flags
+# all 23 of its usage lines. This file was derived from stock ZUI's copy of an
+# OLDER Generic.kl, where none of them were flagged, so the header's "AOSP's
+# Generic.kl plus a Lenovo function row" was out of date on exactly these lines.
+#
+# It changes NOTHING about key delivery. KeyLayoutMap::getKey() prefers usage over
+# scancode regardless of the flag (KeyLayoutMap.cpp:229-239); the only consumer is
+# findUsageCodesForKey(), which *skips* flagged entries (:252-259), and its only
+# caller is EventHub's capability reporting.
+#
+# ⚠️ And that is the point. EventHub::hasKeycodeInternalLocked() (:706-725) does
+#
+#     std::vector<int32_t> usageCodes = keyMap.keyLayoutMap->findUsageCodesForKey(keycode);
+#     if (usageCodes.size() > 0 && mscBitmask.test(MSC_SCAN)) return true;
+#
+# — i.e. an UNFLAGGED usage mapping makes hasKeycodeLocked() answer *yes* for any
+# node that merely has MSC_SCAN, with no check that the node can emit that usage.
+# The scancode form is safe by contrast, because findScanCodesForKey results are
+# gated on keyBitmask.test(sc).
+#
+# The two that matter are the STYLUS_BUTTON pair at the bottom: EventHub:2601-2606
+# turns a node that is KEYBOARD, not TOUCH, not ALPHAKEY and claims any
+# STYLUS_BUTTON keycode into an **EXTERNAL_STYLUS** — and
+# Vendor_17ef_Product_617f.kl:37-63 documents, measured on this unit, exactly what
+# that costs: both Novatek nodes flip to BUTTON_FUSION, TouchButtonAccumulator
+# latches mBtnStylus, ACTION_BUTTON_RELEASE precedes every ACTION_UP and
+# View.mIgnoreNextUpEvent swallows the click. "Dragging works, tapping
+# intermittently does nothing." 617f.kl was rewritten to avoid it; this file was
+# not, and the two were written from the same analysis.
+#
+# ⚠️ Exposure is CONDITIONAL and the folio is detached, so this is a phantom
+# capability withdrawn on the strength of upstream parity, not a reproduced bug:
+# the keyboard node has Q -> ALPHAKEY -> exempt, and a pure touchpad node has no
+# keyboard keys -> not KEYBOARD -> exempt. It fires only if the folio exposes a
+# third, non-alphanumeric node with MSC_SCAN — which is the shape the pen's
+# "Consumer Control" node has. Settle it when the folio is attached:
+# `dumpsys input | grep -B2 -A6 62b2` and check every node's Classes:.
+key usage 0x0c0067 WINDOW FALLBACK_USAGE_MAPPING
+key usage 0x0c006F BRIGHTNESS_UP FALLBACK_USAGE_MAPPING
+key usage 0x0c0070 BRIGHTNESS_DOWN FALLBACK_USAGE_MAPPING
+key usage 0x0c0079 KEYBOARD_BACKLIGHT_UP FALLBACK_USAGE_MAPPING
+key usage 0x0c007A KEYBOARD_BACKLIGHT_DOWN FALLBACK_USAGE_MAPPING
+key usage 0x0c007C KEYBOARD_BACKLIGHT_TOGGLE FALLBACK_USAGE_MAPPING
+key usage 0x0c0173 MEDIA_AUDIO_TRACK FALLBACK_USAGE_MAPPING
+key usage 0x0c019C PROFILE_SWITCH FALLBACK_USAGE_MAPPING
+key usage 0x0c01A2 ALL_APPS FALLBACK_USAGE_MAPPING
+key usage 0x0d0044 STYLUS_BUTTON_PRIMARY FALLBACK_USAGE_MAPPING
+key usage 0x0d005a STYLUS_BUTTON_SECONDARY FALLBACK_USAGE_MAPPING
+
+# ⚠️ The Lenovo block below is deliberately NOT flagged. FALLBACK_USAGE_MAPPING was
+# added above for parity with AOSP's Generic.kl, which is where those eleven lines
+# came from; these are Lenovo's own usages and AOSP has no opinion on them. Nothing
+# here can trigger a misclassification either -- EventHub classifies on Q
+# (ALPHAKEY), the scancode keyboard bitmap (KEYBOARD), the DPAD keycodes and the
+# STYLUS_BUTTON pair, and none of the labels below is any of those. Flagging them
+# would withdraw capability claims that are true, for no gain.
 
 # Lenovo lapis custom key
 key usage 0x0c038e LOCK

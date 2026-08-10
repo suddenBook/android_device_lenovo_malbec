@@ -17,9 +17,25 @@
 #
 # thermal-engine-v2 creates these sockets with bind() at runtime, and a
 # runtime-created file takes the DIRECTORY's type unless a type_transition says
-# otherwise. /dev/socket is socket_device. `file_contexts` only decides labels
-# for things that get restorecon'd, and nothing restorecons these — so the
-# entries in QTI's own vendor_file_contexts have never applied to anything.
+# otherwise. /dev/socket is socket_device.
+#
+# ⚠️ CORRECTED, session 25. The next sentence used to read: *"`file_contexts` only
+# decides labels for things that get restorecon'd, and nothing restorecons these —
+# so the entries in QTI's own vendor_file_contexts have never applied to
+# anything."* **That is a false general rule and it would mislead the next person
+# who hits an unlabelled socket.** init DOES consult `file_contexts` for the
+# sockets it creates itself: `system/core/init/util.cpp`'s `CreateSocket()` calls
+# `SelabelLookupFileContext(addr.sun_path, S_IFSOCK, &secontext)` and
+# `setfscreatecon()` before `bind()`. All four names are declared in
+# `init_thermal-engine-v2.rc` (`socket thermal-send-client stream 0660 system
+# oem_2907`, x4) and all four are in `file_contexts` — ours and stock's.
+#
+# The real mechanism is the one the measured denial always showed: the daemon
+# **unlinks init's socket and re-binds its own**, and it is that create — not
+# init's — that needs the transition. Proven live in session 25 by restarting the
+# daemon: all four sockets came back with a new owner (`system:vendor_thermal`
+# instead of `root:root`) and a new mtime, and all four still carried
+# `vendor_thermal_socket`, with no `socket_device` denial anywhere.
 #
 # ⚠️ QTI wrote every part of this except the one that makes it work. Already
 # present in device/qcom/sepolicy_vndr/sm8750/generic/vendor/common/:
@@ -51,7 +67,10 @@
 # to Lenovo's blob) does not create them.
 #
 # All four names that exist on the device, taken from `ls -lZ /dev/socket/`
-# rather than from the stock file_contexts, which lists three:
+# rather than from the stock file_contexts — which, ⚠️ corrected session 25, lists
+# **four** of them too, not three. Reading them off the device was still the right
+# method; the claim about stock's file was simply wrong, and it was the premise
+# for the (now removed) socket_device rule in measured.te:
 type_transition vendor_thermal-engine socket_device:sock_file
                 vendor_thermal_socket "thermal-send-client";
 type_transition vendor_thermal-engine socket_device:sock_file

@@ -375,7 +375,8 @@ BOARD_MKBOOTIMG_INIT_ARGS += --header_version $(BOARD_INIT_BOOT_HEADER_VERSION)
 # BOARD_BOOTCONFIG is set.
 BOARD_KERNEL_CMDLINE := video=vfb:640x400,bpp=32,memsize=3072000
 
-# Verbatim from the stock vendor_boot bootconfig section.
+# Verbatim from the stock vendor_boot bootconfig section, plus exactly one token
+# stock does not have — see the Wi-Fi regulatory note below.
 BOARD_BOOTCONFIG := \
     androidboot.hardware=qcom \
     androidboot.memcg=1 \
@@ -383,6 +384,53 @@ BOARD_BOOTCONFIG := \
     androidboot.load_modules_parallel=true \
     androidboot.hypervisor.protected_vm.supported=true \
     androidboot.vendor.qspa=true
+
+# ★ Wi-Fi regulatory domain. Added session 25, and it is the one token here that
+# is NOT stock's.
+#
+# THE DEFECT IT FIXES, measured on this unit against the stock dump of the same
+# unit:
+#
+#                        stock          this build (before)
+#   mDriverCountryCode   SE             US
+#   2.4 GHz channels     1..13          1..11        <- ch 12/13 unreachable
+#   5 GHz channels       36..140        36..165      <- 149..165 not EEA-legal
+#   6 GHz channels       1..93          1..229       <- >93 not EEA-legal
+#
+# Both directions are wrong. An EU access point on channel 12 or 13 is simply not
+# scanned and cannot be joined, with no error anywhere — a "my Wi-Fi does not
+# appear" bug with no visible cause. And SoftAP ACS, which this tree enables on
+# 5 GHz and 6 GHz with DFS, can pick a channel this tablet is not licensed to
+# transmit on in its own market.
+#
+# WHY IT REGRESSED: WifiCountryCode.pickCountryCode() falls through override ->
+# telephony -> driver -> framework -> WifiSettingsConfigStore, whose default is
+# WifiCountryCode.getOemDefaultCountryCode() = SystemProperties.get(
+# "ro.boot.wificountrycode"). This bootloader does not set that. It sets Lenovo's
+# own `androidboot.countrycode=SEXE`, and on stock a Lenovo system priv-app
+# (TabletPushOut.apk) is what turns SEXE into SE — a partition LineageOS replaces.
+# There is no SIM to supply a telephony code, so with nothing to send, the
+# framework never overrides the WLAN firmware's built-in US regdomain.
+# Same shape as the market-name loss #58 fixed for the Bluetooth adapter name.
+#
+# WHY THIS MECHANISM: `ro.boot.wificountrycode` is AOSP's own designed hook for
+# exactly this, normally filled by the bootloader — so setting it through the
+# bootconfig we already build is the standard route, not a workaround. It needs no
+# init hack, no fabricated `setprop`, and no signature permission in MalbecParts.
+# WifiCountryCode.isValid() requires exactly two alphanumeric characters, which is
+# why `SEXE` cannot simply be forwarded.
+#
+# ⚠️ SE IS THIS SKU, NOT A GLOBAL TRUTH. `ro.boot.countrycode=SEXE` is burned into
+# this unit, and the tree is already TB390FU_EEA-specific (the fingerprint block in
+# lineage_malbec.mk hardcodes `ro.product.*.name=TB390FU_EEA`). A TB390FU from
+# another market needs its own two-letter code here; nothing detects it, because
+# init cannot take a substring and the property the bootloader does set is four
+# characters long.
+#
+# ⚠️ Do NOT also add `androidboot.wificountrycode` from another place. `ro.*`
+# properties can be set once; a second source is silently ignored, and which one
+# wins depends on import order.
+BOARD_BOOTCONFIG += androidboot.wificountrycode=SE
 
 # ⚠️ BRING-UP ONLY. Gated on MALBEC_BRINGUP, which work/scripts/40-build.sh
 # exports and 35-upstream-readiness.py checks.
@@ -926,7 +974,15 @@ include vendor/lenovo/malbec/BoardConfigVendor.mk
 # Zero means the legacy HAL got linked: the service still starts, wlan0 still
 # comes up, and every Wi-Fi 7 capability silently reports NOT_SUPPORTED. On a
 # Wi-Fi-ONLY tablet that is the whole point of the device.
-BOARD_WLAN_CHIP := wcn7760
+# ⚠️ wcn7750, not wcn7760. This line said 7760 for the whole port while the same
+# file 60 lines above says "The chip is wcn7750 -- lsmod on the device shows
+# qca_cld3_wcn7750 bound", Android.bp installs firmware/wlan/qca_cld/wcn7750/*,
+# and device.mk names two wcn7750 symlink modules. Nothing reads this variable
+# (#25), so nothing broke -- but its stated purpose is to RECORD THE PART, in the
+# one file a maintainer consults before wiring the chip name into something that
+# IS read (a firmware path, a /mnt/vendor/persist/<chip> dir, a WCNSS ini).
+# Recording it wrong is the whole failure mode of a documentation-only variable.
+BOARD_WLAN_CHIP := wcn7750
 
 BOARD_WLAN_DEVICE := qcwcn
 BOARD_HOSTAPD_DRIVER := NL80211
@@ -935,7 +991,14 @@ BOARD_WPA_SUPPLICANT_DRIVER := NL80211
 BOARD_WPA_SUPPLICANT_PRIVATE_LIB := lib_driver_cmd_$(BOARD_WLAN_DEVICE)
 # (1 STA + 1 AP) or (1 STA + 1 of (P2P or NAN)) or (2 AP) or (2 STA)
 WIFI_HAL_INTERFACE_COMBINATIONS := {{{STA}, 1}, {{AP}, 1}}, {{{STA}, 1}, {{P2P, NAN}, 1}}, {{{AP}, 2}}, {{{STA}, 2}}
-WIFI_DRIVER_DEFAULT := qca_cld3
+# ⚠️ WIFI_DRIVER_DEFAULT was here and is a FOURTH dead board variable, alongside
+# #30's three. A whole-checkout `grep -rlw` finds it in this file and nowhere
+# else; the WIFI_DRIVER_* names that external/wpa_supplicant_8,
+# hardware/qcom-caf/wlan, frameworks/opt and system/core actually read are
+# FW_PATH_{AP,P,PARAM,STA}, MODULE_{ARG,NAME,PATH}, SOCKET_IFACE,
+# STATE_CTRL_PARAM and STATE_{OFF,ON}. `DEFAULT` is not one of them. It was
+# especially misleading here because the WIFI_DRIVER_STATE_* lines directly below
+# it ARE read, so it read as a real driver selection. Session 25.
 WIFI_DRIVER_STATE_CTRL_PARAM := "/dev/wlan"
 WIFI_DRIVER_STATE_OFF := "OFF"
 WIFI_DRIVER_STATE_ON := "ON"

@@ -19,8 +19,14 @@ import com.android.settingslib.widget.SelectorWithWidgetPreference
 import org.lineageos.malbec.parts.R
 
 /**
- * "What should this key do?" — one picker, used by all seven call sites (five
- * pen buttons, two keyboard app keys).
+ * "What should this key do?" — one picker, used by all eleven call sites
+ * (four pen gestures, seven folio keys).
+ *
+ * ⚠️ Said "seven call sites (five pen buttons, two keyboard app keys)" until
+ * session 25; all three numbers were wrong. `Constants.PEN_BUTTONS` has 4 entries
+ * and `Constants.KEYBOARD_KEYS` has 7, and StylusSettingsFragment iterates
+ * `ALL_TRIGGERS`, i.e. both lists. The count was true when the keyboard half was
+ * two keys — check it against the two lists, not against this sentence.
  *
  * The layout is a radio list, which is what AOSP itself uses for the same
  * question in Settings > System > Touchpad > Three-finger tap

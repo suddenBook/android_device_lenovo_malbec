@@ -132,10 +132,19 @@ boot, the only way back is bootloader fastboot — volume-down at power-on, i.e.
 hands on the tablet. Level 1 flips SELinux and keeps the shell, so the enforcing
 pass is diagnosable and reversible.
 
-`WITH_ADB_INSECURE` is the half that matters and it cannot live in this tree:
-`vendor/lineage/config/common.mk` tests it with `ifdef` while *product config* is
-being parsed, before `BoardConfig.mk` is read. `40-build.sh` exports it at levels
-0 and 1.
+`WITH_ADB_INSECURE` is the half that matters, and it is set in
+`lineage_malbec.mk` above the `common_full_tablet_wifionly.mk` line — see the
+comment there for why that is the only place it can go.
+
+⚠️ This paragraph used to say it "cannot live in this tree", because
+`vendor/lineage/config/common.mk` tests it with `ifdef` while product config is
+being parsed. The premise is true and the conclusion was wrong — it rules out
+`BoardConfig.mk` and `device.mk`, not a line above the inherit that reaches
+`common.mk`. The consequence of the gap was real: for three sessions,
+`MALBEC_BRINGUP=1 mka bacon` (the command this README documents) built
+**enforcing SELinux with no usable shell**, because the level's third promise
+existed only in `work/scripts/40-build.sh`. `40-build.sh` still exports it, now
+as belt-and-braces rather than as the only implementation.
 
 ⚠️ Use the **three-argument** form of `lunch`, not
 `lunch lineage_malbec-bp4a-userdebug`. `build/envsetup.sh:588` decides between

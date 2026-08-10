@@ -20,17 +20,27 @@ import org.lineageos.malbec.parts.R
  *
  * Requested by the owner specifically: one tap from the desktop.
  *
- * ⚠️ It is NOT pre-placed, and cannot be. This used to say "one instance already
- * on the default workspace so it is there the first time the tablet boots after
- * a flash", placed by MalbecParts' own AutoInstallsLayout resource. Session 24
- * made the home screen empty at the owner's request and removed that mechanism
- * entirely (OPEN-ISSUES.md #32a) — the empty screen now comes from
- * overlay/LauncherOverlayMalbec, which overrides Launcher3's internal default.
+ * ⚠️ It is NOT pre-placed. This used to say "one instance already on the default
+ * workspace so it is there the first time the tablet boots after a flash", placed
+ * by MalbecParts' own AutoInstallsLayout resource. That mechanism was removed in
+ * session 24 for an empty home screen, and the empty home screen was itself
+ * withdrawn in session 25 (OPEN-ISSUES.md #63) — so the home screen is now
+ * Launcher3's own default and this device tree does not define it at all.
+ * Pre-placing a widget would mean re-stating every icon Launcher3 places, and
+ * diverging from upstream on every Launcher3 release.
  *
- * The feature is not weaker for it: PenModeTileService puts the same switch in
- * quick settings, and SettingsProviderOverlayMalbec still adds that tile to the
- * default set — so a fresh flash still has a one-tap Daily/Game switch. This
- * widget is one long-press on the home screen away.
+ * ⚠️ Two corrections session 25 had to make to this block, both of the kind that
+ * sends the next reader to the wrong file: it credited `overlay/LauncherOverlayMalbec`
+ * (deleted — the only other mention of it in the tree is device.mk's comment
+ * explaining the removal), and it credited **SettingsProviderOverlayMalbec** for
+ * the default QS tile. The tile comes from **SystemUIOverlayMalbec**
+ * (`quick_settings_tiles_new_default`); SettingsProviderOverlayMalbec contains
+ * only `def_device_name_simple` and `def_user_rotation`.
+ *
+ * The feature is not weaker for any of this: PenModeTileService puts the same
+ * switch in quick settings and SystemUIOverlayMalbec adds that tile to the default
+ * set, so a fresh flash still has a one-tap Daily/Game switch. This widget is one
+ * long-press on the home screen away.
  */
 class PenModeWidgetProvider : AppWidgetProvider() {
 

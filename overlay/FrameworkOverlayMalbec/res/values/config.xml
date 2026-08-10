@@ -123,7 +123,7 @@
 
          config_defaultRefreshRate is 0, and that is not "unset" - it is AOSP's
          documented way to say "the peak setting is the default"
-         (core/res/res/values/config.xml:5859-5862: "If a non-zero value is set
+         (core/res/res/values/config.xml:5860-5862: "If a non-zero value is set
          for config_defaultPeakRefreshRate, then config_defaultRefreshRate may be
          set to 0, in which case the value set for config_defaultPeakRefreshRate
          will act as the default frame rate.").
@@ -622,7 +622,7 @@
 
     <!-- Note: This setting is deprecated, please use
     config_screenBrightnessSettingMinimumFloat instead -->
-    <!-- Kept in sync with the float above (2 -> 1/254). PowerManager.java:1380
+    <!-- Kept in sync with the float above (2 -> 1/254). PowerManager.java:1401-1403
          exposes this int directly via getMinimumScreenBrightnessSetting(), and it
          is the fallback DisplayDeviceConfig uses if the float ever reverts to -2. -->
     <integer name="config_screenBrightnessSettingMinimum">2</integer>
@@ -881,7 +881,7 @@
          its own: turning Miracast on without it means the cast display cannot
          carry protected content.
 
-         WifiDisplayAdapter.java:116 -> :408 is the only place
+         WifiDisplayAdapter.java:116-117 -> :408 is the only place
          FLAG_SUPPORTS_PROTECTED_BUFFERS is set on the cast virtual display, and
          it reads exactly this resource. AOSP defaults it false
          (core/res/res/values/config.xml:3494); stock sets it true in

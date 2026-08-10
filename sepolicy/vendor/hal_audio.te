@@ -19,18 +19,33 @@
 # /mnt/vendor/persist/factory/audio/aw_cali.bin is the per-unit Rdc/f0
 # calibration for the four AW88461 amplifiers, written once on the production
 # line by /vendor/bin/aw882xx_cali (an argv tool, not a service — nothing on the
-# device ever rewrites it, which is why the binary itself is not shipped). PAL
-# reads it at HAL start to load speaker-protection parameters. Without it the
-# amplifiers run uncalibrated: the excursion limiter falls back to defaults, and
-# the boot log shows the symptom — `[Awinic]aw_check_dsp_ready: rx topo id is
-# 0x0` and the four `aw882xx_dev_init_cali_re` errors.
+# device ever rewrites it). This unit's values, read session 25:
+# Re 6798 / 7081 / 6952 / 7094 mOhm and f0 589 / 581 / 563 / 562 Hz, all inside
+# the driver's 4000-30000 mOhm window.
+#
+# ⚠️ Two corrections, session 25.
+#
+# (a) "...which is why the binary itself is not shipped" is out of date —
+# `aw882xx_cali` IS shipped now (proprietary-files.txt, 85,216 B), added later
+# with its own justification. The sentence contradicted the tree.
+#
+# (b) The causal claim below is not established. This block said the missing
+# grant is why the amplifiers run uncalibrated, citing
+# `aw_check_dsp_ready: rx topo id is 0x0` and the four `aw882xx_dev_init_cali_re`
+# errors. Those errors are real and still present WITH the grant in place — see
+# OPEN-ISSUES.md #65, which established that every audio configuration file we
+# ship is byte-identical to stock's, that nothing on either side loads the
+# calibration at boot, and that the topo-id 0 comes from the ADSP graph not
+# carrying the Awinic module. **The grant is still correct** (PAL does open the
+# path and a denial here would be a real one), but it is not the fix for those
+# four errors, and reading it as one has cost one session already.
 #
 # Rather than granting the whole of mnt_vendor_file (which is every persist
 # subdirectory, including the Bluetooth and Wi-Fi MAC blobs and the RPMB-adjacent
 # secnvm), the directory gets its own type in file_contexts and only that is
 # granted — the same shape the tree already uses for vendor_persist_bluetooth_file.
 #
-# init.target.rc:162-167 creates and chowns the directory, so it exists before
+# init.target.rc:158-162 creates and chowns the directory, so it exists before
 # the HAL starts; the label has to be in file_contexts before first boot because
 # nothing restorecons it afterwards.
 allow hal_audio_default vendor_persist_audio_file:dir search;

@@ -193,8 +193,20 @@ object Constants {
     /**
      * What a key does before the owner has ever opened the picker.
      *
-     * Only the keys whose keycap already promises something get one: the
-     * touchpad key toggles the touchpad, the split-screen key splits the screen.
+     * Only the keys whose keycap promises something Android can actually DO get
+     * one: the split-screen key splits the screen, and the two app keys plus the
+     * search key have obvious GMS equivalents.
+     *
+     * ⚠️ CORRECTED session 25. This used to claim "the touchpad key toggles the
+     * touchpad". It does not, and it cannot: `PREF_KEYBOARD_TOUCHPAD` is absent
+     * from the map below, and Android 16's `KeyGestureEvent` has **no touchpad
+     * toggle** among its 85 types (`TOGGLE_TASKBAR` is the nearest and is
+     * unrelated). Confirmed on the running device — `dumpsys input`'s Custom
+     * Gestures list has five entries for F23/F21/F20/F19/F18 and no F17.
+     *
+     * So the F7 keycap ships unbound and bindable, which is the same class as
+     * `KEY_KEYBOARD_FULLSCREEN` and is handled the same way: a picker entry the
+     * user can select and that then does nothing is worse than an absent one.
      * The rest default to nothing, because guessing on the owner's behalf is
      * worse than an obviously unset row.
      *

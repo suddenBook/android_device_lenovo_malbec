@@ -263,9 +263,27 @@ on property:sys.malbec.panel_dir=3
 #
 # `on post-fs` rather than stock's `on boot`, for two reasons, both improvements
 # rather than transcription:
-#   * /mnt/vendor/persist is mounted by then -- QTI's own persist mkdirs
-#     (init.qcom.rc:167-168 /time and /iar_db, :243 /display, :252 /hvdcp_opti)
-#     are in this same action, so the stage is proven on this device.
+#   * /mnt/vendor/persist is mounted by then. ⚠️ CORRECTED session 25 — the
+#     citation used to say QTI's own persist mkdirs "are in this same action",
+#     and they are not: in the shipped init.qcom.rc `on post-fs` is line 102 with
+#     an EMPTY body, and those mkdirs (/time, /iar_db, /display, /hvdcp_opti) are
+#     all inside `on boot` at line 124. Anyone checking the claim would have found
+#     nothing at post-fs and concluded the stage was unproven.
+#
+#     The conclusion still holds, on better evidence: init.target.rc:82-90 is
+#     `on fs && property:sys.storage.dynamicdata.type=userdata` and does
+#     `mount_all /vendor/etc/fstab.qcom --early` — persist has no `latemount` in
+#     rootdir/etc/fstab.qcom, so --early mounts it there — followed by
+#     chown/chmod/restorecon_recursive of /mnt/vendor/persist. AOSP's `on
+#     late-init` order is early-fs -> fs -> post-fs -> late-fs -> post-fs-data, so
+#     `on post-fs` is strictly after both the mount and the restorecon.
+#
+#     ⚠️ Being after the restorecon has one consequence worth knowing: on a device
+#     whose persist has been ERASED, these two directories are created with the
+#     parent's mnt_vendor_file label rather than vendor_persist_bluetooth_file,
+#     because init's mkdir does not restorecon (builtins.cpp). Nothing breaks
+#     today — prop_init holds mnt_vendor_file:dir rw_dir_perms — and stock has the
+#     identical gap.
 #   * `on boot` would be a race. init merges all `on boot` blocks and runs them
 #     in file-parse order, and prop_init.rc's `on boot / start prop_init` sorts
 #     before tndiag.rc did -- so on stock the directories were created *after*
@@ -565,3 +583,58 @@ on property:sys.boot_completed=1
 on early-boot
     wait /sys/class/backlight/panel0-backlight/hbm 2
     chown system system /sys/class/backlight/panel0-backlight/hbm
+
+# ---------------------------------------------------------------------------
+# ★ Media profiles: the third variant property Qualcomm forgot, which is why
+# this tablet could not record 4K.
+#
+# frameworks/av/media/libmedia/MediaProfiles.cpp:57-62 picks the profile file
+# from ro.media.xml_variant.profiles, DEFAULTING TO "_V1_0":
+#
+#     property_get("ro.media.xml_variant.profiles", variant, "_V1_0");
+#     fileName = "/vendor/etc/media_profiles" + variant + ".xml";
+#
+# Qualcomm's own rc files set the sibling properties and not this one:
+#
+#     init.qcom.rc:631   setprop ro.media.xml_variant.codecs             ${vendor.media.target_variant}
+#     init.qcom.rc:632   setprop ro.media.xml_variant.codecs_performance ${vendor.media.target_variant}
+#     init.qti.media.rc:49-50  the same two, again
+#
+# So codecs and codec-performance followed the SoC variant (_tuna_v0) and
+# CAMCORDER PROFILES silently fell back to the generic AOSP file. Measured on the
+# flashed build, session 25:
+#
+#     ro.media.xml_variant.profiles            (empty)
+#     ro.media.xml_variant.codecs              _tuna_v0
+#     vendor.media.target_variant              _tuna_v0
+#
+# What that costs, per file:
+#
+#     media_profiles_V1_0.xml     19 KB    25 EncoderProfiles, max 1920x1080@30
+#                                          20 Mbps, cameraId 0-1, no 2160p at all
+#     media_profiles_tuna_v0.xml  54 KB    120 EncoderProfiles, 2160p / 4kdci /
+#                                          highspeed480p/720p/1080p / timelapse*
+#
+# i.e. every CamcorderProfile / MediaRecorder / CameraX app on the device was
+# capped at 1080p30 with no slow-motion and no 4K timelapse, on a tablet whose
+# encoder advertises `performance-point-3840x2160-range 60-60`. Aperture's UHD
+# option can never appear, because CameraX builds its quality list from
+# EncoderProfilesProvider and there is no 2160p row to find. Corroborated by
+# OPEN-ISSUES #59's test clip: 19.4 Mbps, against _V1_0's `quality="high"` cap of
+# exactly 20,000,000.
+#
+# ⚠️ `${vendor.media.target_variant}`, not a hardcoded `_tuna_v0`. The variant is
+# chosen at runtime from the silicon's sku_version, and both _tuna_v0 and _tuna_v1
+# ship for the same reason #39 kept media_tuna_v1 — 95 KB of insurance against a
+# unit the maintainer does not own. Hardcoding would be wrong on such a unit.
+#
+# ⚠️ This is stock's bug too. Nothing in the whole ZUI image sets
+# ro.media.xml_variant.profiles either, so shipping ZUI also records 1080p from a
+# file that offers 4K. Matching stock here would be matching a defect.
+#
+# ⚠️ Two harmless side effects, stated so they are not read as regressions:
+# _tuna_v0 declares `<AudioEncoderCap name="heaacps">` and `name="lpcm"`, neither
+# of which is in MediaProfiles.cpp's sAudioEncoderNameMap, so the parser logs two
+# ALOGE lines and adds nothing. MediaProfiles.cpp:763-770 guards the nullptr.
+on property:vendor.media.target_variant=*
+    setprop ro.media.xml_variant.profiles ${vendor.media.target_variant}

@@ -30,23 +30,37 @@
 #     privilege widening for nothing.
 
 #####################################
-# Thermal engine's client sockets.
+# ⚠️ REMOVED, session 25. This block used to be:
 #
-#   avc: denied { create setattr } name="thermal-send-client"
-#        scontext=u:r:vendor_thermal-engine:s0
-#        tcontext=u:object_r:socket_device:s0 tclass=sock_file
+#     allow vendor_thermal-engine socket_device:sock_file { create setattr unlink };
 #
-# init_thermal-engine-v2.rc declares four of these (thermal-send-client,
-# thermal-recv-client, thermal-recv-passive-client, thermal-send-rule) and the
-# daemon re-creates them itself; on the running device all four are
-# u:object_r:socket_device:s0, i.e. they keep /dev/socket's own label.
+# with 16 lines arguing it was load-bearing for the thermal command channel. It
+# was true when written and #36 made it dead: the four `type_transition`s in
+# thermal.te now put thermal-engine's own socket creates on
+# vendor_thermal_socket, and QTI's `allow vendor_thermal-engine
+# vendor_thermal_socket:sock_file create_file_perms` already covers create,
+# setattr and unlink on that type.
 #
-# This is not cosmetic. Those sockets are the command channel that
-# thermal-switch-engine uses to move between the seven thermal-engine-malbec-*
-# policies. Lose them under enforcing and the device is stuck in whichever
-# profile it booted with, which on this build is the weakest one.
-allow vendor_thermal-engine socket_device:sock_file { create setattr unlink };
-
+# Proven on the running enforcing build rather than argued — `setprop ctl.restart
+# thermal-engine`, then:
+#
+#   srw-rw---- system vendor_thermal u:object_r:vendor_thermal_socket:s0 thermal-recv-client
+#   srw-rw---- system vendor_thermal u:object_r:vendor_thermal_socket:s0 thermal-recv-passive-client
+#   srw-rw---- system vendor_thermal u:object_r:vendor_thermal_socket:s0 thermal-send-client
+#   srw-rw---- system vendor_thermal u:object_r:vendor_thermal_socket:s0 thermal-send-rule
+#
+# all four re-created (owner and mtime both changed), all four correctly labelled,
+# and `dmesg | grep 'avc.*socket_device'` **empty**.
+#
+# Why removing it is a real tightening and not tidying: `unlink` on
+# socket_device:sock_file let thermal-engine delete OTHER daemons' sockets. The
+# two that carry that label on this device are `audioserver` and `wigig`.
+#
+# ⚠️ If a future thermal blob creates a FIFTH socket whose name is not in
+# thermal.te's transitions, the denial comes back — and the fix is another
+# `type_transition` for that name, not this rule. The check is the two commands
+# above.
+#
 #####################################
 # Lenovo/Tinno hardware inventory node.
 #

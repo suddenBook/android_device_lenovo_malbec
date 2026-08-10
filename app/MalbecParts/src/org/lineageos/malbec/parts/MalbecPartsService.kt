@@ -39,8 +39,14 @@ import org.lineageos.malbec.parts.stylus.PenPresenceWatcher
  *
  * It is NOT android:persistent. A device app that pins itself into memory for
  * three callbacks is exactly the sort of thing that makes a port feel heavier
- * than stock. It is started at boot and stopped again when every feature that
- * needs it is off — see [shouldRun].
+ * than stock. It is started at boot and stays up.
+ *
+ * ⚠️ This sentence used to end "...and stopped again when every feature that needs
+ * it is off — see [shouldRun]". There is no `shouldRun` (it was also a broken KDoc
+ * link), and the [sync] KDoc twenty lines below says the opposite and is the
+ * accurate one: there is deliberately no stop-when-idle branch, because job (3)
+ * has no user switch. Corrected session 25; the file had two adjacent comments
+ * giving opposite answers to the one question it owns.
  */
 class MalbecPartsService : Service() {
 
@@ -60,8 +66,7 @@ class MalbecPartsService : Service() {
          * Job (3) has no user switch: it is what stops Settings > Display >
          * Refresh rate from silently killing the stylus, and it must hold
          * whether or not the owner has bound a single pen button.
-         */
-        /**
+         *
          * ⚠️ [Context.startServiceAsUser] with [UserHandle.SYSTEM], not plain
          * `startService`. This app shares `android.uid.system`, so an unqualified
          * `startService` makes `ContextImpl.warnIfCallingFromSystemProcess()` log

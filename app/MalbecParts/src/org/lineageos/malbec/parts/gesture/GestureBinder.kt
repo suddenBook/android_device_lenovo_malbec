@@ -149,9 +149,10 @@ object GestureBinder {
         }
     }
 
-    /** True when at least one trigger is bound to something we must handle. */
-    fun needsHandler(context: Context): Boolean =
-        Constants.ALL_TRIGGERS.any {
-            actionFor(context, it.first).gestureType in GestureAction.PRIVATE_GESTURE_TYPES
-        }
+    // ⚠️ `needsHandler(context)` was here and had zero callers. It was the predicate
+    // for a "stop the service when nothing needs it" branch that MalbecPartsService's
+    // KDoc described and never had (see the correction there, session 25). Deleted
+    // with the sentence that referenced it, rather than left as a helper for a
+    // decision that has since been made the other way: the observer in job (3) has
+    // no user switch and must hold unconditionally, so nothing can ever want this.
 }

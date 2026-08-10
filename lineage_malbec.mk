@@ -3,6 +3,47 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+# ★ The third half of MALBEC_BRINGUP, and it has to be HERE — above the
+# common_full_tablet_wifionly.mk line below, not in BoardConfig.mk and not in
+# device.mk.
+#
+# The level table in BoardConfig.mk promises three things at levels 0 and 1:
+# permissive-or-not, `service.adb.root=1`, and WITH_ADB_INSECURE. Until session 25
+# the tree implemented only the first two; the third lived solely in
+# work/scripts/40-build.sh, which is not part of the published device tree. So
+# `MALBEC_BRINGUP=1 mka bacon` — the build command README.md itself documents —
+# produced **enforcing SELinux with no usable shell**: exactly the hazard the level
+# table exists to prevent, reached by accident instead of by going 0 -> 2.
+#
+# Why it cannot be adb root alone: with WITH_ADB_INSECURE unset,
+# vendor/lineage/config/common.mk:35-45 emits `ro.adb.secure=1` AND sets
+# PRODUCT_NOT_DEBUGGABLE_IN_USERDEBUG, which becomes `ro.debuggable=0`.
+# packages/modules/adb/daemon/main.cpp:66-96 only keeps root
+# `if (ro_debuggable && adb_root)` — so `service.adb.root=1` goes inert, and on top
+# of that adb needs an on-screen authorisation dialog that a device which has not
+# finished booting can never show (#33).
+#
+# ⚠️ The placement is load-bearing and the old README claim about it was wrong. It
+# said WITH_ADB_INSECURE "cannot live in this tree" because common.mk tests it with
+# `ifdef` during product-config parsing. The premise is true; the conclusion only
+# rules out BoardConfig.mk (parsed after) and device.mk (inherited at the bottom of
+# this file, i.e. after common.mk). It does NOT rule out this spot. The chain is
+#
+#   lineage_malbec.mk:below -> common_full_tablet_wifionly.mk -> common_mobile_full.mk
+#                           -> common_mobile.mk -> common.mk   <- the ifdef
+#
+# and `inherit-product` includes its target immediately, so anything set above that
+# line is visible to it.
+#
+# ⚠️ Aliases spelled out, and no reuse of BoardConfig.mk's normalisation, for the
+# same reason device.mk:1444 spells them out: BoardConfig.mk has not been parsed
+# yet, so `?=` and the true/false rewriting there are not visible. An unset
+# variable filters to nothing and gets the release posture, which is the correct
+# default for anything shipped.
+ifneq (,$(filter 0 1 true,$(MALBEC_BRINGUP)))
+WITH_ADB_INSECURE := true
+endif
+
 # Inherit from those products. Most specific first.
 $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit_only.mk)
 

@@ -7,7 +7,7 @@
     package="org.lineageos.malbec.parts"
     android:sharedUserId="android.uid.system">
 
-    <!-- MANAGE_KEY_GESTURES is signature (core/res/AndroidManifest.xml:8945).
+    <!-- MANAGE_KEY_GESTURES is signature (core/res/AndroidManifest.xml:8953).
          It gates addCustomInputGesture / registerKeyGestureEventHandler,
          enforced in InputManagerService.java:3180-3229. -->
     <uses-permission android:name="android.permission.MANAGE_KEY_GESTURES" />

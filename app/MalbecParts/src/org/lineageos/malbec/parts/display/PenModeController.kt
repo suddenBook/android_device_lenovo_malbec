@@ -210,9 +210,23 @@ object PenModeController {
     /**
      * The user picked a mode. Always announces.
      *
-     * announcedMode is set BEFORE the settings writes on purpose: those writes
-     * wake RefreshRateObserver, and having already recorded the destination is
-     * what stops it announcing the same transition a second time.
+     * ⚠️ CORRECTED session 25. This used to say *"announcedMode is set BEFORE the
+     * settings writes on purpose: those writes wake RefreshRateObserver, and having
+     * already recorded the destination is what stops it announcing the same
+     * transition a second time."* **No such guard exists** — `announcedMode` is
+     * written here and in [reassert] and is read by nothing, so it never suppressed
+     * anything.
+     *
+     * What actually stops the second toast is [needsCeiling]: by the time the
+     * observer's `onChange` reaches the main looper, [enforceCeiling] has left
+     * `peak == ceiling` and `min <= ceiling`, so [onExternalRefreshRateChange]
+     * returns early and never calls [announce]. The behaviour was always right;
+     * the mechanism written down was not.
+     *
+     * ★ Why the field is kept rather than deleted: [reassert] sets it too, and a
+     * future gating decision (skip publish() when the property already matches)
+     * wants exactly this value. If you touch [onExternalRefreshRateChange], the
+     * thing to preserve is [needsCeiling]'s early return — **not** this field.
      */
     fun setMode(context: Context, mode: String) {
         val game = mode == Constants.TOUCH_MODE_GAME

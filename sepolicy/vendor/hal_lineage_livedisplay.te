@@ -36,9 +36,22 @@
 # explicitly — there is no blanket `sysfs_type:dir search` for arbitrary domains,
 # only per-domain ones (apexd, priv_app, system_server, gmscore_app).
 #
-# Search only. The HAL opens exactly one file in that directory and has no reason
-# to list it.
-allow hal_lineage_livedisplay_sysfs vendor_sysfs_graphics:dir search;
+# ⚠️ REMOVED, session 25. This was
+#
+#     allow hal_lineage_livedisplay_sysfs vendor_sysfs_graphics:dir search;
+#
+# and it is fully redundant. The reasoning above is right in general and misses
+# that upstream already covers THIS domain on THIS type:
+# device/lineage/sepolicy/qcom/dynamic/hal_lineage_livedisplay_sysfs.te:5 is
+# `r_dir_file(hal_lineage_livedisplay_sysfs, sysfs_graphics)`, and
+# device/lineage/sepolicy/qcom/sepolicy.mk:36 m4-defines
+# `sysfs_graphics=vendor_sysfs_graphics` for this board. In the built policy that
+# lands as
+#
+#     (allow hal_lineage_livedisplay_sysfs vendor_sysfs_graphics
+#            (dir (ioctl read getattr lock open watch watch_reads search)))
+#
+# i.e. `search` is already there, and our rule was a strict subset of it.
 
 # ⚠️ …and one more, because the genfscon split above DOES NOT TAKE EFFECT on this
 # node. Measured on the running device (session 22):
@@ -87,10 +100,14 @@ allow hal_lineage_livedisplay_sysfs vendor_sysfs_graphics:dir search;
 # stays — it is correct, it costs nothing, and if the anomaly ever resolves the
 # node lands on the narrower type with no further change.
 #
-# Cost of the widening, stated plainly: this domain can now read and write every
-# vendor_sysfs_graphics file, which on this device includes
+# Cost of the widening, stated plainly and CORRECTED in session 25: this adds
+# **write** to a type this domain could already read. Upstream's
+# device/lineage/sepolicy/qcom/dynamic/hal_lineage_livedisplay_sysfs.te:5 already
+# grants `r_dir_file` on vendor_sysfs_graphics, so read of
 # panel0-backlight/brightness and the sde/drm attributes under
-# ae00000.qcom,mdss_mdp. That is a display HAL being given display sysfs; it is
-# not nothing, and it is the smallest rule that makes Outdoor mode work under
-# enforcing.
-allow hal_lineage_livedisplay_sysfs vendor_sysfs_graphics:file rw_file_perms;
+# ae00000.qcom,mdss_mdp was never ours to give — the earlier text here claimed the
+# read as part of the cost and overstated the delta.
+#
+# So `w_file_perms`, not `rw_file_perms`: the read half is upstream's and stating
+# it again here only makes the rule look wider than it is.
+allow hal_lineage_livedisplay_sysfs vendor_sysfs_graphics:file w_file_perms;

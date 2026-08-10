@@ -66,7 +66,6 @@
     <string name="pen_mode_widget_action">Tap to switch</string>
 
     <!-- Keyboard -->
-    <string name="keyboard_title">Advanced keyboard settings</string>
     <string name="keyboard_keys_category">Folio keyboard keys</string>
     <string name="keyboard_touchpad">Touchpad key (F7)</string>
     <string name="keyboard_split">Split-screen key (F10)</string>
@@ -98,8 +97,6 @@
     <string name="action_lock_screen">Lock the screen</string>
     <string name="action_split_left">Split screen, left</string>
     <string name="action_split_right">Split screen, right</string>
-    <string name="action_desktop_mode">Desktop mode</string>
-    <string name="action_fullscreen">Full screen</string>
     <string name="action_dnd">Do Not Disturb</string>
     <string name="action_magnification">Magnification</string>
     <string name="action_brightness_up">Brightness up</string>
