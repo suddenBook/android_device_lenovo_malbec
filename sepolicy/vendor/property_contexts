@@ -16,7 +16,7 @@
 # ⚠️ ro.odm.fingerprint.update and ro.odm.product.name.update are read by
 # init.target.rc:279-294, which uses them to rewrite the *.build.fingerprint and
 # ro.product.*.name properties. That is harmless here: this tree deliberately
-# spoofs the stock ZUI fingerprint anyway (custom_malbec.mk:71-76, for Play
+# spoofs the stock ZUI fingerprint anyway (lineage_malbec.mk:83-87, for Play
 # certification), and `ro.` properties are set-once in init
 # (PROP_ERROR_READ_ONLY_PROPERTY) while build.prop is loaded long before any
 # property trigger runs. Expect a few "Read-only property was already set" lines

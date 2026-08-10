@@ -91,9 +91,25 @@ get_prop(vendor_hal_gatekeeper_qti, vendor_keymint_retry_timer_prop)
 #   neverallow on line 291 of system/sepolicy/private/property.te violated by
 #   allow hal_lenovobattery_default persist_debug_prop:file { read open }
 #
-# property.te:291 is the { domain -coredomain } form -- no vendor domain may
-# touch this type, and no rule anywhere can grant it. Same shape as the
-# set_prop(prop_init, system_prop) attempt that was rejected in session 12.
+# ⚠️ The "line 291 of system/sepolicy/private/property.te" above is the
+# compiler's own message, quoted verbatim. It means THAT file -- not the
+# property.te sitting next to this file, which is 38 lines long. Left as the
+# compiler printed it, with this note, because a rewritten error message is not
+# an error message. The line number is from the session that hit it and that
+# file is now 908 lines; do not chase it.
+#
+# ⚠️ And do not conclude too much from the sentence that used to be here: "the
+# { domain -coredomain } form -- no vendor domain may touch this type, and no
+# rule anywhere can grant it". The REJECTION is real and reproducible, and that
+# is what matters. The reason given is doubtful: persist_debug_prop is declared
+# `system_restricted_prop` (system/sepolicy/public/property.te:124, inside the
+# compatible_property_only block that applies here), and restricted props are
+# exactly the ones a vendor domain CAN be granted with an explicit allow --
+# :175's neverallow excludes -system_restricted_property_type. Something else
+# in that file is what fired. Worth ten minutes in the enforcing pass, because
+# if it is grantable the denial is fixable; not worth it now, for the reason
+# below. Same shape as the set_prop(prop_init, system_prop) attempt that was
+# rejected in session 12.
 #
 # The cost is nil: persist.debug.* is a debug toggle, and the HAL reads it to
 # decide whether to log more. Leaving it denied means it logs less.

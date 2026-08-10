@@ -55,8 +55,8 @@ type proc_lenovo_pen, fs_type, proc_type;
 type proc_lenovo_touch, fs_type, proc_type;
 
 # ⚠️ vendor_persist_audio_file is NOT declared here. The QTI vendor policy
-# already defines it (device/qcom/sepolicy_vndr/sm8550/generic/vendor/common/
-# file.te:173 and its siblings), and re-declaring it is a hard checkpolicy
+# already defines it (device/qcom/sepolicy_vndr/sm8750/generic/vendor/common/
+# file.te:174 and its siblings), and re-declaring it is a hard checkpolicy
 # error, "Duplicate declaration of type". This tree only needs the
 # file_contexts entry that points /mnt/vendor/persist/factory/audio at it and
 # the grant in hal_audio.te; the type itself comes from upstream.

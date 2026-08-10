@@ -123,7 +123,7 @@ beyond one `allow vendor_init proc_lenovo_touch` line that mirrors the
 `PenModeController.RefreshRateObserver` watches `Settings.System.peak_refresh_rate`
 and makes the touch controller follow it. Without it, a user who picks 144 Hz from
 **Settings → Display → Refresh rate** — a list built at runtime from
-`Display.getSupportedModes()` (`RefreshRateUtils.java:45-49`), which no RRO can
+`Display.getSupportedModes()` (`RefreshRateSettingsUtils.java:43`), which no RRO can
 filter — loses the stylus completely, with no indication of why.
 
 Nothing here watches the pen, samples anything, or decides on the user's behalf.

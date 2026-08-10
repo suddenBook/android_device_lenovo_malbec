@@ -51,7 +51,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
         // AttestationService nor PropImitationHooks is in this tree at all.
         // The build says so plainly:
         //
-        //     BootCompletedReceiver.kt:79:58: error: unresolved reference 'FETCHED_PIF'
+        //     BootCompletedReceiver.kt:39:58: error: unresolved reference 'FETCHED_PIF'
         //
         // Kept as a note rather than deleted silently: it was the ONLY place
         // this port reached into a framework API LineageOS does not have, so if

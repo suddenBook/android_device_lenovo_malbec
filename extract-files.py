@@ -669,7 +669,7 @@ blob_fixups: blob_fixups_user_type = {
     #   with a local MP3 and zero AV1 activity); the tinyxml2 sizeof break that
     #   killed libquasar (llvm-nm shows the Dolby libraries import no tinyxml2
     #   symbols at all); and the app re-writing effect parameters
-    #   (DolbyController.kt:30-39 is level-triggered on onPlaybackConfigChanged —
+    #   (DolbyController.kt (removed with the Dolby app)-39 is level-triggered on onPlaybackConfigChanged —
     #   it looked exactly right, and measured ZERO calls during steady playback,
     #   with the logging path validated first by provoking 48 lines from the same
     #   tags). The speaker amplifiers were cleared too: disabling the aw882xx

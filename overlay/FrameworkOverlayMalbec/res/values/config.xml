@@ -152,7 +152,7 @@
 
          Note also that 144 Hz remains in Display > Refresh rate, because that
          list is built at runtime from Display.getSupportedModes()
-         (RefreshRateUtils.java:45-49) and no RRO can filter it. Deliberate: the
+         (RefreshRateSettingsUtils.java:43) and no RRO can filter it. Deliberate: the
          alternatives were patching the panel timings in dtbo.img (a partition
          this port never flashes, precisely because ours is byte-identical to
          stock) or carrying the tree's only out-of-device-tree source patch. Apps
@@ -745,7 +745,7 @@
 
            - No name. Settings takes the list of modes from
              com.android.internal.R.array.config_availableColorModes
-             (ColorModeUtils.kt:66) but takes the NAMES from its own
+             (ColorModeUtils.kt:64) but takes the NAMES from its own
              Settings/res/values/config.xml:625-640, which defines exactly four
              values: 0,1,2,3. getColorModeMapping() returns a map built from
              those, so colorModesToSummaries.get(256) is null and
@@ -804,7 +804,7 @@
          default; the stock triple is calibrated for this panel. Night Light is
          genuinely reachable here — config_setColorTransformAccelerated is
          already true via vendor/lineage/overlay/common/frameworks/base/core/res/
-         res/values/config.xml:154 — so these are live, not dead keys. -->
+         res/values/config.xml:157 — so these are live, not dead keys. -->
     <integer name="config_nightDisplayColorTemperatureMin">2500</integer>
     <integer name="config_nightDisplayColorTemperatureMax">4628</integer>
     <integer name="config_nightDisplayColorTemperatureDefault">3420</integer>
@@ -816,7 +816,7 @@
 
          Eight of the nine terms are AOSP's verbatim. The ninth, the blue
          y-intercept, is Lenovo's: -0.298650895 against AOSP's -0.198650895
-         (frameworks/base/core/res/res/values/config.xml:947 and :960; stock's
+         (frameworks/base/core/res/res/values/config.xml:951 and :960; stock's
          values read out of product/overlay/LgsiFrameworksOverlay.apk with
          aapt2 dump resources). At 3420 K that is roughly 0.614 blue on AOSP's
          curve against 0.514 on Lenovo's — i.e. stock's Night Light is visibly
