@@ -8,6 +8,8 @@ package org.lineageos.malbec.parts
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.hardware.input.InputSettings
+import android.provider.Settings
 import android.util.Log
 import org.lineageos.malbec.parts.display.PenModeController
 
@@ -35,6 +37,8 @@ class BootCompletedReceiver : BroadcastReceiver() {
         // up on real hardware.
         PenModeController.reassert(context)
 
+        materialiseTouchpadScrollDefault(context)
+
         // The service reconciles the gesture table itself in onCreate.
         MalbecPartsService.sync(context)
 
@@ -59,4 +63,52 @@ class BootCompletedReceiver : BroadcastReceiver() {
         // is the difference.
     }
 
+    /**
+     * ★ Write the touchpad's scroll direction down, because two readers disagree
+     * about what it is when nobody has written it.
+     *
+     * `Settings.System.touchpad_natural_scrolling` ships unset. Read it through
+     * the framework and the answer is ON — `InputSettings.useTouchpadNaturalScrolling`
+     * (`InputSettings.java:335-338`) passes a default of **1**, and that reaches
+     * the gestures library as `Invert Scrolling`. Measured on this tablet with
+     * the folio attached: `dumpsys input` -> `Invert Scrolling (boolean): [true]`
+     * while `settings get system touchpad_natural_scrolling` -> `null`.
+     *
+     * Read the same key through Launcher3 and the answer is OFF.
+     * `SettingsCache.updateValue` (`SettingsCache.java:165-181`) defaults a key to
+     * **0** unless it is in the `SETTINGS_ENABLED_BY_DEFAULT` multibinding, and
+     * this one is not — `SettingsModule.kt` contributes three URIs (taskbar,
+     * nav-bar hint, notification badging) and quickstep's `Modules.kt` one more,
+     * none of them this. So `Launcher.isNaturalScrollingEnabled()` returns false,
+     * `AbstractStateChangeTouchController:99` sets `mIsTrackpadReverseScroll`,
+     * and `:264-268` inverts the drag — but only `mStartState == NORMAL`, i.e.
+     * only the gesture that OPENS the app list.
+     *
+     * The symptom is exactly that asymmetry, and it is what the owner reported:
+     * two fingers DOWN opens the app list, and two fingers DOWN closes it again.
+     * One direction, both ways, on a device where the touchscreen equivalent is
+     * swipe up to open and swipe down to close.
+     *
+     * ⚠️ This is not a value being changed — the input stack already behaves as
+     * `1`. It is an implicit default being made explicit, which is the only
+     * thing the two readers actually disagree about. Written once, and only when
+     * the key is absent, so Settings > Touchpad > "Reverse scrolling" keeps
+     * ownership the moment the owner touches it. A `--wipe` clears it and the
+     * next boot puts it back.
+     *
+     * Reading with [InputSettings.useTouchpadNaturalScrolling] rather than a
+     * literal is the point: the framework's own accessor owns the default, so
+     * this cannot drift away from it.
+     */
+    private fun materialiseTouchpadScrollDefault(context: Context) {
+        if (Settings.System.getString(
+                context.contentResolver, Settings.System.TOUCHPAD_NATURAL_SCROLLING
+            ) != null
+        ) {
+            return
+        }
+        val effective = InputSettings.useTouchpadNaturalScrolling(context)
+        Log.i(Constants.TAG, "seeding touchpad_natural_scrolling=$effective (was unset)")
+        InputSettings.setTouchpadNaturalScrolling(context, effective)
+    }
 }

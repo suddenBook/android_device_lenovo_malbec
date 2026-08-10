@@ -49,6 +49,14 @@ android_app {
 
     static_libs: [
         "SettingsLib",
+        // NOT part of the "SettingsLib" aggregate (its Android.bp lists 40
+        // SettingsLib* modules and this is not one of them), so it has to be
+        // named separately. It is what tells this activity whether Settings has
+        // put it in the two-pane split — see
+        // StylusSettingsActivity.hideNavigateUpWhenEmbedded. Settings,
+        // SettingsIntelligence, WallpaperPicker2, PermissionController and
+        // HealthFitness all depend on it the same way.
+        "SettingsLibActivityEmbedding",
         "androidx.preference_preference",
     ],
 

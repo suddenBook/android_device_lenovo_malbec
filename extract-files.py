@@ -288,8 +288,12 @@ blob_fixups: blob_fixups_user_type = {
     # variant at those paths — so a fixup for them would match nothing.
     # extract_utils does not warn about a blob_fixup that matches no file, so
     # dead entries accumulate silently and eventually someone reasons from a
-    # fixup for a file that is not shipped. 19-verify-device-tree.py now checks
-    # that every blob_fixups key is still in proprietary-files.txt.
+    # fixup for a file that is not shipped. The guard is
+    # work/scripts/26-orphan-blobs.py, which imports this file, flattens
+    # blob_fixups and fails on any key proprietary-files.txt no longer names.
+    # ⚠️ These three comments used to cite `19-verify-device-tree.py`, a script
+    # that has never existed in this repo — so for five sessions the class they
+    # warn about at length had no running check (OPEN-ISSUES.md #76).
     (
         'vendor/lib64/libqcodec2_core.so',
     ): blob_fixup()
@@ -489,6 +493,40 @@ blob_fixups: blob_fixups_user_type = {
         .regex_replace(
             r'(?m)^(service mlid\s(?:[^\n]*\\\n)*[^\n]*\n(?:[ \t]+[^\n]*\n)*)',
             r'\1    disabled\n',
+        )
+        # ★ thermal-switch-engine loses `oneshot`, because on this device it is
+        # THE thermal daemon and `oneshot` means init will not restart it.
+        #
+        # init.qcom.rc:516-526 is a `disabled` + `oneshot` stanza started only by
+        # `on property:vendor.thermal.mode=*`, and the sibling stanza
+        # (init_thermal-engine-v2.rc:7, `service thermal-engine`, no config file)
+        # is deliberately stopped at boot by the fixup further down this file, to
+        # reproduce stock's end state. So the ONLY live userspace thermal daemon
+        # is the oneshot one -- measured on the device: init.svc.thermal-engine
+        # = stopped, init.svc.thermal-switch-engine = running, and the live
+        # process is `thermal-engine-v2 -c .../thermal-engine-malbec-normal.conf`.
+        #
+        # ⚠️ Measured, not reasoned. `kill -9` on that pid left
+        # init.svc.thermal-switch-engine = stopped and NOTHING restarted it, 21 s
+        # later or ever: the only writer of vendor.thermal.mode on this ROM is
+        # init.malbec.rc:289/294, driven by a user changing Device mode in
+        # MalbecParts. So a single crash silently ends userspace thermal
+        # mitigation for the rest of the boot. The AIDL HAL keeps reporting
+        # temperatures, so nothing looks wrong.
+        #
+        # Safe because the daemon does not fork: init's tracked pid IS the live
+        # process (init.svc.* reads `running`, and the pid in `ps` matches), so
+        # removing `oneshot` cannot produce a respawn loop from a normal exit.
+        # The `stop`/`start` pair at :525-526 is unaffected -- an explicit `stop`
+        # suppresses the restart either way.
+        #
+        # ⚠️ Stock ships the same defect. This is one of the places the port is
+        # deliberately better than stock rather than identical to it.
+        # OPEN-ISSUES.md #58.
+        .regex_replace(
+            r'(?m)^(service thermal-switch-engine[^\n]*\n(?:[ \t]+[^\n]*\n)*?)'
+            r'[ \t]*oneshot[ \t]*\n',
+            r'\1',
         ),
 
     # Two edits to init.target.rc:
@@ -602,7 +640,7 @@ blob_fixups: blob_fixups_user_type = {
     # ⚠️ The blob_fixups for vendor.qsap.location.rc and loc-launcher.rc were
     # here and are GONE, because both FILES are gone. A fixup key naming a file
     # that is no longer extracted is a stale key, which is what
-    # 19-verify-device-tree.py item 11 fails on.
+    # work/scripts/26-orphan-blobs.py fails on.
     #
     # Both were `disabled` patches on services whose binaries this tree had
     # already stopped shipping. Removing the files instead is strictly better —
@@ -783,7 +821,7 @@ blob_fixups: blob_fixups_user_type = {
     # reason. Session 13 removed both services outright -- QMS is Qualcomm's
     # telemetry/upload pipeline and DPM is the cellular data power manager, and
     # this is a Wi-Fi-only tablet -- so the fixups had nothing left to patch.
-    # 19-verify-device-tree.py item 11 is what caught them.
+    # work/scripts/26-orphan-blobs.py is what would catch them today.
 
 }  # fmt: skip
 

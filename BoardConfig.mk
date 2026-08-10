@@ -14,15 +14,30 @@ DEVICE_PATH := device/lenovo/malbec
 #
 # BUILD_BROKEN_DUP_RULES is ON, and here is the proof it is needed.
 #
-# 22 install targets are claimed by two rules. They fall into THREE classes, and
-# describing them as one is how the version of this comment that stood until
-# session 21 managed to be wrong in five separate ways at once. Do not edit this
-# from memory -- run the script:
+# Several install targets are claimed by two rules. They fall into THREE classes,
+# and describing them as one is how the version of this comment that stood until
+# session 21 managed to be wrong in five separate ways at once.
+#
+# ⚠️ THIS COMMENT DELIBERATELY CITES NO COUNTS. It used to say "22 ... 13/3/6"
+# while the script said 24 in 14/3/7, and it said so under its own instruction
+# not to edit it from memory -- the two extra members arrived with the thermal
+# HAL fix (#22/#41) and nobody re-ran it. A number that has to be maintained by
+# hand next to a script that computes it will drift, and the drift is invisible.
+# The lists below are the entries whose CHOICE NEEDED A REASON, not an inventory.
+# For the inventory, run:
 #
 #     python3 work/scripts/30-dup-installs.py            # live list + winners
 #     python3 work/scripts/30-dup-installs.py --check    # fail on drift
+#     python3 work/scripts/30-dup-installs.py --write    # re-record after a change
 #
-# -- A. blob PRODUCT_COPY_FILES vs a Soong install rule -- 13 paths, blob wins all
+# -- A. PRODUCT_COPY_FILES vs a Soong install rule -- the PCF side wins all
+#
+#   ⚠️ "PCF wins", NOT "the blob wins", and the distinction became load-bearing
+#   in #64: android.hardware.hardware_keystore.xml is now a PRODUCT_COPY_FILES
+#   entry from device/lenovo/malbec/configs/permissions/, so the winner is a
+#   file of OURS and the loser is AOSP's
+#   hardware/interfaces/security/keymint/aidl/default. Every other member of
+#   this class is still a blob. The mechanism does not care which.
 #
 #   kati materialises PRODUCT_COPY_FILES from build/make/core/Makefile:148, i.e.
 #   AFTER installs-$(TARGET_PRODUCT).mk, and Make keeps the LAST recipe. The blob
@@ -33,29 +48,39 @@ DEVICE_PATH := device/lenovo/malbec
 #     etc/init/{memtrack_qti, qspa_vendor, vendor.qti.audio-adsprpc-service}.rc
 #     etc/init/init.qti.display_boot.rc
 #     etc/init/vendor.qti.hardware.display.{allocator,composer,demura}-service.rc
+#     etc/init/android.hardware.thermal-service.qti.rc
 #     etc/permissions/android.hardware.hardware_keystore.xml
 #     etc/usb_compositions.conf
 #     etc/wifi/wpa_supplicant.conf
 #     etc/aidl/hfp/hfp_codec_capabilities.xml
 #     etc/aidl/le_audio/aidl_audio_set_{configurations,scenarios}.bfbs
 #
-#   Why the blob is right: the .rc files start binaries we ship as blobs (each
+#   Why the winner is right: the .rc files start binaries we ship as blobs (each
 #   one's `service` line names a binary whose only install rule comes from
-#   vendor/lenovo/malbec); hardware_keystore.xml declares feature version 300 to
-#   match the blob KeyMint service, which our manifest declares at V3, while the
-#   tree's copy claims 400; usb_compositions.conf carries Lenovo's USB VID 0x17EF
+#   vendor/lenovo/malbec); usb_compositions.conf carries Lenovo's USB VID 0x17EF
 #   and the Lenovo-only `readyfor` compositions where the generic QTI copy uses
 #   0x05C6. composer-service.rc is the one pair whose sides genuinely differ --
-#   tree uses `task_profiles ServiceCapacityLow`, blob uses
+#   the source module uses `task_profiles ServiceCapacityLow`, the blob uses
 #   `writepid /dev/cpuset/system-background/tasks` -- and the blob is
-#   byte-identical to stock.
+#   byte-identical to stock. thermal-service.qti.rc arrived with #22/#41 and is
+#   the blob for the same reason: it starts the blob thermal HAL, which is the
+#   only build of it that carries Lenovo's board config rather than Qualcomm's
+#   reference one.
+#
+#   hardware_keystore.xml is the one member whose winner is OURS rather than a
+#   blob. It declares feature version 300 (KeyMint 3.0), matching the vendor
+#   manifest's android.hardware.security.keymint at AIDL V3 and stock's own
+#   file byte-for-byte; the loser is AOSP's
+#   hardware/interfaces/security/keymint/aidl/default copy, which claims 400 for
+#   a TA this device does not have. Verified on the running device:
+#   `pm list features | grep keystore` -> hardware_keystore=300.
 #
 #   /!\ vndservicemanager.rc was listed here and no longer collides.
 #   /!\ product/media/bootanimation.zip was here until session 21 and is gone:
 #       the stock animation was dropped for LineageOS's generated one, which is
 #       sized from TARGET_SCREEN_{WIDTH,HEIGHT} and therefore actually fits.
 #
-# -- B. Soong install rule vs Soong install rule -- 3 paths, blob wins all
+# -- B. Soong install rule vs Soong install rule -- blob wins all
 #
 #     bin/init.qti.display_boot.sh
 #     etc/vintf/manifest/face-default.xml
@@ -74,8 +99,10 @@ DEVICE_PATH := device/lenovo/malbec
 #   720/721/731/732 to the `sun` case, and that case has no `*)` default -- so a
 #   flip there is not cosmetic.
 #
-# -- C. Soong install rule vs a `vintf_fragments:` rule -- 6 paths, tree wins all
+# -- C. Soong install rule vs a `vintf_fragments:` rule -- the source module
+#       wins all
 #
+#     etc/vintf/manifest/android.hardware.thermal-service.qti.xml
 #     etc/vintf/manifest/manifest_audio_qti_services.xml
 #     etc/vintf/manifest/mapper.qti.xml
 #     etc/vintf/manifest/memtrack_qti.xml
@@ -93,11 +120,17 @@ DEVICE_PATH := device/lenovo/malbec
 #
 #   It is also harmless. The recipe is `assemble_vintf`
 #   (build/make/core/definitions.mk:3209-3215), not a copy -- the same
-#   normalisation that produced stock's own copies -- and all six were compared
+#   normalisation that produced stock's own copies -- and each was compared
 #   tuple-by-tuple on (format, name, version, fqname) against the extracted stock
-#   vendor image and are semantically identical. In each of the six, the source
-#   module that wins is itself replaced by a `prefer: true` blob and ships no
-#   binary; only its manifest fragment reaches the image.
+#   vendor image and is semantically identical. In each, the source module that
+#   wins is itself replaced by a `prefer: true` blob and ships no binary; only
+#   its manifest fragment reaches the image.
+#
+#   ★ Which is exactly why every member of this class also has a redundant
+#   `prebuilt_etc_xml` module and a proprietary-files.txt line that can never
+#   reach the image. `prefer: true` replaces the BINARY; it does not disable the
+#   source module's `vintf_fragments:`. See work/OPEN-ISSUES.md #41 -- the
+#   extraction is the thing to drop, not the collision.
 #
 # /!\ vendor.qti.hardware.vibrator.service.rc used to be in class A. It is gone
 # -- the whole vibrator stack was removed once the tablet was confirmed to have

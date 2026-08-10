@@ -59,8 +59,12 @@
     <string name="gesture_wake_title">Double-tap to wake</string>
     <string name="gesture_wake_summary">Tap the screen twice to wake the tablet. The touch controller keeps scanning at low power while the screen is off.</string>
 
-    <!-- Screen refresh rate -->
-    <string name="refresh_rate_title">Screen refresh rate</string>
+    <!-- The refresh-rate ceiling. It is a row inside "Screen and touch", not a
+         section of its own: on this panel the refresh rate and the touch/stylus
+         mode are one hardware setting, so "Refresh rate" reads correctly under
+         that heading and "Screen refresh rate" would repeat the word the
+         heading already carries. -->
+    <string name="refresh_rate_title">Refresh rate</string>
     <string name="refresh_rate_60" translatable="false">60 Hz</string>
     <string name="refresh_rate_90" translatable="false">90 Hz</string>
     <string name="refresh_rate_120" translatable="false">120 Hz</string>

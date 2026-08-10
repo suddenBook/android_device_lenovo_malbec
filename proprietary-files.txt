@@ -448,7 +448,7 @@ vendor/etc/init/dvs-aidl-service.rc
 vendor/etc/init/feature_enabler_client.rc
 vendor/etc/init/hexlpservice.rc
 vendor/etc/init/hlosminkdaemon.rc
-vendor/etc/init/hw/init.qcom.rc|349faf1da7d2694d1d7fbc7729421f9ffffa2b74|698674f7edfb63a5173517f416576f612a57485b
+vendor/etc/init/hw/init.qcom.rc|349faf1da7d2694d1d7fbc7729421f9ffffa2b74|ed2f3fc08e8763122264e812db29f054c2d48a0c
 vendor/etc/init/hw/init.qcom.usb.rc
 vendor/etc/init/hw/init.qti.kernel.rc
 vendor/etc/init/hw/init.qti.kernel.target.rc

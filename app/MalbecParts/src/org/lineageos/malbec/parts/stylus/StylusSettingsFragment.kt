@@ -23,8 +23,31 @@ import org.lineageos.malbec.parts.gesture.GestureBinder
 
 class StylusSettingsFragment : SettingsBasePreferenceFragment() {
 
+    companion object {
+        /**
+         * `FooterPreference.ORDER_FOOTER`, which is package-private. Restated
+         * rather than reached for, because the only thing that matters here is
+         * that two footers in one group tie — the absolute value is not read
+         * anywhere else.
+         */
+        private const val ORDER_FOOTER = Int.MAX_VALUE - 1
+
+        private const val FOOTER_TOUCH_MODE = "touch_mode_footer"
+    }
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.stylus_settings, rootKey)
+
+        // ⚠️ "Screen and touch" is the one category with TWO footers, and XML
+        // declaration order does not decide which comes first.
+        // FooterPreference's constructor calls init() -> setOrder(ORDER_FOOTER)
+        // after super() has already parsed android:order (FooterPreference.java
+        // :217-228), so every footer ties at Integer.MAX_VALUE - 1 and
+        // Preference.compareTo falls through to comparing the two TITLES
+        // case-insensitively. Pin the device-mode note above the refresh-rate
+        // note here, so that editing the first word of either string cannot
+        // silently reorder the page.
+        findPreference<Preference>(FOOTER_TOUCH_MODE)?.order = ORDER_FOOTER - 1
 
         for ((prefKey, _) in Constants.ALL_TRIGGERS) {
             findPreference<Preference>(prefKey)?.setOnPreferenceClickListener { pref ->
