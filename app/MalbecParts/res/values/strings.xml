@@ -53,6 +53,12 @@
     <string name="touch_mode_rate_restored_toast">Above 120 Hz the stylus stops working and touch readings drop to 185 a second, so the refresh rate has been set back to 120 Hz</string>
     <string name="touch_mode_footer">The screen, the touch controller and the thermal policy move together, because the hardware cannot do all of it at once. Game mode reads finger touches 360 times a second instead of 120, and lets the processor hold its full clock until the tablet reaches 60°C rather than stepping down from 42°C — but the touch controller stops scanning for the stylus entirely. Daily is the default and the only mode the stylus works in.</string>
 
+    <!-- Double-tap to wake. The summary says what it costs, because this is the
+         one row on the page whose cost is not obvious: the touch controller keeps
+         a low-power scan running while the screen is off. -->
+    <string name="gesture_wake_title">Double-tap to wake</string>
+    <string name="gesture_wake_summary">Tap the screen twice to wake the tablet. The touch controller keeps scanning at low power while the screen is off.</string>
+
     <!-- Screen refresh rate -->
     <string name="refresh_rate_title">Screen refresh rate</string>
     <string name="refresh_rate_60" translatable="false">60 Hz</string>

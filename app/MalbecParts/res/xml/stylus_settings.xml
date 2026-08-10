@@ -121,6 +121,21 @@
             android:summary="%s"
             android:persistent="false" />
 
+        <!-- ★ Double-tap to wake. persistent="false" for the same reason as the
+             row above: persist.sys.malbec.gesture_wake is the source of truth,
+             because init.malbec.rc is what writes /proc/gesture_mode and init
+             cannot read a SharedPreference.
+
+             No defaultValue, deliberately. "Absent means on" is expressed once,
+             in init.malbec.rc's unconditional write at boot_completed; declaring
+             `true` here as well would put the default in two places that have to
+             agree, which is the mistake the refresh-rate comment below calls out. -->
+        <SwitchPreferenceCompat
+            android:key="gesture_wake"
+            android:title="@string/gesture_wake_title"
+            android:summary="@string/gesture_wake_summary"
+            android:persistent="false" />
+
         <com.android.settingslib.widget.FooterPreference
             android:key="touch_mode_footer"
             android:title="@string/touch_mode_footer"

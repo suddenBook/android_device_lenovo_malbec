@@ -388,20 +388,22 @@ BOARD_BOOTCONFIG := \
 # ★ Wi-Fi regulatory domain. Added session 25, and it is the one token here that
 # is NOT stock's.
 #
-# THE DEFECT IT FIXES, measured on this unit against the stock dump of the same
-# unit:
+# THE DEFECT IT FIXES is not "the wrong country" — it is that **nothing set the
+# property at all**, so the regdomain was whatever the WLAN firmware happened to be
+# built with and no one had decided anything. Measured on this unit against the
+# stock dump of the same unit:
 #
 #                        stock          this build (before)
-#   mDriverCountryCode   SE             US
-#   2.4 GHz channels     1..13          1..11        <- ch 12/13 unreachable
-#   5 GHz channels       36..140        36..165      <- 149..165 not EEA-legal
-#   6 GHz channels       1..93          1..229       <- >93 not EEA-legal
+#   mDriverCountryCode   SE             US   <- not chosen, just inherited
+#   2.4 GHz channels     1..13          1..11
+#   5 GHz channels       36..140        36..165
+#   6 GHz channels       1..93          1..229
 #
-# Both directions are wrong. An EU access point on channel 12 or 13 is simply not
-# scanned and cannot be joined, with no error anywhere — a "my Wi-Fi does not
-# appear" bug with no visible cause. And SoftAP ACS, which this tree enables on
-# 5 GHz and 6 GHz with DFS, can pick a channel this tablet is not licensed to
-# transmit on in its own market.
+# The concrete symptom of an undecided regdomain: an access point on 2.4 GHz
+# channel 12 or 13 — legal where this unit was sold — is not scanned and cannot be
+# joined, with no error anywhere. A "my Wi-Fi does not appear" bug pointing at
+# nothing. Which channels you would rather have is a separate question, and it is
+# the owner's; see below.
 #
 # WHY IT REGRESSED: WifiCountryCode.pickCountryCode() falls through override ->
 # telephony -> driver -> framework -> WifiSettingsConfigStore, whose default is
@@ -420,17 +422,57 @@ BOARD_BOOTCONFIG := \
 # WifiCountryCode.isValid() requires exactly two alphanumeric characters, which is
 # why `SEXE` cannot simply be forwarded.
 #
-# ⚠️ SE IS THIS SKU, NOT A GLOBAL TRUTH. `ro.boot.countrycode=SEXE` is burned into
-# this unit, and the tree is already TB390FU_EEA-specific (the fingerprint block in
-# lineage_malbec.mk hardcodes `ro.product.*.name=TB390FU_EEA`). A TB390FU from
-# another market needs its own two-letter code here; nothing detects it, because
-# init cannot take a substring and the property the bootloader does set is four
+# ── WHICH CODE: the owner chose US, and it is a real trade rather than a fix ──
+#
+# ★ NO REGDOMAIN OPENS EVERY CHANNEL. The two directions are mutually exclusive,
+# and both rows below were measured on THIS device across two real boots — the
+# framework's cached channel list is not refreshed by `cmd wifi
+# force-country-code` even with a Wi-Fi cycle, so only a boot answers this:
+#
+#              2.4 GHz        5 GHz                  6 GHz
+#   US         1-11           36-64, 100-165  (25)   1-229  (58)
+#   SE         1-13           36-64, 100-140  (19)   1-93   (24)
+#
+# So US buys 5 more 5 GHz channels and 34 more 6 GHz channels, and costs 2.4 GHz
+# 12 and 13. SE is byte-for-byte what stock reports on this unit.
+#
+# The owner's decision, session 25, asked with those numbers in front of them:
+# **US** — maximum channel availability, accepting the loss of 12/13.
+#
+# ⚠️ THE COST, STATED ONCE AND THEN ACCEPTED: 5 GHz 149-165 and 6 GHz above
+# channel 93 are not licensed in the EEA, where this unit was sold
+# (`ro.boot.countrycode=SEXE`). As a CLIENT that mostly means it will associate on
+# channels a local AP would not use anyway. As a SoftAP it matters more — this tree
+# enables ACS on 5 GHz and 6 GHz with DFS, so the hotspot can pick one of those
+# channels unprompted. That is the owner's call on their own device and it is not
+# re-litigated here.
+#
+# ⚠️ It is written EXPLICITLY rather than achieved by leaving the property unset,
+# even though "unset" also lands on US. Three reasons: the framework then has a
+# real `DefaultCountryCode(system property)` instead of falling through to whatever
+# the firmware was built with; `WifiCountryCode`'s fallback chain becomes
+# deterministic; and a future reader can see that US is a decision rather than an
+# accident. Leaving it unset is how this was broken in the first place.
+#
+# ⚠️ NOT A GLOBAL TRUTH FOR THIS TREE EITHER WAY. `ro.boot.countrycode=SEXE` is
+# burned into this unit and the tree is already TB390FU_EEA-specific (the
+# fingerprint block in lineage_malbec.mk hardcodes
+# `ro.product.*.name=TB390FU_EEA`). Anyone reusing this tree in another market
+# should set their own two-letter code here; nothing detects it, because init
+# cannot take a substring and the property the bootloader does set is four
 # characters long.
 #
 # ⚠️ Do NOT also add `androidboot.wificountrycode` from another place. `ro.*`
 # properties can be set once; a second source is silently ignored, and which one
 # wins depends on import order.
-BOARD_BOOTCONFIG += androidboot.wificountrycode=SE
+#
+# ⚠️ A third option was offered and not taken, recorded so it is not re-derived:
+# `gCountryCodePriority=0` in
+# /vendor/firmware/wlan/qca_cld/wcn7750/WCNSS_qcom_cfg.ini:33 would make the
+# driver follow the AP's 802.11d country IE instead of the framework's value, i.e.
+# self-adapt while travelling. It needs a blob fixup and cannot be verified without
+# APs in more than one regdomain.
+BOARD_BOOTCONFIG += androidboot.wificountrycode=US
 
 # ⚠️ BRING-UP ONLY. Gated on MALBEC_BRINGUP, which work/scripts/40-build.sh
 # exports and 35-upstream-readiness.py checks.

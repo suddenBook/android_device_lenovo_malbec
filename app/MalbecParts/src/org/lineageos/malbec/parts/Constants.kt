@@ -163,6 +163,7 @@ object Constants {
     const val PREF_FOLIO_EVER_SEEN = "folio_ever_seen"
 
     const val PREF_TOUCH_MODE = "touch_mode"
+    const val PREF_GESTURE_WAKE = "gesture_wake"
     const val PREF_REFRESH_RATE = "refresh_rate"
 
     /** Category keys inside the preference XML, for show/hide. */
@@ -366,4 +367,20 @@ object Constants {
      * (private/system_app.te:43), so this needs no new policy at all.
      */
     const val PROP_TOUCH_MODE = "persist.sys.malbec.touch_mode"
+
+    /**
+     * Double-tap-to-wake.
+     *
+     * `persist.sys.` rather than a SharedPreference for the same reason
+     * [PROP_TOUCH_MODE] is: rootdir/etc/init.malbec.rc is the thing that writes
+     * /proc/gesture_mode, init can only read properties, and one source of truth
+     * is what stops the UI and the hardware disagreeing.
+     *
+     * ⚠️ ABSENT MEANS ON. init.malbec.rc writes `gesture_mode 1` unconditionally at
+     * boot_completed and only overrides it to 0 when this property says `0`, which
+     * mirrors how touch_mode's default (`stylus`) is the unconditional write and
+     * `game` is the override. So the default lives in the rc file, not here, and
+     * there is deliberately no build.prop default to disagree with it.
+     */
+    const val PROP_GESTURE_WAKE = "persist.sys.malbec.gesture_wake"
 }

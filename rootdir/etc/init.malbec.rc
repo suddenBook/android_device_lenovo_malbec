@@ -59,6 +59,111 @@
 on property:sys.boot_completed=1
     write /proc/support_pen 1
     write /proc/HighReportRate 0
+    write /proc/gesture_mode 1
+
+# ---------------------------------------------------------------------------
+# ★ Double-tap-to-wake: the third Novatek node, and reading it is a LIE.
+#
+# `write /proc/gesture_mode 1` is on the line above, in the block that already
+# writes the other two, because it is the SAME defect as `support_pen` twelve
+# lines up: nvt_touch.ko leaves a feature off at boot and nothing in an AOSP
+# userspace turns it back on. The tree had already learned that once, for the pen,
+# and did not generalise it to the sibling node.
+#
+# ⚠️ WHY IT LOOKED ALREADY ENABLED, which is the part worth remembering.
+# `cat /proc/gesture_mode` prints `Gesture mode 1!` on a device where the feature
+# is DEAD. The variable behind the show handler is initialised to 1 and the
+# firmware is never told; only nvt_gesture_mode_store pushes the state into the
+# controller. Isolated on one boot, session 25:
+#
+#                              cat gesture_mode   driver's flag    double-tap
+#   before any write           Gesture mode 1!    0                dead
+#   after `echo 1 > ...`       Gesture mode 1!    1                wakes
+#
+# The driver's flag is free to read — it prints `nvt_gesture_support ... get
+# gesture flag = N` on every suspend. Two reporters, and only the second one is
+# about the hardware.
+#
+# The owner reported double-tap dead, then confirmed it working after the write,
+# and the framework agrees on the mechanism:
+#   PowerManagerService: Waking up from Dozing (reason=WAKE_REASON_WAKE_KEY,
+#                        details=android.policy:KEY)
+# preceded by `nvt_ts_wakeup_gesture_report`. KEY_WAKEUP is in this node's evdev
+# bitmap, Generic.kl:165 maps 143 -> WAKEUP, and KeyEvent.isWakeKey() is
+# unconditionally true for KEYCODE_WAKEUP, so no keylayout change is involved.
+#
+# ⚠️ NO SEPOLICY CHANGE NEEDED, and that was checked rather than assumed:
+# /proc/gesture_mode already carries proc_lenovo_touch — the same label as
+# /proc/HighReportRate, which vendor_init writes two lines above. `ls -Z` on the
+# device confirms it.
+#
+# ⚠️ sys.boot_completed and not earlier, for exactly the reason support_pen gives:
+# Boot_Update_Firmware() runs as delayed work at ~7.3 s and overwrites controller
+# state, so anything written before that is lost.
+#
+# ⚠️ The value is a small integer, not a bitmask — the store handler parses ONE
+# character, so `255` reads back as 2. Do not try to OR gesture bits into it.
+#
+# ⚠️ Unlike support_pen, this is NOT known to be replayed after a firmware reset.
+# nvt_restore_cmd_func() replays nvt_support_pen_set / nvt_pen_type_set /
+# nvt_pen_attached_set and the gesture setter is not among them — though the module
+# does carry a `Recovery Enabled touch wakeup gesture` string, so there may be a
+# path this analysis missed. If double-tap ever stops working after a touch-firmware
+# reset, `get gesture flag` on the next suspend is the one line that says so, and
+# the fix would be a re-write on the same trigger the pen uses.
+#
+# ⚠️ NOT set here: /proc/pen_wakeup_mode (pen-tap-to-wake), which stays 0. That is
+# stock's default and it is a separate feature; enabling it would mean the pen
+# wakes the panel in a bag. Left to a future decision.
+#
+# ── The off switch ──────────────────────────────────────────────────────────
+#
+# The write above is the DEFAULT (on). The two triggers at the end of this block
+# are the override, and MalbecParts' "Double-tap to wake" switch is what sets the
+# property. This is the same default/override shape touch_mode uses twelve lines
+# down: the unconditional write in this block is `stylus`, and `game` is a
+# `&& property:` trigger placed after it.
+#
+# ⚠️ Order is the mechanism. init merges all `on property:sys.boot_completed=1`
+# actions in FILE-PARSE order, so the `&& property:...=0` block must come AFTER the
+# unconditional `write /proc/gesture_mode 1` for an OFF choice to survive a reboot.
+# Move it above and the default silently wins every boot.
+#
+# ⚠️ Absent means ON, and that default lives HERE and nowhere else. There is
+# deliberately no `persist.sys.malbec.gesture_wake` default in any .prop file and no
+# `android:defaultValue` on the switch — two declarations of the same default are
+# two things that have to agree.
+#
+# ⚠️ AND THE ROUTE THAT IS NOT AVAILABLE, corrected in session 25 because the first
+# version of this comment got it wrong and would have sent someone hunting for
+# source that does not exist. `config_supportDoubleTapWake=true` + the framework's
+# own Settings.Secure.DOUBLE_TAP_TO_WAKE would be the AOSP-standard route: it
+# surfaces in Settings via TapToWakePreferenceController.java:42 and makes
+# PowerManagerService.java:1690 call the power HAL's Mode.DOUBLE_TAP_TO_WAKE. It is
+# **not possible here**: /vendor/bin/hw/android.hardware.power-service is a
+# PREBUILT BLOB (vendor/lenovo/malbec/Android.bp declares it; 102,792 bytes) and its
+# binary contains no DOUBLE_TAP string at all. Enabling the config would give a
+# Settings toggle wired to a HAL that ignores it — a switch that lies, which is the
+# defect class this tree exists to remove. Replacing the QTI power HAL with
+# hardware/lineage/interfaces/power-libperfmgr to gain one boolean would trade
+# Qualcomm's perf-hint integration for it, which is not a trade worth making.
+# See OPEN-ISSUES.md #74.
+#
+# ⚠️ Measured out of DOZE, not deep suspend: this unit has never entered S3
+# (/sys/power/suspend_stats/success = 0, on USB all session) and spi4.0's
+# wakeup_count is 0. Whether the gesture survives a real deep suspend is untested,
+# and it is the first thing to check if it ever behaves intermittently on battery.
+on property:sys.boot_completed=1 && property:persist.sys.malbec.gesture_wake=0
+    write /proc/gesture_mode 0
+
+# Runtime toggling, for when the switch is flipped on a running device. Both cases
+# are spelled out rather than relying on the boot pair, because the boot triggers
+# only fire once.
+on property:persist.sys.malbec.gesture_wake=0
+    write /proc/gesture_mode 0
+
+on property:persist.sys.malbec.gesture_wake=1
+    write /proc/gesture_mode 1
 
 # ---------------------------------------------------------------------------
 # Device mode: the touch controller's scan mode and the thermal policy.

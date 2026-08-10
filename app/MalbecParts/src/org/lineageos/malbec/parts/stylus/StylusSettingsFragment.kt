@@ -7,6 +7,7 @@ package org.lineageos.malbec.parts.stylus
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.SystemProperties
 import android.text.format.DateUtils
 import androidx.preference.ListPreference
 import androidx.preference.Preference
@@ -57,6 +58,25 @@ class StylusSettingsFragment : SettingsBasePreferenceFragment() {
                 (newValue as String).toFloatOrNull()?.let {
                     PenModeController.setRefreshRate(requireContext(), it)
                 }
+                true
+            }
+        }
+
+        // ★ Double-tap to wake. The property is the source of truth and init is
+        // what acts on it (rootdir/etc/init.malbec.rc writes /proc/gesture_mode on
+        // this property's triggers), so there is nothing to push to the driver from
+        // here and no service to wake.
+        //
+        // ⚠️ Absent means ON — the default is the unconditional write in the rc
+        // file, so `get(..., "1")` here has to agree with it. Anything other than
+        // the literal "0" is on, which matches the rc file's `=0` override being
+        // the only negative case.
+        findPreference<SwitchPreferenceCompat>(Constants.PREF_GESTURE_WAKE)?.apply {
+            isChecked = SystemProperties.get(Constants.PROP_GESTURE_WAKE, "1") != "0"
+            setOnPreferenceChangeListener { _, newValue ->
+                SystemProperties.set(
+                    Constants.PROP_GESTURE_WAKE, if (newValue as Boolean) "1" else "0"
+                )
                 true
             }
         }
