@@ -365,3 +365,41 @@ dontaudit vold vendor_qmcs_file:dir { getattr ioctl open read };
 # system_data_file. Not done here because it changes where an existing app's
 # data lives, which is not a change to make on a whim.
 dontaudit vendor_cacertservice_app system_data_file:dir { add_name create };
+
+# 8. GMS reading the adb properties · session 24, found by going enforcing
+#
+#   avc: denied { read } name="u:object_r:adbd_prop:s0" app=com.google.android.gms
+#        scontext=u:r:gmscore_app:s0:c512,c768 tcontext=u:object_r:adbd_prop:s0
+#
+# 18 records on a first boot. ★ AOSP already anticipated exactly this and covered
+# the wrong half of it — system/sepolicy/private/gmscore_app.te:66 is
+#
+#     dontaudit gmscore_app system_adbd_prop:file r_file_perms;
+#
+# There are two adb property types and GmsCore probes both; upstream silences
+# only `system_adbd_prop`. This is the matching line for the other one, written
+# to AOSP's own stated intent rather than invented.
+#
+# Not an `allow`: GmsCore reading whether adb is enabled is not a feature this
+# ROM owes it, and the read failing costs nothing observable. Note it will also
+# get quieter by itself at MALBEC_BRINGUP=2, where `service.adb.root` no longer
+# exists — but the probe, and therefore the denial, does not depend on the
+# property being set.
+# ⚠️ AND IT CANNOT BE WRITTEN HERE. Tried, and the build says so plainly:
+#
+#   device/lenovo/malbec/sepolicy/vendor/measured.te:388:
+#       ERROR 'unknown type adbd_prop'
+#
+# `adbd_prop` is a platform-PRIVATE type. BOARD_VENDOR_SEPOLICY_DIRS can write
+# rules whose SOURCE is a coredomain (surfaceflinger and friends above prove
+# that), but it can only name types the platform EXPORTS, and adbd_prop is
+# filtered out by reqd_policy_mask. The only place this line could live is
+# BOARD_PLAT_PRIVATE_SEPOLICY_DIR, which this device does not have and is not
+# worth creating for eighteen log lines emitted by a Google app about a property
+# it has no claim to.
+#
+# ★ So this one stays audited, and that is the right outcome rather than a
+# limitation to work around: it is not ours, it costs nothing, and the fix
+# belongs upstream next to gmscore_app.te:66 where AOSP already silenced the
+# sibling type. Recorded so the next person does not re-derive the same build
+# failure.

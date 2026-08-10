@@ -1,0 +1,89 @@
+# ★ Make /dev/socket/thermal-* actually carry vendor_thermal_socket.
+#
+# OPEN-ISSUES.md #36, filed in session 22 with the note "cannot be VALIDATED
+# until SELinux goes enforcing, and applying an unvalidatable relabel to the
+# thermal path is a poor trade while the device is permissive". Session 24 went
+# enforcing (MALBEC_BRINGUP=1) and it validated itself immediately:
+#
+#   avc: denied { write } for comm="binder:1647_2" name="thermal-send-client"
+#        dev="tmpfs" ino=2150 scontext=u:r:hal_camera_default:s0
+#        tcontext=u:object_r:socket_device:s0 tclass=sock_file permissive=0
+#
+# ★ permissive=0 — a real failure, not a log line. Fifteen of them during ONE
+# camera session, which is the camera HAL failing to post thermal notifications
+# every time it wanted to.
+#
+# ── Why the label was never right ─────────────────────────────────────────
+#
+# thermal-engine-v2 creates these sockets with bind() at runtime, and a
+# runtime-created file takes the DIRECTORY's type unless a type_transition says
+# otherwise. /dev/socket is socket_device. `file_contexts` only decides labels
+# for things that get restorecon'd, and nothing restorecons these — so the
+# entries in QTI's own vendor_file_contexts have never applied to anything.
+#
+# ⚠️ QTI wrote every part of this except the one that makes it work. Already
+# present in device/qcom/sepolicy_vndr/sm8750/generic/vendor/common/:
+#
+#   file.te:128           type vendor_thermal_socket, file_type;
+#   thermal-engine.te:46  allow vendor_thermal-engine vendor_thermal_socket:dir w_dir_perms;
+#   thermal-engine.te:47  allow vendor_thermal-engine vendor_thermal_socket:sock_file create_file_perms;
+#
+# and in stock's compiled policy, three client grants against the same type:
+#
+#   (allow hal_camera            vendor_thermal_socket (sock_file (write)))
+#   (allow vendor_qt_service     vendor_thermal_socket (sock_file (write)))
+#   (allow vendor_hal_perf_default vendor_thermal_socket (sock_file (write)))
+#   + the matching (unix_stream_socket (connectto)) for each
+#
+# So the type is declared, the creator is allowed to make files of it, and three
+# clients are allowed to write it — and **nothing has ever carried it**, on this
+# port or on the shipping ZUI image. The whole apparatus is a dead letter one
+# statement short of working, and this file is that statement.
+#
+# ── The creator, established rather than assumed ──────────────────────────
+#
+#   $ cat /proc/$(pgrep -f thermal-engine-v2)/attr/current
+#     u:r:vendor_thermal-engine:s0
+#   $ strings /vendor/bin/thermal-engine-v2            | grep -c thermal-send-client  -> 2
+#   $ strings .../android.hardware.thermal-service.qti | grep -c thermal-send-client  -> 0
+#
+# i.e. thermal-engine-v2 owns the names; the QTI thermal HAL (which #41 switched
+# to Lenovo's blob) does not create them.
+#
+# All four names that exist on the device, taken from `ls -lZ /dev/socket/`
+# rather than from the stock file_contexts, which lists three:
+type_transition vendor_thermal-engine socket_device:sock_file
+                vendor_thermal_socket "thermal-send-client";
+type_transition vendor_thermal-engine socket_device:sock_file
+                vendor_thermal_socket "thermal-recv-client";
+type_transition vendor_thermal-engine socket_device:sock_file
+                vendor_thermal_socket "thermal-recv-passive-client";
+type_transition vendor_thermal-engine socket_device:sock_file
+                vendor_thermal_socket "thermal-send-rule";
+
+# The clients. Narrower than stock's, deliberately: stock grants the `hal_camera`
+# ATTRIBUTE (server + every client) where the measured denial is the server
+# domain alone, and stock's third grantee `vendor_qt_service` is not shipped here
+# (`ps -A` has no qt_service).
+#
+# vendor_hal_perf_default IS shipped (vendor.qti.hardware.perf2-hal-service is
+# running) and stock grants it the same pair, so it is included before it produces
+# its own denial rather than after.
+#
+# `connectto` on the creating domain is required as well as `write` on the socket
+# file — a unix socket connect() is checked against the peer's domain, not only
+# against the inode. Stock pairs them for all three grantees for this reason.
+allow hal_camera_default vendor_thermal_socket:sock_file write;
+allow hal_camera_default vendor_thermal-engine:unix_stream_socket connectto;
+
+allow vendor_hal_perf_default vendor_thermal_socket:sock_file write;
+allow vendor_hal_perf_default vendor_thermal-engine:unix_stream_socket connectto;
+
+# ⚠️ Acceptance test, because a type_transition that does not fire is invisible:
+#
+#   ls -lZ /dev/socket/thermal-*        all four -> u:object_r:vendor_thermal_socket:s0
+#   logcat -b all | grep socket_device  empty after a camera session
+#
+# If the labels are still socket_device, the transition did not fire — check that
+# thermal-engine-v2 really is the creator on that build (the QTI thermal HAL is a
+# blob and Lenovo could move the bind() into it).
