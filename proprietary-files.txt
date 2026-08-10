@@ -38,7 +38,9 @@
 # sha1 of the file that lands in vendor/lenovo/malbec/proprietary/).
 #
 # ⚠️ Every one of the 26 was verified to have pre != post when the pins were
-# written, i.e. all 26 fixups are live today. A pin where the two hashes are
+# written, i.e. all 31 fixups are live today. (It said 26 for a session; five
+# targets carried no pin at all, and they were exactly the fail-open ones --
+# work/OPEN-ISSUES.md #56.) A pin where the two hashes are
 # equal means the fixup has already died.
 #
 # Not listed, because the build produces them and a second copy here would

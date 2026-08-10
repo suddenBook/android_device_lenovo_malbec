@@ -38,7 +38,12 @@ claiming the SoC was "Kera".
 ```
 malbec/
 ├── configs/          VINTF manifests, filesystem config, HAL configs
-├── overlay/          Framework RRO overlays
+├── overlay/          RRO overlays: Framework, Launcher, LineageSDK, Settings,
+│                     SettingsProvider, SystemUI, Wifi.
+│                     ⚠️ LauncherOverlayMalbec is load-bearing for a deliberate
+│                     ABSENCE -- it is what makes the home screen empty. Deleting
+│                     it restores Launcher3's icon-filled default. See
+│                     work/OPEN-ISSUES.md #32a
 ├── rootdir/          init scripts and device-specific rc files
 ├── sepolicy/         SELinux policy
 └── proprietary-files.txt
@@ -108,6 +113,30 @@ mka bacon
 
 or, equivalently, `bash work/scripts/40-build.sh`, which also exports
 `MALBEC_BRINGUP`.
+
+### ★ `MALBEC_BRINGUP` is a level, not a boolean
+
+```
+0   permissive + adb root + WITH_ADB_INSECURE     bring-up
+1   ENFORCING  + adb root + WITH_ADB_INSECURE     the enforcing milestone
+2   ENFORCING  + no adb root, no insecure adb     release
+```
+
+A bare `mka` gets **2** (the release posture, safe to hand to anyone);
+`40-build.sh` supplies **0** unless you say otherwise. `true` and `false` are
+still accepted and mean 0 and 2, so older invocations do not silently change
+meaning; anything else is a build error.
+
+⚠️ **Go 0 → 1 → 2, never 0 → 2.** Level 2 flips SELinux *and* removes root adb
+from the running system **and from recovery** in one flash. If the result does not
+boot, the only way back is bootloader fastboot — volume-down at power-on, i.e.
+hands on the tablet. Level 1 flips SELinux and keeps the shell, so the enforcing
+pass is diagnosable and reversible.
+
+`WITH_ADB_INSECURE` is the half that matters and it cannot live in this tree:
+`vendor/lineage/config/common.mk` tests it with `ifdef` while *product config* is
+being parsed, before `BoardConfig.mk` is read. `40-build.sh` exports it at levels
+0 and 1.
 
 ⚠️ Use the **three-argument** form of `lunch`, not
 `lunch lineage_malbec-bp4a-userdebug`. `build/envsetup.sh:588` decides between
