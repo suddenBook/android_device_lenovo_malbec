@@ -531,35 +531,41 @@ vendor/etc/init/wifisar.rc
 
 # VINTF
 #
-# ★ SEVEN FRAGMENTS ARE DELIBERATELY ABSENT FROM THIS SECTION, and the reason
-# is a `prefer: true` misconception worth stating once:
+# ★ SEVEN FRAGMENTS HERE LOSE THE CONTENT RACE AND STILL HAVE TO BE EXTRACTED:
 #
 #     android.hardware.thermal-service.qti.xml   manifest_audio_qti_services.xml
 #     mapper.qti.xml                             memtrack_qti.xml
 #     soundtrigger.qti.xml   vendor.qti.hardware.display.allocator-service.xml
 #     vendor.qti.hardware.display.demura-service.xml
 #
-# `prefer: true` on a blob replaces the source module's BINARY. It does NOT
-# disable that module's `vintf_fragments:`, and build/soong/android/makevars.go
-# :552-564 writes fragment installs into a separate block appended after every
-# ordinary install rule — so the source fragment ALWAYS wins the path. Measured
-# on the build graph: each of the seven has one `build` statement whose command
-# is `assemble_vintf -i <source>/<name>.xml -o <out>/<name>.xml`, with the
-# extracted prebuilt listed as an INPUT that the command never reads. Extracting
-# them therefore bought a blob, a `prebuilt_etc_xml` module and a
-# PRODUCT_PACKAGES line each, all of which were built and then thrown away.
+# ⚠️ THEY WERE DELETED IN SESSION 27 AND PUT BACK IN THE SAME SESSION, BY
+# MEASUREMENT. Do not delete them again without repeating it.
 #
-# The shipped bytes are identical either way in everything that matters: the two
-# sides differ only in the provenance path inside the comment and in
-# `manifest version="8.0"` vs `"9.0"`, and every one was compared tuple-by-tuple
-# on (format, name, version, fqname) against the extracted stock vendor image.
-# work/OPEN-ISSUES.md #41; the collision itself is BoardConfig.mk's class C.
+# What is true: `prefer: true` on a blob replaces the source module's BINARY and
+# does NOT disable its `vintf_fragments:`, and
+# build/soong/android/makevars.go:552-564 writes fragment installs into a block
+# appended after every ordinary install rule — so the CONTENT of these seven
+# paths comes from `assemble_vintf -i <source>.xml`, never from the blob. That
+# is visible in the bytes: the shipped copy carries the source path in its
+# provenance comment and `manifest version="9.0"` where the blob says `"8.0"`.
+# OPEN-ISSUES.md #41 concluded from that the extraction was dead weight.
 #
-# ⚠️ vendor.qti.hardware.display.composer-service3_v3.xml is NOT one of them and
-# stays: it is class B (Soong vs Soong), the blob wins, and device.mk pins the
-# whole QTI display stack to blobs.
+# It is not. The `prebuilt_etc_xml` module is what puts the PATH into the
+# product's install set at all; the fragment rule only overrides the recipe for
+# a path that is already there. Remove the extraction and the path leaves the
+# product, the assemble_vintf rule becomes unreachable, and the file is simply
+# not built. Measured: /vendor/etc/vintf/manifest/ went from 78 files to 71,
+# losing exactly these seven — i.e. seven HAL declarations including
+# android.hardware.thermal.IThermal/default, which `service check` confirms is
+# live on the flashed build.
+#
+# So the collision (BoardConfig.mk class C) is the price of the declaration, and
+# it is the right price. What is genuinely wasted is the blob's bytes, which are
+# built and discarded — 7 files, ~9 KB total, and there is no way to keep the
+# path without them.
 vendor/etc/vintf/manifest/android.hardware.drm-service.xml
 vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml
+vendor/etc/vintf/manifest/android.hardware.thermal-service.qti.xml
 vendor/etc/vintf/manifest/bcs-ranging.xml
 vendor/etc/vintf/manifest/bluetooth-finder.xml
 vendor/etc/vintf/manifest/bluetooth_hci.xml
@@ -573,11 +579,14 @@ vendor/etc/vintf/manifest/dms-service.xml
 vendor/etc/vintf/manifest/dvs-aidl-service.xml
 vendor/etc/vintf/manifest/face-default.xml
 vendor/etc/vintf/manifest/manifest_afw.xml
+vendor/etc/vintf/manifest/manifest_audio_qti_services.xml
 vendor/etc/vintf/manifest/manifest_btaudiocoreservices_qti.xml
 vendor/etc/vintf/manifest/manifest_identity_credential.xml
+vendor/etc/vintf/manifest/memtrack_qti.xml
 vendor/etc/vintf/manifest/qasr_vintf.xml
 vendor/etc/vintf/manifest/qesdk-manager.xml
 vendor/etc/vintf/manifest/snapdragon_services.xml
+vendor/etc/vintf/manifest/soundtrigger.qti.xml
 vendor/etc/vintf/manifest/vendor.dolby.media.c2-default-service-dax.xml
 vendor/etc/vintf/manifest/vendor.lenovo.hardware.battery-service.xml
 vendor/etc/vintf/manifest/vendor.lenovo.hardware.display-service.xml
@@ -1281,7 +1290,10 @@ vendor/etc/init/vendor.qti.hardware.display.allocator-service.rc
 vendor/etc/init/vendor.qti.hardware.display.composer-service.rc
 vendor/etc/init/vendor.qti.hardware.display.demura-service.rc
 vendor/etc/snapdragon_color_libs_config.xml
+vendor/etc/vintf/manifest/mapper.qti.xml
+vendor/etc/vintf/manifest/vendor.qti.hardware.display.allocator-service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.display.composer-service3_v3.xml
+vendor/etc/vintf/manifest/vendor.qti.hardware.display.demura-service.xml
 vendor/lib64/hw/android.hardware.graphics.mapper@4.0-impl-qti-display.so
 vendor/lib64/hw/mapper.qti.so
 vendor/lib64/libdemura_oem_plugin.so
