@@ -96,3 +96,40 @@
 # chowned from init.target.rc:162-167, never restorecon'd, so this has to be
 # right before first boot. See sepolicy/vendor/hal_audio.te for the derivation.
 /mnt/vendor/persist/factory/audio(/.*)?                                      u:object_r:vendor_persist_audio_file:s0
+
+# ★ libsdmextension.so is a SAME-PROCESS HAL, and labelling it as one is a real
+# fix rather than a silenced denial. Session 24.
+#
+# It is QTI's display extension library and it is genuinely loaded into a CORE
+# process — measured on the running device, both of these have it mapped:
+#
+#   /vendor/bin/hw/vendor.qti.hardware.display.composer-service   (vendor)
+#   system_server                                                 (coredomain)
+#
+# With the default `vendor_file` label that second one is not merely ungranted,
+# it is FORBIDDEN: system/sepolicy/private/domain.te:1258-1271 is a
+# full_treble_only neverallow on `coredomain … vendor_file_type
+# -same_process_hal_file -vndk_sp_file … :file execute`. So no `allow` could ever
+# have been written for it, and it only works today because the device is
+# permissive. The day SELinux goes enforcing, system_server silently loses the
+# library.
+#
+# `same_process_hal_file` is AOSP's designated type for exactly this shape — a
+# vendor library loaded into a process that is not vendor — and it is one of the
+# exclusions in that neverallow. It needs NO new rule from us:
+#
+#   system/sepolicy/private/system_server.te:385
+#       allow system_server same_process_hal_file:file
+#             { execute read open getattr map };
+#
+# is already in the loaded platform policy. The vendor side keeps working too:
+# domain.te:186 grants `{ domain -coredomain } same_process_hal_file:file
+# { execute read open getattr map }`, which covers the composer.
+#
+# ⚠️ Stock leaves it as plain `vendor_file` (its vendor_file_contexts has no line
+# for it), so on the shipping ZUI image — which IS enforcing — system_server does
+# NOT have this library. We are deliberately better than stock here rather than
+# at parity, and that is the one case in this file where the difference is
+# visible at runtime.
+/vendor/lib(64)?/libsdmextension\.so                                           u:object_r:same_process_hal_file:s0
+

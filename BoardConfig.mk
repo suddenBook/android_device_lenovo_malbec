@@ -387,11 +387,12 @@ BOARD_BOOTCONFIG := \
 # ⚠️ BRING-UP ONLY. Gated on MALBEC_BRINGUP, which work/scripts/40-build.sh
 # exports and 35-upstream-readiness.py checks.
 #
-# Note the default is ON (?= true), i.e. opt-OUT. That is deliberate: as an
-# opt-in switch, a bare `m` would silently produce an enforcing build with no
-# adb — which is exactly how you lose the one flash attempt you get with the
-# device on the other side of the country. Flip the default to false only after
-# a boot has actually succeeded.
+# ⚠️ This paragraph used to say "the default is ON (?= true), i.e. opt-OUT",
+# which stopped being true when the default became `false`, and is doubly wrong
+# now that the switch is a LEVEL. The default here is **2** (release posture) and
+# work/scripts/40-build.sh supplies **0** when you build through it — so a bare
+# `m` is safe to hand to someone and the wrapper is what gives you a shell. See
+# the level table below.
 #
 # ⚠️ The rationale that used to be here was WRONG, and it is worth writing down
 # because it would have wasted the whole first flash:
@@ -430,8 +431,39 @@ BOARD_BOOTCONFIG := \
 # MALBEC_BRINGUP=${MALBEC_BRINGUP:-true} explicitly, so building through the
 # usual wrapper still yields permissive + adb, while a bare `m` yields
 # enforcing. The switch is still here; it is simply no longer the default.
-MALBEC_BRINGUP ?= false
-ifeq ($(MALBEC_BRINGUP),true)
+# ── MALBEC_BRINGUP is a LEVEL, not a boolean ────────────────────────────────
+#
+#   0   permissive + adb root + WITH_ADB_INSECURE     bring-up
+#   1   ENFORCING  + adb root + WITH_ADB_INSECURE     the enforcing milestone
+#   2   ENFORCING  + no adb root, no insecure adb     release
+#
+# ★ Level 1 exists because levels 0 and 2 are two changes at once, and the second
+# of them removes the only way back in. Going 0 -> 2 means flipping SELinux AND
+# taking away the shell in the same flash: if anything then fails to register or
+# fails to start, there is nothing to diagnose it with, and getting back needs
+# volume-down at power-on — i.e. hands on the device. Level 1 flips SELinux and
+# keeps the shell, so the enforcing pass is diagnosable and reversible, including
+# from recovery (WITH_ADB_INSECURE is what authorises recovery's adb — #33).
+#
+# ⚠️ DO NOT GO STRAIGHT TO 2 WITHOUT PHYSICAL ACCESS TO THE TABLET. Nothing in
+# this tree can recover a device that does not boot and has no adb; the way back
+# is bootloader fastboot, which is a button combination.
+#
+# `true` and `false` are still accepted and mean 0 and 2, so nothing that already
+# says MALBEC_BRINGUP=true silently changes meaning.
+MALBEC_BRINGUP ?= 2
+ifneq (,$(filter true,$(MALBEC_BRINGUP)))
+MALBEC_BRINGUP := 0
+endif
+ifneq (,$(filter false,$(MALBEC_BRINGUP)))
+MALBEC_BRINGUP := 2
+endif
+ifeq (,$(filter 0 1 2,$(MALBEC_BRINGUP)))
+$(error MALBEC_BRINGUP must be 0, 1 or 2 (got '$(MALBEC_BRINGUP)'))
+endif
+
+# Permissive is level 0 ONLY. Levels 1 and 2 are both enforcing.
+ifeq ($(MALBEC_BRINGUP),0)
 BOARD_BOOTCONFIG += androidboot.selinux=permissive
 endif
 

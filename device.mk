@@ -1312,7 +1312,14 @@ PRODUCT_PACKAGES += \
 # before BoardConfig.mk, so the `?=` default there is not visible yet.
 # work/scripts/40-build.sh exports it; a bare `m` leaves it unset and gets no
 # root, which is the correct default for anything shipped.
-ifeq ($(MALBEC_BRINGUP),true)
+# Levels 0 and 1 get the root shell; level 2 (release) does not. `true` is still
+# accepted as an alias for 0. See the level table in BoardConfig.mk.
+#
+# ⚠️ The filter has to list the aliases explicitly rather than reuse BoardConfig's
+# normalisation: product config is parsed BEFORE BoardConfig.mk, so the `?=` and
+# the true/false rewriting there are not visible here yet. An unset variable
+# filters to nothing and gets no root, which is the correct default.
+ifneq (,$(filter 0 1 true,$(MALBEC_BRINGUP)))
 PRODUCT_SYSTEM_PROPERTIES += \
     service.adb.root=1
 endif

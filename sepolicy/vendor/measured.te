@@ -320,11 +320,9 @@ allow hal_graphics_composer_default mnt_vendor_file:dir getattr;
 #
 # ⚠️ NOT granted, and the asymmetry with item 4 is the point. Granting these
 # means widening a CORE domain's reach into vendor space:
-#   * `system_server -> vendor_file` is the whole generic vendor file type — the
-#     real target is one library (libsdmextension.so, dlopened by android.bg),
-#     and there is no narrower type to grant because the library carries the
-#     generic label. Granting it would give system_server read of every
-#     vendor_file on the device to fix a dlopen that fails identically on stock.
+#   * `system_server -> vendor_file` was listed here too and that was WRONG —
+#     see the note below. It is a real access, it is fixable, and it is now fixed
+#     by relabelling rather than silenced.
 #   * the two binder calls are QTI's own gap in QTI's own HALs, and the effect is
 #     a power hint that is not delivered — on stock either.
 # So: silence, do not widen. If any of these ever turns out to cost a measurable
@@ -332,7 +330,14 @@ allow hal_graphics_composer_default mnt_vendor_file:dir getattr;
 dontaudit surfaceflinger vendor_hal_qspmhal_default:binder call;
 dontaudit bootanim vendor_hal_qspmhal_default:binder call;
 dontaudit servicemanager hal_graphics_composer_default:binder call;
-dontaudit system_server vendor_file:file { getattr open read map };
+# ⚠️ `dontaudit system_server vendor_file:file { getattr open read map };` was
+# here and has been REMOVED, because it was the one rule in this block that hid
+# something real. Measured after it was written: system_server has
+# libsdmextension.so MAPPED on the running device, so enforcing would have taken
+# a working library away and this line would have deleted the only warning.
+# It is fixed properly instead — sepolicy/vendor/file_contexts labels that one
+# file `same_process_hal_file`, which is AOSP's type for a vendor library loaded
+# into a core process, and AOSP already grants system_server access to it.
 
 # 6. vold enumerating vendor partitions it does not manage.
 #
