@@ -28,7 +28,7 @@
          mDefaultRefreshRate is R.integer.config_defaultRefreshRate, so stock
          sets it to 144 (via FrameworksResTarget_Vendor.apk, the vendor RRO this
          port replaces). At 60 it posts a PRIORITY_DEFAULT_RENDER_FRAME_RATE
-         vote (DisplayModeDirector.java:1225-1227) that caps the render frame
+         vote (DisplayModeDirector.java:1217-1220) that caps the render frame
          rate globally at 60 — on a 144 Hz panel.
 
          ★ Both are 120, not 144, and that is deliberate: THE ACTIVE STYLUS DOES
@@ -116,7 +116,7 @@
          Of the two, config_defaultPeakRefreshRate is the load-bearing one, and
          it is worth knowing why. It is the default of Settings.System
          PEAK_REFRESH_RATE, and updateRefreshRateSettingLocked()
-         (DisplayModeDirector.java:1209-1215) turns that into
+         (DisplayModeDirector.java:1202-1209) turns that into
              Vote.forPhysicalRefreshRates(0, peak)  @ PRIORITY_USER_SETTING_PEAK_REFRESH_RATE
          - a ceiling on the PHYSICAL panel mode, which is what the pen actually
          needs.
@@ -130,7 +130,7 @@
 
          ⚠️ It used to be 120 here, "for coherence", and that silently capped the
          game tier. updateRefreshRateSettingLocked (DisplayModeDirector.java:
-         1226-1228) turns a non-zero value into
+         1217-1220) turns a non-zero value into
              Vote.forRenderFrameRates(0, default)
          registered with updateGlobalVote() - a GLOBAL render ceiling that no
          per-display peak vote can lift. Measured on the device, all three rows
@@ -147,7 +147,7 @@
          PEAK_REFRESH_RATE, which MalbecParts owns. Daily mode (peak 120) is
          unaffected - it still gets physical (0,120) render (0,120).
 
-         The "both are 0" error branch at :1231-1237 cannot trigger: peak falls
+         The "both are 0" error branch at :1223-1229 cannot trigger: peak falls
          back to config_defaultPeakRefreshRate = 120 when the setting is unset.
 
          Note also that 144 Hz remains in Display > Refresh rate, because that
@@ -444,7 +444,7 @@
          would have shipped an unnavigable device.
 
          AOSP's default is false (frameworks/base/core/res/res/values/config.xml
-         :2771), and DisplayPolicy.java:677-688 reads it to decide whether
+         :2772), and DisplayPolicy.java:677-688 reads it to decide whether
          SystemUI creates a NavigationBar at all. false means no Home/Back/
          Recents AND no edge-back gesture handler.
 
@@ -459,7 +459,7 @@
     <bool name="config_showNavigationBar">true</bool>
 
     <!-- Wired headset detect goes through input events, not the audio HAL.
-         AOSP default is false (config.xml:3464); stock sets true in
+         AOSP default is false (config.xml:3465); stock sets true in
          vendor/overlay/FrameworksResTarget_Vendor.apk, which we also drop.
          Confirmed on the device: event5 "tuna-qrd-snd-card Headset Jack"
          reports SW_HEADPHONE_INSERT / SW_MICROPHONE_INSERT / SW_LINEOUT_INSERT
@@ -468,7 +468,7 @@
     <bool name="config_useDevInputEventForAudioJack">true</bool>
 
     <!-- The QTI power stack expects auto-suspend to be decoupled from the
-         display. AOSP default is false (config.xml:3027); stock sets true, and
+         display. AOSP default is false (config.xml:3028); stock sets true, and
          the running device confirms it: `dumpsys power` shows
          mDecoupleHalAutoSuspendModeFromDisplayConfig=true and
          mHalAutoSuspendModeEnabled=true. onyx sets it as well. -->
@@ -696,7 +696,7 @@
 
     <!-- Without this the entire doze subsystem is inert, and the omission is
          silent. AOSP's default is the empty string
-         (frameworks/base/core/res/res/values/config.xml:2932) and nothing in
+         (frameworks/base/core/res/res/values/config.xml:2933) and nothing in
          vendor/, device/ or packages/ sets it. The chain:
          AmbientDisplayConfiguration.ambientDisplayAvailable() is
          !isEmpty(config_dozeComponent) -> false, so
@@ -854,7 +854,7 @@
     </string-array>
 
     <!-- Miracast / Wi-Fi Display. AOSP default is false
-         (core/res/res/values/config.xml:3424) and
+         (core/res/res/values/config.xml:3425) and
          DisplayManagerService.java:2397-2405 only builds a WifiDisplayAdapter
          when it is true, so without this the whole vendor stack this tree
          already ships is unreachable: wfdservice64, WfdService.apk and

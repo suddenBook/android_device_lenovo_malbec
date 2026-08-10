@@ -76,7 +76,7 @@
              back_up_smooth_display_and_force_peak_refresh_rate is on, and
              `adb shell aflags list` reports it ENABLED here.
            * :118-120 then writes Float.POSITIVE_INFINITY, which
-             DisplayModeDirector.java:1186-1188 resolves to the highest supported
+             DisplayModeDirector.java:1179-1182 resolves to the highest supported
              rate.
 
          So that toggle would offer 60 or 144 — the one value we are removing.

@@ -947,20 +947,55 @@ WIFI_FEATURE_HOSTAPD_11AX := true
 # flag adds is the ML-element handling in the SAE path (sme.c), i.e. MLO — and
 # this build reports `AP MLO Affiliated links: []`, `mlo_mode=0` today.
 #
-# ★ ACCEPTANCE TEST, and it must actually be run, because enabling EHT in hostapd
-# only helps if the qca_cld3 driver accepts EHT AP mode:
+# ✔ ACCEPTANCE TEST RUN AND PASSED on the flashed build, and the way it passed
+# is worth writing down because the first attempt looked like a failure:
 #
-#   1. turn the hotspot on
-#   2. `dumpsys wifi | grep -i SoftApInfo`  -> expect WIFI_STANDARD_11BE
-#   3. `logcat -s hostapd`                  -> no "unknown configuration item",
-#                                              no start failure
+#   $ cmd wifi start-softap <ssid> wpa2 <psk> -b 5
+#     SoftApInfo{... wifiStandard= 6 ...}          <- still 11ax!
+#     hostapd: ... eht_supported=1, ieee80211be=0
+#     SoftApManager[wlan1]: 11BE is not allowed, removing from configuration
 #
-# If the driver rejects it, revert BOTH of these AND set
+#   $ cmd wifi start-softap <ssid> wpa3 <psk> -b 5
+#     SoftApInfo{... wifiStandard= 8 ... mMldAddress=b6:67:42:6e:a0:bf}
+#     hostapd: nl80211: Set freq 5745 (... eht_enabled=1 ...)
+#     hostapd: ... eht_supported=1, ieee80211be=1
+#
+# ★ 8 is WIFI_STANDARD_11BE, and the MLD address only appears on a real EHT AP.
+#
+# ⚠️ THE GATE IS WPA3, NOT THE DRIVER. ApConfigUtil.is11beAllowedForThisConfiguration()
+# ends in is11beDisabledForSecurityType(config.getSecurityType()), so a WPA2 AP is
+# downgraded to 11ax by the framework before hostapd ever sees the config — which
+# is correct, 802.11be mandates SAE. Anyone re-running this with `wpa2` will
+# conclude the change did nothing. It is also why the framework's *persisted*
+# hotspot config (Ieee80211beEnabled = true, Ieee80211axEnabled = true) is the
+# one that matters in normal use: Settings' own hotspot defaults to WPA3 here.
+#
+# No `unknown configuration item`, no start failure, and the STA side is
+# unaffected (`Wi-Fi standard: 11be, Link speed: 2882Mbps` on the same boot).
+#
+# If a future driver ever rejects EHT AP mode, revert BOTH of these AND set
 # overlay/WifiOverlayMalbec/res/values/config.xml's
 # config_wifiSoftapIeee80211beSupported back to false. The board flag and the
-# overlay resource are one decision and must move together — the overlay has
-# been claiming true since it was written.
+# overlay resource are one decision and must move together.
 WIFI_FEATURE_HOSTAPD_11BE := true
 WIFI_FEATURE_SUPPLICANT_11BE := true
+# ⚠️ SUPPLICANT_11AX is REQUIRED BY SUPPLICANT_11BE and upstream does not say so.
+# Setting 11BE alone does not fail a check — it fails the compile, ~2 minutes in:
+#
+#   src/ap/ieee802_11_eht.c:125:21: error: no member named 'he_oper_chwidth'
+#                                          in 'struct hostapd_config'
+#   (also :180, :335)
+#
+# because wpa_supplicant/Android.bp:1179-1181 adds src/ap/ieee802_11_eht.c under
+# wpa_supplicant_11be, that file dereferences `hapd->iconf->he_oper_chwidth`
+# unconditionally, and the field only exists inside `#ifdef CONFIG_IEEE80211AX`
+# (src/ap/ap_config.h:1159-1164). The two selects at :1176-1181 are written as if
+# they were independent and they are not.
+#
+# So this line is not "11ax as well, for completeness" — it is the dependency,
+# and removing it breaks the build rather than the feature. Stock builds it too:
+# its wpa_supplicant carries 14 `he_` strings to our 12 pre-change, and
+# `ieee80211ax` twice to our once.
+WIFI_FEATURE_SUPPLICANT_11AX := true
 WIFI_HIDL_UNIFIED_SUPPLICANT_SERVICE_RC_ENTRY := true
 WPA_SUPPLICANT_VERSION := VER_0_8_X

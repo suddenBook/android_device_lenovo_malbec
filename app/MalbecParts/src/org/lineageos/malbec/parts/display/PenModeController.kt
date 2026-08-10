@@ -48,8 +48,11 @@ import org.lineageos.malbec.parts.gesture.GestureBinder
  *     There is nothing above 1 to find.
  *  3. Since every rate above 120 is strictly worse here, AOSP's refresh-rate
  *     picker is switched off — see overlay/SettingsOverlayMalbec — because
- *     RefreshRateUtils.getRefreshRates() builds its list at runtime from
- *     Display.getSupportedModes(), so no RRO can take 144 out of it. This app
+ *     PeakRefreshRateListPreferenceController.java:82-92 builds its list at
+ *     runtime from Display.getSupportedModes(), so no RRO can take 144 out of
+ *     it. (⚠️ This used to name `RefreshRateUtils.getRefreshRates()`, which is
+ *     PixelOS residue: no class of that name exists anywhere in LineageOS 23.2.
+ *     The mechanism described was always correct; only the class was.) This app
  *     offers 60 / 90 / 120 instead: the same power-saving choice without the
  *     trap. 120 is therefore a CEILING both modes share, not a setpoint, and the
  *     modes differ only in the other three knobs.
@@ -125,19 +128,29 @@ object PenModeController {
      * ★ The effective ceiling is max(min, peak), not peak.
      *
      * This mirrors the framework exactly. DisplayModeDirector's
-     * updateRefreshRateSettingLocked (:1209-1215, :1219-1221) builds
+     * updateRefreshRateSettingLocked (:1202-1209, :1215-1216) builds
      *     Vote.forPhysicalRefreshRates(0, Math.max(min, peak))
      *     Vote.forRenderFrameRates(min, POSITIVE_INFINITY)
      * so a MIN_REFRESH_RATE above our peak keeps the panel up there regardless of
-     * what we wrote to peak. Reading only peak was a real desync: with the picker
-     * still present, choosing 144 with VRR off wrote BOTH knobs
-     * (RefreshRateUtils.setCurrentRefreshRate:104-107), and then selecting Daily
-     * here left the panel at 144 while every surface said "120 Hz, stylus on".
+     * what we wrote to peak. Reading only peak was a real desync: with the
+     * pickers still present, min and peak are two INDEPENDENT preferences —
+     * PeakRefreshRateListPreferenceController.java:128-130 writes only
+     * PEAK_REFRESH_RATE, MinRefreshRatePreferenceController.java:88 only
+     * MIN_REFRESH_RATE — so a min left at 144 by one of them survives every write
+     * this app makes to peak, and selecting Daily here left the panel at 144
+     * while every surface said "120 Hz, stylus on".
+     *
+     * (⚠️ This used to cite `RefreshRateUtils.setCurrentRefreshRate:104-107` and
+     * say the picker "wrote BOTH knobs". Neither is true on LineageOS 23.2:
+     * there is no RefreshRateUtils, and the two knobs have separate controllers.
+     * The conclusion — read max(min, peak), not peak — is unchanged and is if
+     * anything better supported by the real code, since two independent writers
+     * are easier to desync than one.)
      *
      * Infinity is a real value here, not paranoia:
      * PeakRefreshRatePreferenceController:118-120 writes Float.POSITIVE_INFINITY
      * when back_up_smooth_display_and_force_peak_refresh_rate is set, and that
-     * flag is enabled on this build. DisplayModeDirector:1186-1188 resolves it to
+     * flag is enabled on this build. DisplayModeDirector:1179-1182 resolves it to
      * the highest supported rate, i.e. 144.
      */
     private fun effectiveRefreshRate(context: Context): Float {
@@ -233,12 +246,12 @@ object PenModeController {
      *   * above 120 — a stale 144 from a backup restore, or `settings put`.
      *   * POSITIVE_INFINITY — PeakRefreshRatePreferenceController:118-120 writes
      *     it when back_up_smooth_display_and_force_peak_refresh_rate is set, and
-     *     that flag is enabled on this build. DisplayModeDirector:1186-1188
+     *     that flag is enabled on this build. DisplayModeDirector:1179-1182
      *     resolves it to the highest supported rate, i.e. 144.
-     *   * zero or negative — DisplayModeDirector:1197-1200 treats peak == 0 as
+     *   * zero or negative — DisplayModeDirector:1203-1214 treats peak == 0 as
      *     "post no peak vote at all", which UNCAPS the panel; with
      *     config_defaultRefreshRate also 0 it additionally hits AOSP's own
-     *     "both are 0" error branch at :1231-1237. A restore can produce it.
+     *     "both are 0" error branch at :1223-1229. A restore can produce it.
      *   * below the choice — nothing legitimate writes this today, but restoring
      *     upward is the same operation and costs nothing to support.
      */

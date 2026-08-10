@@ -310,7 +310,7 @@ object Constants {
      * ⚠️ Ceiling, not setpoint, and the distinction is the whole reason the
      * refresh-rate choice below can exist. peak_refresh_rate becomes
      * Vote.forPhysicalRefreshRates(0, peak) — an UPPER BOUND
-     * (DisplayModeDirector.java:1209-1215). min_refresh_rate stays 0, so AOSP's
+     * (DisplayModeDirector.java:1202-1209). min_refresh_rate stays 0, so AOSP's
      * own idle and content-driven switching still runs underneath: measured 30 Hz
      * idle, 120 Hz while scrolling. Nothing here pins the panel to one rate.
      */
@@ -321,10 +321,13 @@ object Constants {
      *
      * 144 is absent and that is the finding, not an oversight — see the table
      * above. The AOSP picker in Settings > Display is switched off
-     * (overlay/SettingsOverlayMalbec) because RefreshRateUtils.getRefreshRates()
-     * builds its list at runtime from Display.getSupportedModes(), so no RRO can
-     * remove 144 from it; a list with a trap in it is worse than no list. This is
-     * that list minus the trap.
+     * (overlay/SettingsOverlayMalbec) because
+     * PeakRefreshRateListPreferenceController.java:82-92 builds its list at
+     * runtime from Display.getSupportedModes(), so no RRO can remove 144 from
+     * it; a list with a trap in it is worse than no list. This is that list minus
+     * the trap. (⚠️ `RefreshRateUtils.getRefreshRates()`, cited here before, does
+     * not exist in LineageOS 23.2 — PixelOS residue, same as the one
+     * SettingsOverlayMalbec already calls out. The mechanism was right.)
      *
      * 60 and 90 are here because they are worth real standby power on a 13" LCD
      * and losing them was the actual cost of switching the AOSP picker off.
