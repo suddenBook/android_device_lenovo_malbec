@@ -18,11 +18,19 @@ import org.lineageos.malbec.parts.R
 /**
  * The home-screen half of the Daily/Game switch.
  *
- * Requested by the owner specifically: one tap from the desktop, and one instance
- * already on the default workspace so it is there the first time the tablet boots
- * after a flash. That placement is not done here — a widget provider cannot place
- * itself — it is res/xml/default_layout_6x5_h6.xml, which the launcher picks up
- * through the marker receiver in launcher/LauncherLayoutMarker.kt.
+ * Requested by the owner specifically: one tap from the desktop.
+ *
+ * ⚠️ It is NOT pre-placed, and cannot be. This used to say "one instance already
+ * on the default workspace so it is there the first time the tablet boots after
+ * a flash", placed by MalbecParts' own AutoInstallsLayout resource. Session 24
+ * made the home screen empty at the owner's request and removed that mechanism
+ * entirely (OPEN-ISSUES.md #32a) — the empty screen now comes from
+ * overlay/LauncherOverlayMalbec, which overrides Launcher3's internal default.
+ *
+ * The feature is not weaker for it: PenModeTileService puts the same switch in
+ * quick settings, and SettingsProviderOverlayMalbec still adds that tile to the
+ * default set — so a fresh flash still has a one-tap Daily/Game switch. This
+ * widget is one long-press on the home screen away.
  */
 class PenModeWidgetProvider : AppWidgetProvider() {
 

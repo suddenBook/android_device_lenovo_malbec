@@ -171,27 +171,23 @@
                 android:resource="@string/stylus_summary" />
         </activity-alias>
 
-        <!-- ★ Marker that makes this package the launcher's layout customisation
-             provider, so res/xml/default_layout_6x5_h6.xml becomes the default
-             home screen and the Device mode widget is already on it after a
-             flash. Nothing is ever broadcast to this receiver; see
-             LauncherLayoutMarker for the mechanism and why exported="false" is
-             still discoverable.
+        <!-- ⚠️ There is no PLAY_AUTO_INSTALL marker receiver here any more, and
+             that is deliberate rather than an omission. This package used to
+             claim `android.autoinstalls.config.action.PLAY_AUTO_INSTALL` so that
+             res/xml/default_layout*.xml became the default home screen and the
+             Device mode widget was pre-placed on it.
 
-             ⚠️ Verified free before claiming it:
-                 cmd package query-receivers -a \
-                     android.autoinstalls.config.action.PLAY_AUTO_INSTALL
-             returned "No receivers found" on this build. The sibling marker
-             action, com.android.launcher3.action.PARTNER_CUSTOMIZATION, is
-             already held by com.google.android.apps.wallpaper.pixel — that is why
-             this is the action to use and not that one. -->
-        <receiver
-            android:name=".launcher.LauncherLayoutMarker"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.autoinstalls.config.action.PLAY_AUTO_INSTALL" />
-            </intent-filter>
-        </receiver>
+             Session 24 made the home screen empty at the owner's request, and
+             AutoInstallsLayout cannot express "empty" — ModelDbController.java:
+             557-563 treats a layout that inserts zero items as a parse failure
+             and loads Launcher3's own default instead. So the whole mechanism was
+             removed and replaced by overlay/LauncherOverlayMalbec, which
+             overrides Launcher3's internal default_workspace_* resources.
+
+             Do not re-add the receiver without also deleting that overlay: two
+             mechanisms defining the same thing is how the "empty means empty"
+             claim survived three sessions without ever being true. -->
+
 
         <!-- Shared "what should this key do?" picker, used by both screens. -->
         <activity

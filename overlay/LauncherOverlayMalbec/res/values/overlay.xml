@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!--
+         ★ An EMPTY default home screen: no icons, no widgets, no folders, no
+         hotseat, no search bar, no clock. Owner's decision (OPEN-ISSUES.md #32a,
+         confirmed session 24 as "上面什么东西都不要有").
+
+         ── ⚠️ WHY THIS IS AN RRO AND NOT AutoInstallsLayout ─────────────────
+
+         MalbecParts used to do this through AutoInstallsLayout — a
+         PLAY_AUTO_INSTALL marker receiver plus a res/xml layout. That mechanism
+         CANNOT express "empty", and the tree asserted for three sessions that it
+         could. Measured on the flashed build in session 24: with an empty
+         <workspace/> the home screen came up with Launcher3's own default
+         (Contacts/Calendar/Gallery/Music/Camera hotseat, the Google search
+         widget, the clock, a Google folder and Play Store).
+
+         The reason is one branch, ModelDbController.java:557-563:
+
+             if ((mOpenHelper.loadFavorites(db, loader) <= 0)
+                     && usingExternallyProvidedLayout) {
+                 // Unable to load external layout. Cleanup and load the internal layout.
+                 mOpenHelper.createEmptyDB(db);
+                 mOpenHelper.loadFavorites(db, getDefaultLayoutParser(widgetHolder));
+             }
+
+         An external layout that inserts ZERO items is indistinguishable from one
+         that failed to parse, so Launcher3 throws it away and loads its own.
+         "Empty" is the one thing that route cannot say.
+
+         ── What this does instead ───────────────────────────────────────────
+
+         It replaces the INTERNAL default. InvariantDeviceProfile hands
+         DefaultLayoutParser `mIdp.defaultLayoutId` (ModelDbController.java:581-584),
+         which device_profiles.xml points at one of the resources below. Pointing
+         every one of them at an empty <favorites/> means loadFavorites() returns 0
+         on a path where `usingExternallyProvidedLayout` is false, so the branch
+         above never runs and zero items is the accepted answer.
+
+         ⚠️ ALL of them, not just the current grid. `idp_grid_name` reads
+         `6_by_5` on this unit today, but the grid is user-selectable in the
+         launcher's own settings, and overriding only the current one would mean
+         the icons silently come back the day someone changes it. Launcher3's
+         res/xml/ has exactly these eleven; if a future release adds one, add it
+         here too.
+
+         ⚠️ The AutoInstallsLayout half was REMOVED rather than left alongside
+         this: MalbecParts no longer claims PLAY_AUTO_INSTALL and no longer ships
+         a default_layout resource. Two mechanisms racing to define the same
+         thing is how the "empty means empty" claim survived three sessions
+         without being true.
+    -->
+    <item type="xml" name="default_workspace_2x2">@xml/empty_workspace</item>
+    <item type="xml" name="default_workspace_3x3">@xml/empty_workspace</item>
+    <item type="xml" name="default_workspace_4x5">@xml/empty_workspace</item>
+    <item type="xml" name="default_workspace_5x5">@xml/empty_workspace</item>
+    <item type="xml" name="default_workspace_5x6">@xml/empty_workspace</item>
+    <item type="xml" name="default_workspace_5x7">@xml/empty_workspace</item>
+    <item type="xml" name="default_workspace_5x8">@xml/empty_workspace</item>
+    <item type="xml" name="default_workspace_6x5">@xml/empty_workspace</item>
+    <item type="xml" name="default_workspace_6x6">@xml/empty_workspace</item>
+    <item type="xml" name="default_workspace_7x3">@xml/empty_workspace</item>
+    <item type="xml" name="default_workspace_8x3">@xml/empty_workspace</item>
+</resources>

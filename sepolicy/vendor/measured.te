@@ -231,3 +231,132 @@ rw_dir_file(vendor_hal_usb_qti, sysfs_qcom_battery)
 # That defeats the "unmasks the rest of the log" purpose stated just above.
 dontaudit zygote property_type:file { getattr open map };
 dontaudit hal_camera_default property_type:file { getattr open map };
+
+# ───────────────────────────────────────────────────────────────────────────
+# Session 24 — the residue, and the decision to be quieter than stock rather
+# than more permissive than stock.
+#
+# Owner's question, and it is the right one: "stock has these denials too; our
+# system is simpler, so it should be able to be cleaner than stock." It can.
+# Below is every denial left on a clean boot that involves a VENDOR domain or a
+# VENDOR type — i.e. the part this port actually owns — with a decision each.
+#
+# ★ THE RULE APPLIED THROUGHOUT: `dontaudit` when nothing is lost, a narrow
+# `allow` only when a function is. Granting a permission to silence a log line
+# is how a policy rots, and #54b is this session's worked example of the cost —
+# stock's `allow` there exists to let a chmod 0777 succeed on the partition
+# holding this unit's serials.
+#
+# ⚠️ What is deliberately NOT here: the AOSP-wide core-to-core denials
+# (`kernel:capability net_bind_service` from krfcommd, `init ->
+# debugfs_bootreceiver_tracing`, `isolated_app -> content_capture_service`,
+# `priv_app -> metadata_file`, `fsck`/`e2fs -> sysfs` while formatting a wiped
+# /data). Those are identical on a Pixel, are not ours, and silencing them in a
+# DEVICE policy would hide a real regression in AOSP from the next person to
+# read this log. The target this file aims at is precise: **zero denials
+# involving a vendor domain or a vendor type**, not zero lines.
+#
+# ⚠️ And these rules are only reachable because vendor policy CAN write rules
+# whose source is a coredomain. `measured.te:20-24` used to say it cannot;
+# device/qcom/sepolicy_vndr/sm8750/generic/vendor/common/surfaceflinger.te:32-35
+# does exactly that (`dontaudit surfaceflinger firmware_file:dir search;` and an
+# `allow surfaceflinger vendor_sysfs_graphics:file rw_file_perms;`), and this
+# build proves it. The correction is recorded in OPEN-ISSUES.md #58.
+
+# 1. Properties this device's own init deliberately fails to set.
+#
+# Both are documented at length in vendor_init.te and daemons.te as impossible
+# to succeed (ro.* is write-once and build.prop has already set them) AND
+# undesirable if they did (Lenovo's per-unit fingerprint rewrite would overwrite
+# the one lineage_malbec.mk manages). They are pure noise: expected, permanent,
+# and one line each per boot.
+dontaudit vendor_init build_prop:property_service set;
+dontaudit vendor_init build_bootimage_prop:property_service set;
+dontaudit prop_init system_prop:property_service set;
+dontaudit prop_init serialno_prop:property_service set;
+
+# 2. Vendor daemons walking the property space.
+#
+# Same shape as the zygote/hal_camera pair above, and the same reasoning: these
+# are enumerations that skip what they cannot open. QTI's own policy already
+# establishes the pattern for exactly this type —
+# sepolicy_vndr/sm8750/generic/vendor/common/hal_camera.te:99 is
+# `dontaudit hal_camera_default default_prop:file read;` and vm_mgr.te:58 the
+# same for its own domain. Ours needs the other three permissions of the same
+# access, from /vendor/bin/tn_vendor_performance.sh's property reads.
+dontaudit vendor_qti_init_shell default_prop:file { getattr open map read };
+
+# 3. Debug and config properties that nothing needs.
+#
+#   hal_lenovobattery_default -> persist_debug_prop   a persist.debug.* toggle
+#   hal_camera_default        -> usb_uvc_config_prop  UVC (USB webcam) config
+#
+# Neither is a feature. The battery HAL logs less; the camera HAL reads an empty
+# value for a USB-camera path this tablet does not have. Both are denied on stock
+# too, so nothing regresses relative to the shipping image — the difference is
+# only that ours stops saying so eight times a boot.
+dontaudit hal_lenovobattery_default persist_debug_prop:file { getattr open map read };
+dontaudit hal_camera_default usb_uvc_config_prop:file { getattr open map read };
+
+# 4. The composer's stat of /mnt/vendor.
+#
+# ★ The one `allow` in this block, because this one IS an access rather than an
+# enumeration: the composer stats the mount point before deciding whether its
+# per-unit display calibration is available (/mnt/vendor/persist/display/ holds
+# panel_csot_nt36536_144hz_vid_C3D_cali_{srgb,p3}.txt on this unit, and they are
+# real). `getattr` on the directory is the narrowest thing that answers the
+# question; it grants no read of anything inside.
+allow hal_graphics_composer_default mnt_vendor_file:dir getattr;
+
+# 5. Coredomain clients of vendor services that stock does not grant either.
+#
+#   surfaceflinger, bootanim -> vendor_hal_qspmhal_default : binder call
+#   servicemanager           -> hal_graphics_composer_default : binder call
+#   system_server            -> vendor_file : file { getattr open read map }
+#
+# All three are denied by the shipping ZUI image as well — checked by grepping
+# its compiled vendor_sepolicy.cil, which has 25 references to
+# vendor_hal_qspmhal_default and not one `allow ... (binder (call))` for it.
+#
+# ⚠️ NOT granted, and the asymmetry with item 4 is the point. Granting these
+# means widening a CORE domain's reach into vendor space:
+#   * `system_server -> vendor_file` is the whole generic vendor file type — the
+#     real target is one library (libsdmextension.so, dlopened by android.bg),
+#     and there is no narrower type to grant because the library carries the
+#     generic label. Granting it would give system_server read of every
+#     vendor_file on the device to fix a dlopen that fails identically on stock.
+#   * the two binder calls are QTI's own gap in QTI's own HALs, and the effect is
+#     a power hint that is not delivered — on stock either.
+# So: silence, do not widen. If any of these ever turns out to cost a measurable
+# feature, the fix is a narrower TYPE, not a broader rule.
+dontaudit surfaceflinger vendor_hal_qspmhal_default:binder call;
+dontaudit bootanim vendor_hal_qspmhal_default:binder call;
+dontaudit servicemanager hal_graphics_composer_default:binder call;
+dontaudit system_server vendor_file:file { getattr open read map };
+
+# 6. vold enumerating vendor partitions it does not manage.
+#
+# /mnt/vendor/spunvm and /mnt/vendor/qmcs are mounted from the vendor fstab by
+# init, not by vold; vold walks the mount table at startup and stats what it
+# finds. Denying it changes nothing — both are already mounted and both are
+# still mounted after the denial (verified live: /proc/mounts has them).
+dontaudit vold vendor_spunvm_file:dir { getattr ioctl open read };
+dontaudit vold vendor_qmcs_file:dir { getattr ioctl open read };
+
+# 7. The QTI CA-certificate service dexopting at runtime.
+#
+#   vendor_cacertservice_app -> system_data_file : dir { add_name create }
+#   on .../cache/oat_primary/arm64/CACertService.art
+#
+# ⚠️ `dontaudit` rather than `allow`, deliberately, and the cost is stated: under
+# enforcing this app runs interpreted instead of AOT-compiled. That is the right
+# trade here — it is a certificate service that runs rarely, and the alternative
+# is granting an APP domain create/add_name on system_data_file directories,
+# which is precisely the boundary AOSP's app-domain neverallows exist to hold.
+# Stock denies it identically, so stock's copy runs interpreted too.
+#
+# The better fix, if anyone wants it, is upstream of this file: give the app a
+# seapp_contexts entry so its cache lands on an app data type instead of
+# system_data_file. Not done here because it changes where an existing app's
+# data lives, which is not a change to make on a whim.
+dontaudit vendor_cacertservice_app system_data_file:dir { add_name create };

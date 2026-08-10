@@ -1007,6 +1007,19 @@ PRODUCT_COPY_FILES += \
 # string is ever read, and overriding the other one produced an idmap warning
 # per boot and nothing else.
 #
+# LauncherOverlayMalbec is what makes the home screen EMPTY, which is the
+# owner's decision (OPEN-ISSUES.md #32a). It replaces every
+# xml/default_workspace_* in com.android.launcher3 with an empty <favorites/>.
+#
+# ⚠️ It is NOT interchangeable with the AutoInstallsLayout route MalbecParts used
+# to take, and that route was removed in the same change rather than left
+# alongside it. AutoInstallsLayout cannot express "empty":
+# ModelDbController.java:557-563 treats a layout that inserts ZERO items as one
+# that failed to parse and loads Launcher3's own default instead. Measured on the
+# flashed build in session 24, with an empty <workspace/> shipped — the tablet
+# came up with the AOSP hotseat, the Google search widget, the clock, a Google
+# folder and Play Store. The tree had asserted the opposite for three sessions.
+#
 # LineageSDKOverlayMalbec exists for one integer: this tablet has NO notification
 # LED, and lineage-sdk defaults config_deviceLightCapabilities to 8
 # (LIGHTS_PULSATING_LED). Left alone, LineageOS offers notification-light
@@ -1014,6 +1027,7 @@ PRODUCT_COPY_FILES += \
 # own comment for why the sysfs evidence pointed the other way.
 PRODUCT_PACKAGES += \
     FrameworkOverlayMalbec \
+    LauncherOverlayMalbec \
     LineageSDKOverlayMalbec \
     SettingsOverlayMalbec \
     SettingsProviderOverlayMalbec \
