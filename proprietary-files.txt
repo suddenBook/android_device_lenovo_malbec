@@ -451,7 +451,7 @@ vendor/etc/init/dvs-aidl-service.rc
 vendor/etc/init/feature_enabler_client.rc
 vendor/etc/init/hexlpservice.rc
 vendor/etc/init/hlosminkdaemon.rc
-vendor/etc/init/hw/init.qcom.rc|349faf1da7d2694d1d7fbc7729421f9ffffa2b74|ed2f3fc08e8763122264e812db29f054c2d48a0c
+vendor/etc/init/hw/init.qcom.rc|349faf1da7d2694d1d7fbc7729421f9ffffa2b74|f136d8fa068307db57d90110eabfb2049d3a0179
 vendor/etc/init/hw/init.qcom.usb.rc
 vendor/etc/init/hw/init.qti.kernel.rc
 vendor/etc/init/hw/init.qti.kernel.target.rc
@@ -464,7 +464,7 @@ vendor/etc/init/init.qti.qcv.rc
 vendor/etc/init/init.spdaemon.rc
 vendor/etc/init/init.time_daemon.rc
 vendor/etc/init/init.vendor.sensors.rc
-vendor/etc/init/init.vendor.wlan.rc
+vendor/etc/init/init.vendor.wlan.rc|cf8dbc3a20454932cc79d0270689fc4926401449|e259d8165dd082960aee377511abd2aeadfa4410
 vendor/etc/init/init_fan_service.rc
 vendor/etc/init/init_thermal-engine-v2.rc|3ebe0e867707876cea6cfcd51d34626d775107be|6e7fda5c7471a567460f91d8104ecd300dbaf12c
 vendor/etc/init/memtrack_qti.rc
@@ -892,6 +892,42 @@ vendor/etc/bluetooth_qti_audio_policy_configuration.xml
 vendor/etc/bluetooth_qti_hearing_aid_audio_policy_configuration.xml
 vendor/etc/media_codecs_c2_audio.xml
 vendor/etc/media_codecs_dolby_audio.xml
+
+# ★ WHAT IS AND IS NOT "DOLBY" HERE, because the name has misled this repo twice.
+#
+# Everything Dolby still in this list is the DECODER stack, and it works:
+# `dumpsys media.player` registers c2.dolby.eac3.decoder.{ac3,eac3,eac3-joc}
+# and c2.dolby.ac4.decoder, live. eac3-joc IS Dolby Atmos — the objects are
+# decoded and downmixed to the four speakers; what this tablet does not do is
+# render them spatially, and it has no HDMI to pass through to. AOSP ships no
+# replacement for any of it, so removing it would cost every AC-3/E-AC-3
+# soundtrack. `vendor.dolby.dms.service` is not an orphan either:
+# libdmshal.so is DT_NEEDED by libcodec2_soft_ac4dec.so, libcodec2_soft_ddpdec.so
+# and libdeccfg.so.
+#
+# The DAP *effect* stack is a different thing and is deliberately absent —
+# removed after instrumented measurement (device.mk and the audio_effects_config
+# fixup in extract-files.py carry the numbers: same track, same thread, 2.91 ms
+# process time against 0.48 ms, zero delayed writes and zero underruns either
+# way, so it corrupts the stream in place rather than arriving late; four
+# hypotheses tested and disproven; root cause inside libswdapaidl.so unknown).
+#
+# ⚠️ TWO FILES WERE DROPPED IN SESSION 27, and they were the whole of what was
+# genuinely orphaned — 378,041 bytes, not the 10 MB the "half a stack" framing
+# suggested:
+#
+#     vendor/etc/dolby/dax-default.xml    90,305 B  DAP tuning (IEQ presets),
+#                                                   read only by libswdapaidl.so
+#                                                   and libswgamedapaidl.so,
+#                                                   neither of which ships
+#     vendor/lib64/libdolbyproxyandroid.so 287,736 B  no DT_NEEDED edge and no
+#                                                   file of any type in the
+#                                                   built image names it —
+#                                                   checked across all 2645 ELFs
+#                                                   plus a fragment scan for a
+#                                                   dlopen name built at runtime
+#
+# Every other shipped Dolby library has a referrer; the scan is reproducible.
 vendor/etc/media_codecs_google_audio.xml
 vendor/etc/media_codecs_google_c2_audio.xml
 vendor/etc/media_codecs_vendor_audio.xml
@@ -1884,7 +1920,6 @@ vendor/etc/country_code_list.xml
 vendor/etc/data/dsi_config.xml
 vendor/etc/data/tlpd_oem_config.xml
 vendor/etc/default_volume_tables.xml
-vendor/etc/dolby/dax-default.xml
 vendor/etc/dolby_vision.cfg
 vendor/etc/excluded-input-devices.xml
 vendor/etc/fstab.zram_wb
@@ -2058,7 +2093,6 @@ vendor/lib64/libdlbdsservice.so
 vendor/lib64/libdmshal.so
 vendor/lib64/libdolbyclstc.so
 vendor/lib64/libdolbydecoderprocessor.so
-vendor/lib64/libdolbyproxyandroid.so
 vendor/lib64/libdpp_manager.so
 vendor/lib64/libdpps.so
 vendor/lib64/libdsd2pcm.so

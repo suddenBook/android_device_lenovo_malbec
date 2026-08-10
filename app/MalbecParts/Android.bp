@@ -47,6 +47,29 @@ android_app {
     privileged: true,
     system_ext_specific: true,
 
+    // ★ This is how `Updater` is kept off the device, and it needs the
+    // explanation because the connection is not obvious.
+    //
+    // The owner has decided this port does no OTA. LineageOS adds `Updater`
+    // unconditionally — vendor/lineage/config/common.mk:160-162, no switch, no
+    // ifeq — so it shipped and could never find an update: 5.9 MB of app that
+    // exists to fail. An app whose only behaviour is a permanent error is a bug
+    // report waiting to be filed against this port.
+    //
+    // ⚠️ There is no way to un-add a package from an inherited product config.
+    // `PRODUCT_PACKAGES := $(filter-out Updater,$(PRODUCT_PACKAGES))` after the
+    // inherit LOOKS right and does nothing — measured with
+    // `soong_ui --dumpvar-mode PRODUCT_PACKAGES`, Updater is still there,
+    // because inherit-product defers the merge and the assignment only sees
+    // this node's own value. Soong's `overrides:` is the mechanism AOSP
+    // actually provides for "install this instead of that" (the quickstep
+    // Launcher3 variant does exactly this), and both modules land in
+    // system_ext/priv-app, so the override applies.
+    //
+    // Nothing of Updater's function is replaced — that is the point. If OTA is
+    // ever revisited, deleting this one line brings it back.
+    overrides: ["Updater"],
+
     static_libs: [
         "SettingsLib",
         // NOT part of the "SettingsLib" aggregate (its Android.bp lists 40

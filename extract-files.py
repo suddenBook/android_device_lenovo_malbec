@@ -529,6 +529,56 @@ blob_fixups: blob_fixups_user_type = {
             r'(?m)^(service thermal-switch-engine[^\n]*\n(?:[ \t]+[^\n]*\n)*?)'
             r'[ \t]*oneshot[ \t]*\n',
             r'\1',
+        )
+        # ★ Seven stanzas whose binary is in NO image, ours or Lenovo's, get
+        # `disabled` — the same shape as the mlid fixup above, for the same
+        # reason, and this time for seven at once.
+        #
+        #     nqnfcinfo        NFC chip info dumper. There is no NFC controller.
+        #     ptt_socket_app   WLAN Production Test Tool, factory RF calibration.
+        #     qvop-daemon      Qualcomm Voice Print biometrics.
+        #     vendor.atfwd     AT-command forwarding from apps to a modem.
+        #     qseeproxydaemon  QSEE trustlet proxy.
+        #     esepmdaemon      embedded Secure Element power manager. No eSE.
+        #     chre             Context Hub Runtime Environment (sensor hub).
+        #
+        # ⚠️ The issue that filed these (#27) said they were "binaries this SKU
+        # does not ship", which implies the port dropped them. It did not: a
+        # find over every unpacked stock partition shows NONE of them is in the
+        # factory image either, and Lenovo's vendor/bin has 452 entries and is
+        # complete. These are QTI reference-platform stanzas nobody pruned, and
+        # stock boots with the identical dead ones.
+        #
+        # Cost measured before changing anything, by inducing the same path with
+        # `setprop ctl.start <svc>`: exactly one `Cannot find '<path>'` per
+        # service per boot, seven lines, and `init.svc.<name>` unset — which is
+        # init's Cannot-find branch, where Service::Start() sets SVC_DISABLED and
+        # returns. Nothing waits on any of them and none is `critical`.
+        #
+        # Zero functional risk: `disabled` only removes them from class_start,
+        # and nothing in any shipped or factory .rc issues an explicit
+        # `start <name>` for any of the seven (checked). A service that is
+        # `disabled` can still be started by name if anything ever needs to.
+        #
+        # ⚠️ chre carries `shutdown critical`, which is about SHUTDOWN ordering,
+        # not about restart-on-death — adding `disabled` does not touch it.
+        .regex_replace(
+            r'(?m)^(service (?:nqnfcinfo|ptt_socket_app|qvop-daemon|vendor\.atfwd'
+            r'|qseeproxydaemon|esepmdaemon|chre)\s(?:[^\n]*\\\n)*[^\n]*\n'
+            r'(?:[ \t]+[^\n]*\n)*)',
+            r'\1    disabled\n',
+        ),
+
+    # wifi_qos_daemon: the eighth of #27's dead stanzas, and the only one that
+    # does not live in init.qcom.rc. Same finding, same fix — /vendor/bin/
+    # wifi_qos_daemon is in neither this image nor the factory one. This is a
+    # NEW blob_fixups key, so the file gains its first hash pin in the same
+    # change.
+    ('vendor/etc/init/init.vendor.wlan.rc',): blob_fixup()
+        .regex_replace(
+            r'(?m)^(service wifi_qos_daemon\s(?:[^\n]*\\\n)*[^\n]*\n'
+            r'(?:[ \t]+[^\n]*\n)*)',
+            r'\1    disabled\n',
         ),
 
     # Two edits to init.target.rc:
