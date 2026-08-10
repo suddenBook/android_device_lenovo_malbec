@@ -33,14 +33,14 @@
 # the least accurate part of the file. Re-derive it, do not trust it.**
 #
 # ★★ APP1/APP2 were MACRO_1/MACRO_2 until session 16, and that was a dead end.
-# PhoneWindowManager.java:5124-5129 clears ACTION_PASS_TO_USER for MACRO_1..4 in
+# PhoneWindowManager.java:5594-5599 clears ACTION_PASS_TO_USER for MACRO_1..4 in
 # interceptKeyBeforeQueueing; InputDispatcher.cpp:1860-1873 then skips the whole
 # interceptKeyBeforeDispatching stage, which is the only place custom input
-# gestures are evaluated (KeyGestureController.java:1057-1070). A MACRO key can
+# gestures are evaluated (KeyGestureController.java:1099-1113). A MACRO key can
 # therefore never reach a user-configurable action — the two keys were
 # structurally unbindable, not merely unbound.
 #
-# F19/F20 survive that gate: PhoneWindowManager.java:5130-5148 strips F13..F24
+# F19/F20 survive that gate: PhoneWindowManager.java:5600-5618 strips F13..F24
 # only `if (!enableNew25q2Keycodes())`, and that flag is ENABLED in both release
 # configs this tree builds. Confirmed on the running device rather than
 # inferred:  `adb shell device_config list input` reports
@@ -652,7 +652,7 @@ key usage 0x0c0391 MUTE
 # work/scripts/60-keyboard-key-probe.sh.
 key usage 0x0c0392 F17
 # Fn + right-hand key 1. Stock calls it GLOBAL_SEARCH. KEYCODE_SEARCH is not
-# usable here: KeyGestureController.java:1082-1090 only acts on it when
+# usable here: KeyGestureController.java:1124-1132 only acts on it when
 # config_searchKeyBehavior == 1 (TARGET_ACTIVITY), and AOSP's default is 0, so
 # the key falls through and nothing handles it. Bound through our own picker
 # instead, defaulting to LAUNCH_SEARCH.

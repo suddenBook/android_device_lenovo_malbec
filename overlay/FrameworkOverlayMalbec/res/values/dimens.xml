@@ -39,7 +39,7 @@
          Interaction with TARGET_SCREEN_DENSITY (BoardConfig.mk): this is dp, so
          it tracks density. ⚠️ The arithmetic here used to be anchored to 360 and
          claimed 88px "byte for byte what they had on the factory ROM". This tree
-         ships 320 (BoardConfig.mk:227, frozen by the owner), so 39dp is
+         ships 320 (BoardConfig.mk:366, frozen by the owner), so 39dp is
          39 * 320/160 = 78px, and the running device agrees: dumpsys window prints
          statusBars frame=[0,0][3504,78].
 

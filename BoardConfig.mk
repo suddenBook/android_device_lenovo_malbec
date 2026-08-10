@@ -212,9 +212,30 @@ AUDIO_FEATURE_ENABLED_SVA_MULTI_STAGE := true
 BOARD_SUPPORTS_OPENSOURCE_STHAL := true
 BOARD_SUPPORTS_SOUND_TRIGGER := true
 BOARD_USES_ALSA_AUDIO := true
-TARGET_PROVIDES_AUDIO_HAL := true
-TARGET_PROVIDES_LIBAGM := true
-TARGET_PROVIDES_LIBAR_PAL := true
+
+# ⚠️ TARGET_PROVIDES_AUDIO_HAL, TARGET_PROVIDES_LIBAGM and
+# TARGET_PROVIDES_LIBAR_PAL were here and are GONE. They were read by nobody:
+# a search of the whole checkout including .repo/ found the three assignments
+# and no other occurrence at all, and `out/` — soong.lineage_malbec.variables,
+# make_vars-lineage_malbec.mk, late-lineage_malbec.mk — has zero hits, so
+# nothing consumed them either. The naming convention is real and does work
+# elsewhere (TARGET_PROVIDES_UDFPS_LIB is read at
+# frameworks/native/services/surfaceflinger/CompositionEngine/Android.bp:98),
+# but these three specific names have no reader in LineageOS 23.2.
+#
+# The collision they were presumably meant to suppress IS real:
+# hardware/qcom-caf/sm8750 is in PRODUCT_SOONG_NAMESPACES (via
+# hardware/qcom-caf/common/BoardConfigQcom.mk:387-388, reached because
+# TARGET_BOARD_PLATFORM := sun) and defines libagm / libar-pal / libagmclient
+# under the same names the blob tree defines at vendor/lenovo/malbec/Android.bp.
+# What actually resolves it is LineageOS's set-device-specific-path
+# (vendor/lineage/build/core/qcom_target.mk:2-13), which keys off
+# USE_DEVICE_SPECIFIC_AUDIO / DEVICE_SPECIFIC_AUDIO_PATH — not these. Written
+# down so nobody re-adds them looking for the same effect. OPEN-ISSUES.md #30.
+#
+# ⚠️ BOARD_WLAN_CHIP is the same "declared, read by nobody" shape and is
+# deliberately KEPT, with its own reason next to it: it records the part for
+# whoever wires the chip name into something that IS read.
 
 # Bootloader
 TARGET_BOOTLOADER_BOARD_NAME := sun
@@ -364,9 +385,19 @@ TARGET_SCREEN_WIDTH := 2190
 # Filesystem
 TARGET_FS_CONFIG_GEN := $(DEVICE_PATH)/configs/config.fs
 
-# HIDL
+# VINTF
+#
+# ⚠️ The directory is configs/vintf/ and was called configs/hidl/ until session
+# 27. It holds compatibility_matrix.device.xml and manifest.xml, which are VINTF
+# and not HIDL — the manifest is `<manifest version="9.0" type="device"
+# target-level="202404">` containing only `<hal format="aidl">` entries, and
+# there is not one format="hidl" declaration anywhere in the built vendor
+# image. The old name mattered because of what it invited: this device cannot
+# reach a HIDL service at all (/system/bin/hwservicemanager is a dangling
+# symlink, `lshal --types=b` is empty), so a directory called `hidl` is the
+# first thing a reader would look at to work out why. OPEN-ISSUES.md #58.
 DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE += \
-    $(DEVICE_PATH)/configs/hidl/compatibility_matrix.device.xml \
+    $(DEVICE_PATH)/configs/vintf/compatibility_matrix.device.xml \
     hardware/qcom-caf/common/vendor_framework_compatibility_matrix.xml \
 
 # += for exactly the reason the comment below gives for DEVICE_MANIFEST_FILE —
@@ -381,7 +412,7 @@ DEVICE_MATRIX_FILE += hardware/qcom-caf/common/compatibility_matrix_aidl.xml
 # contributes. Nothing contributes today, which is exactly why this would go
 # unnoticed until something did. Note the DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE
 # two lines up already uses +=; this line was just inconsistent with it.
-DEVICE_MANIFEST_FILE += $(DEVICE_PATH)/configs/hidl/manifest.xml
+DEVICE_MANIFEST_FILE += $(DEVICE_PATH)/configs/vintf/manifest.xml
 
 # Kernel
 BOARD_INCLUDE_DTB_IN_BOOTIMG := true
@@ -1005,12 +1036,25 @@ include vendor/lenovo/malbec/BoardConfigVendor.mk
 #     out/soong/soong.lineage_malbec.variables
 #       NamespacesToExport … hardware/qcom-caf/wlan, hardware/qcom-caf/wlan/qcwcn
 #                            (hardware/qcom/wlan is NOT exported)
-#       VendorVars.qcom_wifi = {"board_wlan_chip": "wcn7760"}
+#       VendorVars.qcom_wifi   -> ABSENT. There is no such key, and the string
+#                                 `board_wlan_chip` does not appear in the file
+#                                 at all. The only wifi entry is
+#                                 VendorVars.wifi.board_wlan_device = "qcwcn",
+#                                 which BOARD_WLAN_DEVICE sets.
+#
+# ⚠️ This block used to quote `VendorVars.qcom_wifi = {"board_wlan_chip":
+# "wcn7760"}` as ground truth and to say "the variable that the two lines below
+# set". Both are false and were re-measured in session 27: nothing in this
+# device tree calls add_soong_config_var or assigns SOONG_CONFIG* at all
+# (`grep -rn 'SOONG_CONFIG\|add_soong_config' device/lenovo/malbec/` is empty),
+# so the soong variable is never set here by anything — and the quoted VALUE was
+# 7760, the number the block sixty lines below exists to record as the bug.
+# OPEN-ISSUES.md #77.
 #
 # and build/soong/android/namespace.go: the root namespace sees the root plus
 # EXPORTED namespaces only. So `libwifi-hal-qcom` resolves in
-# hardware/qcom-caf/wlan, and the qcom_wifi/board_wlan_chip variable that the
-# two lines below set is read by nobody — its only consumer is
+# hardware/qcom-caf/wlan, and the qcom_wifi/board_wlan_chip soong variable is
+# never set by this tree at all — and its only consumer is
 # hardware/qcom/wlan/Android.bp:41, in a namespace this product does not export.
 #
 # The CAF repo uses a different namespace and a different variable:

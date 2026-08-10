@@ -41,7 +41,7 @@ object StylusMetadataTagger {
 
     /**
      * BluetoothDevice.METADATA_DEVICE_TYPE == 17 and
-     * DEVICE_TYPE_STYLUS == "Stylus" (BluetoothDevice.java:880, :3532-3535).
+     * DEVICE_TYPE_STYLUS == "Stylus" (BluetoothDevice.java:880, :1028).
      * Both are @SystemApi; naming the values here rather than the constants
      * keeps this compiling regardless of which Bluetooth module stub surface
      * ends up on the classpath.

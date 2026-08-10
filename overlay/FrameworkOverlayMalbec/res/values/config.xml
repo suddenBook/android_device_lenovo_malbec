@@ -211,7 +211,7 @@
              stock default density 360   ->  20 * 360/160 = 45 px
              dump-time density     306   ->  20 * 306/160 = 38.25 -> 38 px
 
-         ⚠️ THIS TREE SHIPS DENSITY 320, not 360. BoardConfig.mk:227 is
+         ⚠️ THIS TREE SHIPS DENSITY 320, not 360. BoardConfig.mk:366 is
          TARGET_SCREEN_DENSITY := 320 (owner's decision, frozen), and the running
          device confirms it: `wm density` reports 320 and dumpsys display prints
          density 320. So at the density we actually ship the privacy-dot floor is
@@ -248,7 +248,7 @@
          ⚠️ This paragraph used to read "TARGET_SCREEN_DENSITY is now 360, the
          same as stock, so 45px and 20dp are the same number here" — written
          while the tree was briefly on 360 and never corrected when the owner
-         set 320 and froze it (BoardConfig.mk:227, and the warning 34 lines
+         set 320 and froze it (BoardConfig.mk:366, and the warning 34 lines
          above). At the shipped 320, stock's 20dp is 40px, not 45px.
          The shipped value is 33px and is the owner's own choice, arrived at by
          looking at the glass, so the arithmetic above is background rather than
@@ -350,7 +350,7 @@
          ⚠️ The arithmetic in the two paragraphs above is stale and is left
          corrected rather than deleted, because it is quoted elsewhere. It read
          "45px is exactly the dot floor (ongoing_appops_dot_min_padding = 20dp at
-         density 360)". This tree ships density 320 (BoardConfig.mk:227, frozen by
+         density 360)". This tree ships density 320 (BoardConfig.mk:366, frozen by
          the owner), where 20dp is 40px, not 45px. So the floor is 40px and the
          shipped 45px sits 5px above it.
 

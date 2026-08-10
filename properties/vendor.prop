@@ -483,7 +483,7 @@ vendor.wv.oemcrypto.debug.enable_prov40=true
 # restart-loop it forever. So nothing sets the property and the HAL never starts.
 #
 # That alone would be a missing HAL. What makes it worse is that
-# configs/hidl/manifest.xml DOES declare android.hardware.gatekeeper, so
+# configs/vintf/manifest.xml DOES declare android.hardware.gatekeeper, so
 # gatekeeperd takes the isDeclared branch:
 #
 #     system/core/gatekeeperd/gatekeeperd.cpp:116-117

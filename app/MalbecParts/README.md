@@ -26,15 +26,15 @@ built around, and every decision below follows from it.
 ### The keyboard's two app keys did nothing at all
 
 Not "were unbound" — **could not be bound**. They were mapped to
-`KEYCODE_MACRO_1` / `MACRO_2`, and `PhoneWindowManager.java:5124-5128` clears
+`KEYCODE_MACRO_1` / `MACRO_2`, and `PhoneWindowManager.java:5594-5598` clears
 `ACTION_PASS_TO_USER` for `MACRO_1..4` in `interceptKeyBeforeQueueing` — the
 *queueing* stage. `InputDispatcher.cpp:1860-1873` then skips the whole
 `interceptKeyBeforeDispatching` stage when that flag is absent, and that stage is
 the only place custom input gestures are evaluated
-(`KeyGestureController.java:1057-1070`).
+(`KeyGestureController.java:1099-1113`).
 
 So no amount of app work could have made MACRO keys configurable. The fix is in
-the keylayout: `F19`/`F20`, which `PhoneWindowManager.java:5130-5148` passes
+the keylayout: `F19`/`F20`, which `PhoneWindowManager.java:5600-5618` passes
 through because `com.android.hardware.input.enable_new_25q2_keycodes` is
 `ENABLED`. Confirmed on the device rather than inferred:
 

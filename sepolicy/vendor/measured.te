@@ -17,11 +17,27 @@
 #     grants. Noise.
 #
 #   * Denials whose SOURCE is a core domain — system_app on sysfs_zram,
-#     priv_app on proc_version, system_server mapping libsdmextension.so,
-#     servicemanager -> hal_graphics_composer_default, system_suspend on a
-#     sysfs `name`, init on debugfs_bootreceiver_tracing, kernel's
-#     net_bind_service. BOARD_VENDOR_SEPOLICY_DIRS cannot add rules for
-#     coredomains, and it should not: those are upstream's to fix.
+#     priv_app on proc_version, system_suspend on a sysfs `name`, init on
+#     debugfs_bootreceiver_tracing, kernel's net_bind_service. These are
+#     upstream's to fix.
+#
+#     ⚠️ NOT because vendor policy cannot reach a coredomain — it can, and
+#     this file does it six times. Every `dontaudit` at :246 (zygote), :344
+#     (surfaceflinger), :345 (bootanim), :346 (servicemanager), :362 and :363
+#     (vold) has a coredomain source and all six compile: they are in the
+#     built vendor_sepolicy.cil at lines 29516 and 29528-29532, versioned
+#     (`zygote_202504`, `surfaceflinger_202504`, …) because the platform
+#     EXPORTS those types. The rule that does hold is narrower and is stated
+#     at :407-409: a vendor rule may name a coredomain as SOURCE, but only for
+#     TYPES the platform exports — `adbd_prop` and friends are private and
+#     fail the build with `unknown type`.
+#
+#     ⚠️ Two entries were deleted from the list above because the same file
+#     contradicts them further down: `servicemanager ->
+#     hal_graphics_composer_default` is granted at :346, and `system_server
+#     mapping libsdmextension.so` was diagnosed at :347-354 as a real,
+#     fixable access and fixed in this tree with one file_contexts line.
+#     OPEN-ISSUES.md #77.
 #
 #   * vendor_init setting ro.system.build.fingerprint / ro.bootimage.build
 #     .fingerprint. ro.* is write-once and init has already set both from
@@ -197,8 +213,14 @@ get_prop(vendor_qti_init_shell, vendor_lenovotb_init_prop)
 # Status::ERROR and USB power limiting / contaminant-detection charge
 # restriction would silently stop applying.
 #
-# rw_dir_file subsumes both the search and the r_dir_file above.
-allow vendor_hal_usb_qti sysfs_qcom_battery:dir search;
+# ⚠️ There is no separate `:dir search` rule here and there must not be one.
+# rw_dir_file (device/lineage/sepolicy/common/public/te_macros:5-8) expands to
+# `allow $1 $2:dir r_dir_perms;`, and r_dir_perms (system/sepolicy/public/
+# global_macros:34) is `{ open getattr read search ioctl lock watch
+# watch_reads }` — search included. An `allow vendor_hal_usb_qti
+# sysfs_qcom_battery:dir search;` line sat above this one for two sessions,
+# fully subsumed, under a comment that said so out loud. It survived because
+# it arrived in an earlier commit than the macro and nobody deleted it.
 rw_dir_file(vendor_hal_usb_qti, sysfs_qcom_battery)
 
 #####################################
@@ -271,7 +293,8 @@ dontaudit hal_camera_default property_type:file { getattr open map };
 # involving a vendor domain or a vendor type**, not zero lines.
 #
 # ⚠️ And these rules are only reachable because vendor policy CAN write rules
-# whose source is a coredomain. `measured.te:20-24` used to say it cannot;
+# whose source is a coredomain. `measured.te:19-24` used to say it cannot, and
+# no longer does;
 # device/qcom/sepolicy_vndr/sm8750/generic/vendor/common/surfaceflinger.te:32-35
 # does exactly that (`dontaudit surfaceflinger firmware_file:dir search;` and an
 # `allow surfaceflinger vendor_sysfs_graphics:file rw_file_perms;`), and this

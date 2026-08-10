@@ -2,7 +2,7 @@
 # (Stock declares ten; two are for hardware this unit does not have. The count
 # is eight everywhere it is enumerated -- file_contexts:6-13,
 # service_contexts:31-38, the list below, and
-# configs/hidl/compatibility_matrix.device.xml:9-19 -- and three comments used to
+# configs/vintf/compatibility_matrix.device.xml:9-19 -- and three comments used to
 # say "ten" from an early draft.)
 #
 # protected_service is what device/qcom/sepolicy_vndr uses for its own vendor

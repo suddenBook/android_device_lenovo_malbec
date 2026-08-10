@@ -368,8 +368,10 @@ blob_fixups: blob_fixups_user_type = {
         #
         # Same shape as libaudioeffecthal.qti.so in session 11. Note it is a
         # BY-VALUE construction, never `new` — which is exactly the blind spot
-        # documented in work/scripts/37-layout-skew.py, so that gate did NOT and
-        # cannot catch this one. It was found by reading the tombstone.
+        # of an allocation-size comparison, so that analysis did NOT and could
+        # not have caught this one. It was found by reading the tombstone.
+        # (⚠️ the analysis was a one-off; this line used to cite
+        # work/scripts/37-layout-skew.py, which does not exist — #31.)
         #
         # The composer-service binary is in the list even though it uses ZERO
         # tinyxml2 symbols (`llvm-nm -D -u` is empty for them): it is the only

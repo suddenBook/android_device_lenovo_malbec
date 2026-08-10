@@ -62,16 +62,16 @@
 #    ⚠️ The lesson is about the *classification side effect*, not the keycode's
 #    meaning. Adding a mapping is never "just adding a mapping".
 #
-# 2. MACRO_1..MACRO_4 — DEAD. PhoneWindowManager.java:5124-5129 clears
+# 2. MACRO_1..MACRO_4 — DEAD. PhoneWindowManager.java:5594-5599 clears
 #    ACTION_PASS_TO_USER for all four, inside interceptKeyBeforeQueueing (the
 #    *queueing* stage). InputDispatcher.cpp:1860-1873 then skips the whole
 #    interceptKeyBeforeDispatching stage when POLICY_FLAG_PASS_TO_USER is
 #    absent, and that stage is the only place custom input gestures are
-#    evaluated (KeyGestureController.java:1057-1070). So a MACRO key can never
+#    evaluated (KeyGestureController.java:1099-1113). So a MACRO key can never
 #    reach a user-configurable action. An earlier plan in this project was built
 #    on the opposite belief; it would have shipped dead keys.
 #
-# 3. F13..F24 — CORRECT. PhoneWindowManager.java:5130-5148 strips them too, but
+# 3. F13..F24 — CORRECT. PhoneWindowManager.java:5600-5618 strips them too, but
 #    only `if (!enableNew25q2Keycodes())`, and
 #    com.android.hardware.input.enable_new_25q2_keycodes is ENABLED in both
 #    release configs this tree can build (build/release/aconfig/{bp2a,

@@ -302,8 +302,13 @@ PRODUCT_PACKAGES += \
 # SOURCE, and it must. Blobbing it re-introduced the very bug that got the XR
 # stack deleted:
 #
-#   work/scripts/37-layout-skew.py
+#   a struct-layout comparison of the factory blob against this checkout's
+#   headers said:
 #     ✗ vendor/lib64/libgpu_tonemapper.so: android::GraphicBuffer allocates 256 < A16 3376
+#   ⚠️ That analysis was a one-off, not a running gate. This block used to
+#   cite work/scripts/37-layout-skew.py for it; no such script exists (37 was
+#   later reused for 37-declared-registered.py, which checks something else
+#   entirely). OPEN-ISSUES.md #31.
 #
 # The factory copy is an Android-15 build that does operator new(256) for a class
 # A16 grew to 3376 bytes (frameworks/native df868baf2a added mDependencyMonitor).
@@ -369,7 +374,7 @@ PRODUCT_PACKAGES += \
 # So PAL, AGM, graphservices, the three HAL implementation libraries and st-hal
 # all go back to blobs, picked up by proprietary-files.txt under "the tree does
 # not install this path", with conflicts handled by ;DISABLE_DEPS (see ENTRY_TAGS
-# in work/scripts/12-gen-proprietary-files.py).
+# by ;DISABLE_DEPS on the entry itself).
 #
 # audiohalservice.qti stays on source: it is only a shell, it dlopens the three
 # implementation libraries, it does not link PAL, it compiles, and its `init_rc:`
@@ -521,7 +526,7 @@ PRODUCT_PACKAGES += \
 #                      page. Nothing binds a single key.
 #   Keyboard app keys  Same mechanism, F19/F20. ⚠️ These were mapped to
 #                      MACRO_1/MACRO_2 until session 16, which is
-#                      *structurally* dead: PhoneWindowManager.java:5124-5128
+#                      *structurally* dead: PhoneWindowManager.java:5594-5598
 #                      strips MACRO before the gesture layer ever runs. The two
 #                      keys did nothing at all.
 #   Out-of-range alert The stock feature is much smaller than its name: HID link
@@ -765,11 +770,14 @@ PRODUCT_SHIPPING_API_LEVEL := 36
 # and no lock screen, and the only symptom would be the device.
 #
 # So they are declared here, from their upstream sources, and removed from the
-# blob list in the same change. 34 of the 36 files under
-# /vendor/etc/permissions/ were verified byte-identical to a file that already
-# exists in this checkout (session 25 diffed each one against
-# frameworks/native/data/etc/); the two that are not have device-tree copies in
+# blob list in the same change. 36 of the 38 files declared here were verified
+# byte-identical to a file that already exists in this checkout (each diffed
+# against frameworks/native/data/etc/; re-run session 27, 36 compared and 0
+# differing); the two that are not have device-tree copies in
 # configs/permissions/ with the derivation written in their headers.
+# ⚠️ 36 of 38, not 34 of 36 — the pair in configs/permissions/ belongs to the
+# denominator, and the built /vendor/etc/permissions/ holds 42 because three
+# blobs and features_com.android.virt.xml arrive from elsewhere.
 #
 # ⚠️ The destination is $(TARGET_COPY_OUT_VENDOR), matching where stock put them
 # and what build/make/target/product/full_base_telephony.mk does. These describe
@@ -951,10 +959,10 @@ PRODUCT_COPY_FILES += \
 # this file buys.
 #
 # What is still inert: the two resource sets do not intersect. GmsOverlay sets
-# 22 resources and every one of them names a Google package —
+# 26 resources and every one of them names a Google package —
 # config_defaultAssistant, config_systemSpeechRecognizer, config_systemWellbeing,
 # config_persistentDataPackageName, config_defaultAccessibilityService, the two
-# credential-provider arrays, and so on. Not one of this device's 71 resources
+# credential-provider arrays, and so on. Not one of this device's 82 resources
 # is among them, and in particular config_defaultNightMode — the resource the
 # whole original argument was about — is NOT set by MindTheGapps at all. The
 # PixelConfigOverlay2021_GMS that started this story is a different package and
@@ -993,7 +1001,7 @@ PRODUCT_COPY_FILES += \
 #     NetworkStackOverlay, PermissionControllerOverlay) target
 #     com.android.{documentsui,launcher3,networkstack,permissioncontroller} —
 #     none of them targets framework-res, so the intersection with this device's
-#     71 resources is empty;
+#     82 resources is empty;
 #   · LineageOS ships no partition_order.xml of its own, so nothing collides.
 #
 # OverlayConfig.java:76 still hardcodes the path to /product/overlay, which is

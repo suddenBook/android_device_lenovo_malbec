@@ -65,7 +65,7 @@ object GestureBinder {
      * mContext.getUserId() (InputManager.java:1511-1518). Everything that calls
      * reconcile() -- the service, the boot receiver, both settings screens --
      * runs as user 0. Dispatch, however, looks the gesture up for the *current*
-     * user: KeyGestureController.java:1060-1062 passes mCurrentUserId into
+     * user: KeyGestureController.java:1102-1105 passes mCurrentUserId into
      * InputGestureManager, whose table is a SparseArray keyed by userId
      * (InputGestureManager.java:69-71).
      *
