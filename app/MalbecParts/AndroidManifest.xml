@@ -177,16 +177,14 @@
              res/xml/default_layout*.xml became the default home screen and the
              Device mode widget was pre-placed on it.
 
-             Session 24 made the home screen empty at the owner's request, and
-             AutoInstallsLayout cannot express "empty" — ModelDbController.java:
-             557-563 treats a layout that inserts zero items as a parse failure
-             and loads Launcher3's own default instead. So the whole mechanism was
-             removed and replaced by overlay/LauncherOverlayMalbec, which
-             overrides Launcher3's internal default_workspace_* resources.
-
-             Do not re-add the receiver without also deleting that overlay: two
-             mechanisms defining the same thing is how the "empty means empty"
-             claim survived three sessions without ever being true. -->
+             It was removed in session 24 (for an empty home screen, since
+             withdrawn) and stays removed in session 25, now for its own reason:
+             a device tree that redefines the default workspace has to re-state
+             every icon Launcher3 would have placed, and it silently diverges
+             from upstream on every Launcher3 release. The home screen is
+             Launcher3's own default and the Device mode switch is reachable from
+             the Quick Settings tile below, which is where a full-screen game can
+             actually reach it. OPEN-ISSUES.md #63. -->
 
 
         <!-- Shared "what should this key do?" picker, used by both screens. -->

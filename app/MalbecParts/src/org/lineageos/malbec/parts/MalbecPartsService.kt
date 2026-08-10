@@ -13,6 +13,7 @@ import android.hardware.input.KeyGestureEvent
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.UserHandle
 import android.util.Log
 import org.lineageos.malbec.parts.display.PanelDirectionController
 import org.lineageos.malbec.parts.display.PenModeController
@@ -60,8 +61,32 @@ class MalbecPartsService : Service() {
          * Refresh rate from silently killing the stylus, and it must hold
          * whether or not the owner has bound a single pen button.
          */
+        /**
+         * ⚠️ [Context.startServiceAsUser] with [UserHandle.SYSTEM], not plain
+         * `startService`. This app shares `android.uid.system`, so an unqualified
+         * `startService` makes `ContextImpl.warnIfCallingFromSystemProcess()` log
+         *
+         *     W ContextImpl: Calling a method in the system process without a
+         *     qualified user: ContextImpl.startService … StylusSettingsActivity.onCreate
+         *
+         * on every settings-screen open and every tile tap — measured on the
+         * flashed build, session 25. The warning is AOSP telling us the target
+         * user is being inferred from whichever context happened to call, and
+         * that inference is wrong here on purpose: everything this service owns
+         * is **global to the device**, not per-user — sysfs nodes under /proc,
+         * the InputManager custom-gesture table, and the pen's Bluetooth
+         * metadata. It has to be exactly one instance, and it has to be the
+         * system user's.
+         *
+         * `UserHandle.SYSTEM` rather than `CURRENT` for the same reason: this
+         * tablet declares `android.software.managed_users`, so a secondary user
+         * can open Device settings, and CURRENT would start a second copy that
+         * fights the first over the same nodes.
+         */
         fun sync(context: Context) {
-            context.startService(Intent(context, MalbecPartsService::class.java))
+            context.startServiceAsUser(
+                Intent(context, MalbecPartsService::class.java), UserHandle.SYSTEM
+            )
         }
     }
 

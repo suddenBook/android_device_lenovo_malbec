@@ -583,45 +583,26 @@ vendor/etc/vintf/manifest/vendor.qti.qspmhal-service.xml
 vendor/etc/vintf/manifest/vendor.qti.syshealthmon-service.xml
 
 # Permissions
-vendor/etc/permissions/android.hardware.audio.low_latency.xml
-vendor/etc/permissions/android.hardware.audio.pro.xml
-vendor/etc/permissions/android.hardware.biometrics.face.xml
-vendor/etc/permissions/android.hardware.bluetooth.xml
-vendor/etc/permissions/android.hardware.bluetooth_le.xml
-vendor/etc/permissions/android.hardware.camera.concurrent.xml
-vendor/etc/permissions/android.hardware.camera.flash-autofocus.xml
-vendor/etc/permissions/android.hardware.camera.front.xml
-vendor/etc/permissions/android.hardware.camera.full.xml
-vendor/etc/permissions/android.hardware.camera.raw.xml
-vendor/etc/permissions/android.hardware.hardware_keystore.xml
-vendor/etc/permissions/android.hardware.keystore.app_attest_key.xml
-vendor/etc/permissions/android.hardware.location.xml
-vendor/etc/permissions/android.hardware.opengles.aep.xml
-vendor/etc/permissions/android.hardware.touchscreen.multitouch.jazzhand.xml
-vendor/etc/permissions/android.hardware.usb.accessory.xml
-vendor/etc/permissions/android.hardware.usb.host.xml
-vendor/etc/permissions/android.hardware.vulkan.compute-0.xml
-vendor/etc/permissions/android.hardware.vulkan.level-1.xml
-vendor/etc/permissions/android.hardware.vulkan.version-1_1.xml
-vendor/etc/permissions/android.hardware.vulkan.version-1_3.xml
-vendor/etc/permissions/android.hardware.wifi.aware.xml
-vendor/etc/permissions/android.hardware.wifi.direct.xml
-vendor/etc/permissions/android.hardware.wifi.passpoint.xml
-vendor/etc/permissions/android.hardware.wifi.xml
-vendor/etc/permissions/android.software.device_id_attestation.xml
-vendor/etc/permissions/android.software.ipsec_tunnels.xml
-vendor/etc/permissions/android.software.midi.xml
-vendor/etc/permissions/android.software.opengles.deqp.level.xml
-vendor/etc/permissions/android.software.verified_boot.xml
-vendor/etc/permissions/android.software.vulkan.deqp.level.xml
-vendor/etc/permissions/handheld_core_hardware.xml
+#
+# ⚠️ Only the three Qualcomm-owned files are left here. The other 34 —
+# handheld_core_hardware.xml, every android.hardware.*/android.software.* feature
+# XML, and the six sensor files stock hid under sku_tuna/ — moved to
+# PRODUCT_COPY_FILES in device.mk in session 25 (work/OPEN-ISSUES.md #64).
+#
+# The reason is the failure mode, not tidiness. A feature XML has no build-time
+# edge of any kind: nothing links it, no check_elf_file inspects it, no VINTF
+# check reads it. A re-extraction that dropped handheld_core_hardware.xml would
+# produce a GREEN build of a tablet with no launcher, no input method and no lock
+# screen, because that one file declares android.software.home_screen,
+# android.software.input_methods and android.software.secure_lock_screen. 34 of
+# the 36 were verified byte-identical to files already in this checkout, so
+# nothing was lost by sourcing them upstream; the two that were not have copies in
+# configs/permissions/ with their derivations written down.
+#
+# ⚠️ Do NOT re-add the moved lines on the next ZUI drop. If a future drop changes
+# one of them, the acceptance gate is what should tell you: 24-blob-reconcile.py
+# compares stock's partition against ours by path, and these paths still ship.
 vendor/etc/permissions/privapp-permissions-qti-vendor.xml
-vendor/etc/permissions/sku_tuna/android.hardware.sensor.accelerometer.xml
-vendor/etc/permissions/sku_tuna/android.hardware.sensor.dynamic.head_tracker.xml
-vendor/etc/permissions/sku_tuna/android.hardware.sensor.gyroscope.xml
-vendor/etc/permissions/sku_tuna/android.hardware.sensor.light.xml
-vendor/etc/permissions/sku_tuna/android.hardware.sensor.stepcounter.xml
-vendor/etc/permissions/sku_tuna/android.hardware.sensor.stepdetector.xml
 vendor/etc/permissions/vendor.qti.dcf.xml
 vendor/etc/permissions/vendor.qti.qva.xml
 

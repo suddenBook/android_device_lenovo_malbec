@@ -690,6 +690,130 @@ PRODUCT_PACKAGES += \
 BOARD_SHIPPING_API_LEVEL := 202404
 PRODUCT_SHIPPING_API_LEVEL := 36
 
+# ── Hardware feature declarations ───────────────────────────────────────────
+#
+# ★ Every one of these arrived only through proprietary-files.txt until session
+# 25, and that was the largest silent-failure surface left in this port
+# (work/OPEN-ISSUES.md #64, previously the standing #58 item). A feature XML is
+# not a driver: nothing links it, nothing loads it, no check_elf_file looks at
+# it. Drop one and the build stays green while PackageManager simply stops
+# advertising the feature. `handheld_core_hardware.xml` alone carries
+# android.hardware.camera, android.software.home_screen,
+# android.software.input_methods and android.software.secure_lock_screen — a
+# re-extraction that lost it would ship a tablet with no launcher, no keyboard
+# and no lock screen, and the only symptom would be the device.
+#
+# So they are declared here, from their upstream sources, and removed from the
+# blob list in the same change. 34 of the 36 files under
+# /vendor/etc/permissions/ were verified byte-identical to a file that already
+# exists in this checkout (session 25 diffed each one against
+# frameworks/native/data/etc/); the two that are not have device-tree copies in
+# configs/permissions/ with the derivation written in their headers.
+#
+# ⚠️ The destination is $(TARGET_COPY_OUT_VENDOR), matching where stock put them
+# and what build/make/target/product/full_base_telephony.mk does. These describe
+# hardware, so they belong on the hardware partition.
+#
+# ⚠️ Three files at that path stay blobs, correctly: privapp-permissions-qti-vendor.xml
+# and vendor.qti.{dcf,qva}.xml grant privileged permissions to Qualcomm packages
+# and have no upstream source. features_com.android.virt.xml was never a blob —
+# packages/modules/Virtualization builds it.
+#
+# ⚠️ The six sensor files are FLATTENED out of the SKU subdirectory stock used.
+# SystemConfig.java:109,709 reads /vendor/etc/permissions/sku_$(ro.boot.product.vendor.sku)/
+# and stock ships them under sku_tuna/, because Lenovo's one vendor image serves
+# several SoC SKUs. We build for exactly one, so the indirection buys nothing and
+# costs a dependency: if that bootloader property ever read anything but `tuna`,
+# gyroscope, light and step-counter would vanish from pm list features with no
+# other symptom. At the top level they are unconditional.
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/configs/permissions/handheld_core_hardware.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/handheld_core_hardware.xml \
+    $(LOCAL_PATH)/configs/permissions/android.hardware.hardware_keystore.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.hardware_keystore.xml
+
+# Audio: low_latency and pro are CDD claims about the audio stack, both of which
+# stock makes and the smart-amp/USB-C stack here supports.
+PRODUCT_COPY_FILES += \
+    frameworks/native/data/etc/android.hardware.audio.low_latency.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.audio.low_latency.xml \
+    frameworks/native/data/etc/android.hardware.audio.pro.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.audio.pro.xml \
+    frameworks/native/data/etc/android.software.midi.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.midi.xml
+
+# Camera. flash-autofocus implies android.hardware.camera, so the rear camera is
+# declared here rather than by handheld_core_hardware.xml's bare `camera` line.
+# `full` is the FULL hardware level, `raw` is DNG capture, `concurrent` is both
+# cameras streaming at once — all three verified against
+# `dumpsys media.camera`, which reports 2 devices at level `full`.
+PRODUCT_COPY_FILES += \
+    frameworks/native/data/etc/android.hardware.camera.concurrent.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.concurrent.xml \
+    frameworks/native/data/etc/android.hardware.camera.flash-autofocus.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.flash-autofocus.xml \
+    frameworks/native/data/etc/android.hardware.camera.front.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.front.xml \
+    frameworks/native/data/etc/android.hardware.camera.full.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.full.xml \
+    frameworks/native/data/etc/android.hardware.camera.raw.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.raw.xml
+
+# Connectivity. ⚠️ There is deliberately no android.hardware.telephony*, no
+# android.hardware.nfc and no android.hardware.location.gps here: TB390FU is
+# Wi-Fi only, has no NFC controller, and has no GNSS receiver — `pm list
+# features` on stock advertises none of the three either.
+PRODUCT_COPY_FILES += \
+    frameworks/native/data/etc/android.hardware.bluetooth.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.bluetooth.xml \
+    frameworks/native/data/etc/android.hardware.bluetooth_le.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.bluetooth_le.xml \
+    frameworks/native/data/etc/android.hardware.wifi.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.wifi.xml \
+    frameworks/native/data/etc/android.hardware.wifi.aware.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.wifi.aware.xml \
+    frameworks/native/data/etc/android.hardware.wifi.direct.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.wifi.direct.xml \
+    frameworks/native/data/etc/android.hardware.wifi.passpoint.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.wifi.passpoint.xml \
+    frameworks/native/data/etc/android.hardware.location.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.location.xml \
+    frameworks/native/data/etc/android.software.ipsec_tunnels.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.ipsec_tunnels.xml \
+    frameworks/native/data/etc/android.hardware.usb.accessory.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.usb.accessory.xml \
+    frameworks/native/data/etc/android.hardware.usb.host.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.usb.host.xml
+
+# Input. jazzhand is 5-or-more independently tracked pointers, and it implies
+# both weaker multitouch features. AOSP's own comment says to include exactly one
+# of the three, so this is the only touchscreen file here.
+PRODUCT_COPY_FILES += \
+    frameworks/native/data/etc/android.hardware.touchscreen.multitouch.jazzhand.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.touchscreen.multitouch.jazzhand.xml
+
+# Sensors — flattened out of stock's sku_tuna/ (see the note above).
+# ⚠️ No android.hardware.sensor.compass and no android.hardware.sensor.proximity:
+# `dumpsys sensorservice` lists 36 hardware sensors on this unit and neither a
+# magnetic_field nor a proximity type is among them. No barometer either.
+PRODUCT_COPY_FILES += \
+    frameworks/native/data/etc/android.hardware.sensor.accelerometer.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.sensor.accelerometer.xml \
+    frameworks/native/data/etc/android.hardware.sensor.gyroscope.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.sensor.gyroscope.xml \
+    frameworks/native/data/etc/android.hardware.sensor.light.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.sensor.light.xml \
+    frameworks/native/data/etc/android.hardware.sensor.stepcounter.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.sensor.stepcounter.xml \
+    frameworks/native/data/etc/android.hardware.sensor.stepdetector.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.sensor.stepdetector.xml \
+    frameworks/native/data/etc/android.hardware.sensor.dynamic.head_tracker.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.sensor.dynamic.head_tracker.xml
+
+# Biometrics — face only. There is no fingerprint reader on this tablet, and
+# `android.hardware.fingerprint` is correspondingly absent.
+PRODUCT_COPY_FILES += \
+    frameworks/native/data/etc/android.hardware.biometrics.face.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.biometrics.face.xml
+
+# Graphics. The two deqp levels are 132645633 = 0x07E80301 = the 2024-03-01 test
+# list, so the source files are the -2024-03-01 variants.
+#
+# ⚠️ Stock's own copies of these two are named for 2023-03-01 in their comments
+# and carry the 2024-03-01 number in the attribute — Qualcomm edited the value
+# and not the header. Taking the number as authoritative is deliberate: it is
+# what PackageManager reads, and it is what the device advertised before this
+# change.
+PRODUCT_COPY_FILES += \
+    frameworks/native/data/etc/android.hardware.opengles.aep.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.opengles.aep.xml \
+    frameworks/native/data/etc/android.hardware.vulkan.compute-0.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.compute-0.xml \
+    frameworks/native/data/etc/android.hardware.vulkan.level-1.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.level-1.xml \
+    frameworks/native/data/etc/android.hardware.vulkan.version-1_1.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.version-1_1.xml \
+    frameworks/native/data/etc/android.hardware.vulkan.version-1_3.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.version-1_3.xml \
+    frameworks/native/data/etc/android.software.opengles.deqp.level-2024-03-01.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.opengles.deqp.level.xml \
+    frameworks/native/data/etc/android.software.vulkan.deqp.level-2024-03-01.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.vulkan.deqp.level.xml
+
+# Keystore / verified boot. ⚠️ android.software.device_id_attestation says the
+# KeyMint TA can attest device identifiers; it does NOT claim key attestation
+# with a real OEM root, which this port can never have (unlocked bootloader).
+# Both claims are stock's, and both are what the TA actually implements.
+PRODUCT_COPY_FILES += \
+    frameworks/native/data/etc/android.hardware.keystore.app_attest_key.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.keystore.app_attest_key.xml \
+    frameworks/native/data/etc/android.software.device_id_attestation.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.device_id_attestation.xml \
+    frameworks/native/data/etc/android.software.verified_boot.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.verified_boot.xml
+
 # Input
 # The Lenovo folio keyboard and touchpad both enumerate as 17ef:62b2 on bus
 # 0x0019. The stylus digitizer (NVTCapacitivePen) needs no configuration at all:
@@ -1007,18 +1131,17 @@ PRODUCT_COPY_FILES += \
 # string is ever read, and overriding the other one produced an idmap warning
 # per boot and nothing else.
 #
-# LauncherOverlayMalbec is what makes the home screen EMPTY, which is the
-# owner's decision (OPEN-ISSUES.md #32a). It replaces every
-# xml/default_workspace_* in com.android.launcher3 with an empty <favorites/>.
-#
-# ⚠️ It is NOT interchangeable with the AutoInstallsLayout route MalbecParts used
-# to take, and that route was removed in the same change rather than left
-# alongside it. AutoInstallsLayout cannot express "empty":
-# ModelDbController.java:557-563 treats a layout that inserts ZERO items as one
-# that failed to parse and loads Launcher3's own default instead. Measured on the
-# flashed build in session 24, with an empty <workspace/> shipped — the tablet
-# came up with the AOSP hotseat, the Google search widget, the clock, a Google
-# folder and Play Store. The tree had asserted the opposite for three sessions.
+# ⚠️ There is deliberately NO Launcher3 overlay here. Session 24 shipped one
+# (LauncherOverlayMalbec) that pointed all eleven xml/default_workspace_* at an
+# empty <favorites/>, to give an empty default home screen; session 25 removed it
+# at the owner's direction — the home screen is now Launcher3's own default,
+# which is the standard AOSP/LineageOS behaviour. The reason is maintenance, not
+# taste: the override had to enumerate every grid Launcher3 ships, it failed OPEN
+# (a renamed or added grid silently restores the icons with no build error), and
+# it therefore needed a bespoke guard script to stay true. A preference that
+# costs a check script and a per-release audit is not worth expressing in the
+# device tree — the user can clear the home screen in two minutes. See
+# OPEN-ISSUES.md #32a/#63.
 #
 # LineageSDKOverlayMalbec exists for one integer: this tablet has NO notification
 # LED, and lineage-sdk defaults config_deviceLightCapabilities to 8
@@ -1027,7 +1150,6 @@ PRODUCT_COPY_FILES += \
 # own comment for why the sysfs evidence pointed the other way.
 PRODUCT_PACKAGES += \
     FrameworkOverlayMalbec \
-    LauncherOverlayMalbec \
     LineageSDKOverlayMalbec \
     SettingsOverlayMalbec \
     SettingsProviderOverlayMalbec \

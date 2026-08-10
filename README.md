@@ -38,12 +38,11 @@ claiming the SoC was "Kera".
 ```
 malbec/
 ├── configs/          VINTF manifests, filesystem config, HAL configs
-├── overlay/          RRO overlays: Framework, Launcher, LineageSDK, Settings,
+├── overlay/          RRO overlays: Framework, LineageSDK, Settings,
 │                     SettingsProvider, SystemUI, Wifi.
-│                     ⚠️ LauncherOverlayMalbec is load-bearing for a deliberate
-│                     ABSENCE -- it is what makes the home screen empty. Deleting
-│                     it restores Launcher3's icon-filled default. See
-│                     work/OPEN-ISSUES.md #32a
+│                     ⚠️ No Launcher3 overlay, deliberately -- the home screen is
+│                     Launcher3's own default. Session 24's empty-workspace RRO
+│                     was removed in session 25 (work/OPEN-ISSUES.md #63)
 ├── rootdir/          init scripts and device-specific rc files
 ├── sepolicy/         SELinux policy
 └── proprietary-files.txt
