@@ -610,6 +610,45 @@ vendor/etc/seccomp_policy/wifidisplayhalservice.policy
 # Battery
 vendor/bin/hw/vendor.lenovo.hardware.battery-service
 vendor/etc/charger_fw_fstab.qti
+
+# ⚠️ THE bm5a* FILES BELOW ARE NOT BATTERY ANYTHING. They inherited this section
+# header by position and it has been misleading ever since — "bm" is not
+# "battery model". Identified in session 22 by reading one of them:
+#
+#     min_arch=73; num_hmx=4; hvx_threads=4; vtcm_mb=8; hmx_type=fg;
+#     ConvLayer.opt.weights_to_vtcm@Xpb.xpb.  @DmaCheckpointSet  @SyncOp
+#
+# They are **compiled Qualcomm Hexagon NPU (HTP) neural-network graphs**. The 73
+# in the name is the Hexagon architecture and matches `min_arch=73` inside the
+# file, which is what settles that the bm5a79* family belongs to a different
+# NSP revision and is correctly not extracted.
+#
+# ★ 51 files x ~5 MB = 211 MB, i.e. ROUGHLY 18 % OF THE VENDOR PARTITION, and
+# this tree cannot say what loads them. Measured in session 22:
+#
+#   · A byte-level scan of every file in every stock partition — vendor, odm,
+#     system, product, system_ext — for "bm5a", "s13n", "73v0" and "79v0" finds
+#     NOTHING. Every hit is a coincidence inside a mangled C++ or Rust symbol.
+#     So the filename is constructed at runtime from pieces, or nothing loads
+#     them at all.
+#   · On the running device, no process has one open or mapped
+#     (/proc/*/maps and /proc/*/fd swept).
+#
+# Stock ships three families (bm5a73v04, bm5a73v08, bm5a79v08 — 154 files,
+# ~640 MB). This tree takes the 51 bm5a73v08. WHY v08 RATHER THAN v04 IS NOT
+# RECORDED ANYWHERE and could not be re-derived; both are arch v73, both are the
+# same file count, and their contents differ.
+#
+# ⚠️ Do NOT "fix" this by also shipping v04 — that is another 211 MB for an
+# unproven need, which is the opposite trade from the media_tuna_v1 case above
+# (95 KB). And do not drop the v08 set on the strength of "nothing references
+# it" either: absence of a literal filename is exactly what a runtime-assembled
+# path looks like.
+#
+# What would settle it, in order of cost: remove them behind an `adb remount`
+# overlay and exercise the camera and any AI feature while watching for open()
+# failures; or find the QNN/HTP loader that assembles the name. See
+# work/OPEN-ISSUES.md #39.
 vendor/lib64/bm5a73v08s13n00.bin
 vendor/lib64/bm5a73v08s13n01.bin
 vendor/lib64/bm5a73v08s13n02.bin
