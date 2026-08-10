@@ -105,8 +105,13 @@
 
        The fork is LineageOS/android_frameworks_base with one topic commit on
        top of lineage-23.2. It is NOT a divergent branch — rebasing it onto a
-       newer lineage-23.2 is a normal `git pull --rebase`, and the whole delta
-       is +224 lines in seven existing files plus six new ones.
+       newer lineage-23.2 is an ordinary rebase, and the whole delta is +224
+       lines in seven existing files plus six new ones.
+
+       (An XML comment cannot contain a double hyphen. This file learned that
+       once already in 78f79a8, and this comment reintroduced it by quoting a
+       command-line flag. `python3 -c "import xml.dom.minidom as m;
+       m.parse('malbec.xml')"` catches it in a second; aapt2 will not.)
 
        ★ WITHOUT THIS ENTRY the checkout silently gets upstream's frameworks/base
        and the feature vanishes with no build error and no boot failure: apps
