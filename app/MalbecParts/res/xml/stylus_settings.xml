@@ -77,6 +77,11 @@
             android:title="@string/keyboard_search"
             android:persistent="false" />
 
+        <Preference
+            android:key="keyboard_fullscreen"
+            android:title="@string/keyboard_fullscreen"
+            android:persistent="false" />
+
         <com.android.settingslib.widget.FooterPreference
             android:key="keyboard_footer"
             android:title="@string/keyboard_footer"

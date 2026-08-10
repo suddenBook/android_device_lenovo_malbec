@@ -75,6 +75,46 @@ object Constants {
     const val KEY_KEYBOARD_PC_LINK = KeyEvent.KEYCODE_F22      // 0x0c0397  F11
     const val KEY_KEYBOARD_SEARCH = KeyEvent.KEYCODE_F23       // 0x0c0393  Fn + right-hand key 1
 
+    /*
+     * ★ The full-screen key (F9 keycap), added session 23.
+     *
+     * ⚠️ This was HALF fixed and the half that was missing is the one a user can
+     * see. OPEN-ISSUES #24 correctly diagnosed that the key's native
+     * KEYCODE_FULLSCREEN reaches gesture 82, that 82 is registered only by
+     * DesktopModeKeyGestureHandler, and that this device never constructs it —
+     * and remapped the key to F24 in keylayout/Vendor_17ef_Product_62b2.kl:608,
+     * whose comment says "the key now goes through MalbecParts' picker like every
+     * other ZUI key". It did not: there was no F24 anywhere in this app, so the
+     * key went from "does nothing via a dead gesture" to "does nothing via an
+     * unhandled keycode". Measured on the device before the fix — `dumpsys input`
+     * Custom Gestures for user 0 held F23, F21, F20, F19 and F18, and no F24.
+     *
+     * KeyEvent.LAST_KEYCODE == KEYCODE_F24, so this is the highest keycode that
+     * exists; InputGestureData.Builder's bound check (InputGestureData.java:234)
+     * accepts it, and it is the last free F-key on this device (the pen holds
+     * F13-F16 and F18, this folio holds F17 and F19-F23). There is no spare left.
+     *
+     * No entry in DEFAULT_ACTIONS: Android 16 has no "make this window full
+     * screen" action that works with desktop mode off, so there is nothing to
+     * point it at that would not be another dead default. Per this file's own
+     * policy, a key whose keycap promises something Android cannot do ships
+     * unset and bindable.
+     */
+    const val KEY_KEYBOARD_FULLSCREEN = KeyEvent.KEYCODE_F24   // 0x0c0394  F9
+
+    /**
+     * Display rotation, 0..3, handed to init so it can write
+     * /proc/panel_direction. See display/PanelDirectionController.kt for why it
+     * goes through a property and why the value needs no translation.
+     *
+     * `sys.` rather than `persist.sys.`: rotation has no meaning across a
+     * reboot (the driver powers up at 0 and the first sync corrects it), and
+     * persisting it would mean a flash write every time the tablet is turned
+     * over. Both prefixes are u:object_r:system_prop:s0, so this needs no new
+     * sepolicy either way.
+     */
+    const val PROP_PANEL_DIRECTION = "sys.malbec.panel_dir"
+
     /**
      * Private KeyGestureEvent types.
      *
@@ -98,19 +138,6 @@ object Constants {
      * would make `dumpsys input` lie about what is registered, and would break
      * the day something else claims them.
      */
-    /**
-     * Display rotation, 0..3, handed to init so it can write
-     * /proc/panel_direction. See display/PanelDirectionController.kt for why it
-     * goes through a property and why the value needs no translation.
-     *
-     * `sys.` rather than `persist.sys.`: rotation has no meaning across a
-     * reboot (the driver powers up at 0 and the first sync corrects it), and
-     * persisting it would mean a flash write every time the tablet is turned
-     * over. Both prefixes are u:object_r:system_prop:s0, so this needs no new
-     * sepolicy either way.
-     */
-    const val PROP_PANEL_DIRECTION = "sys.malbec.panel_dir"
-
     const val GESTURE_TYPE_SMART_REMOTE_PRIMARY = 0x4D42_0001
     const val GESTURE_TYPE_SMART_REMOTE_NEXT = 0x4D42_0002
     const val GESTURE_TYPE_SMART_REMOTE_PREVIOUS = 0x4D42_0003
@@ -128,6 +155,7 @@ object Constants {
     const val PREF_KEYBOARD_SPLIT = "keyboard_split"
     const val PREF_KEYBOARD_PC_LINK = "keyboard_pc_link"
     const val PREF_KEYBOARD_SEARCH = "keyboard_search"
+    const val PREF_KEYBOARD_FULLSCREEN = "keyboard_fullscreen"
 
     const val PREF_PEN_LOST_ALERT = "pen_lost_alert"
     const val PREF_PEN_LOST_WAKE = "pen_lost_wake"
@@ -159,6 +187,7 @@ object Constants {
         PREF_KEYBOARD_APP1 to KEY_KEYBOARD_APP1,
         PREF_KEYBOARD_APP2 to KEY_KEYBOARD_APP2,
         PREF_KEYBOARD_SEARCH to KEY_KEYBOARD_SEARCH,
+        PREF_KEYBOARD_FULLSCREEN to KEY_KEYBOARD_FULLSCREEN,
     )
 
     /**
@@ -168,6 +197,33 @@ object Constants {
      * touchpad key toggles the touchpad, the split-screen key splits the screen.
      * The rest default to nothing, because guessing on the owner's behalf is
      * worse than an obviously unset row.
+     *
+     * ⚠️ TWO OF THESE DEFAULTS DO NOTHING ON A GAPPS-LESS BUILD, and that is an
+     * owner decision (session 23), not an oversight. Measured on the device:
+     *
+     *   cmd role get-role-holders android.app.role.ASSISTANT   -> empty
+     *   settings get secure voice_interaction_service          -> empty
+     *   cmd package query-activities -a android.intent.action.ASSIST
+     *                                                          -> No activities found
+     *   cmd package query-activities -a android.intent.action.WEB_SEARCH
+     *                                                          -> No activities found
+     *   (control: -a MAIN -c LAUNCHER -> 12 activities found)
+     *
+     * So `assistant` reaches PhoneWindowManager.launchAssistAction ->
+     * SearchManager.launchAssist, which needs a live voice-interaction service,
+     * and `search` reaches launchTargetSearchActivity, which (with
+     * config_searchKeyTargetActivity unset) fires ACTION_WEB_SEARCH and catches
+     * the ActivityNotFoundException. Both are silent no-ops today. Jelly declares
+     * no WEB_SEARCH filter, so nothing on this ROM can take either.
+     *
+     * They are kept anyway because OPEN-ISSUES #32b makes full GMS the intended
+     * configuration, and on that build both keycaps do exactly what they say.
+     * The cost of being wrong in this direction is two keys that do nothing until
+     * GApps arrive; the cost of the other direction is re-choosing a default that
+     * was right all along. If GMS is dropped as a plan, the fix is to filter both
+     * out of the picker in GestureAction.isAvailable() the way `notes` already is
+     * — one `when` branch each, and they reappear by themselves if a handler is
+     * ever installed.
      */
     val DEFAULT_ACTIONS = mapOf(
         PREF_KEYBOARD_SPLIT to "split_left",

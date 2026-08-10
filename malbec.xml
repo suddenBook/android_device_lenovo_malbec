@@ -35,11 +35,38 @@
 
      ⚠️ AFTER SYNCING, BEFORE BUILDING
 
-     One blob (libarcsoft_faceid.so, 134 MB) is above GitHub's per-file limit and
-     is stored with Git LFS. Run the two LFS commands in the device tree's
-     README before the first build. Skipping them leaves a 134-byte text file in
-     place of the library and the build stops with "must have a valid ELF magic
-     word", which reads like a corrupt blob rather than a missing object.
+     TWO repositories here use Git LFS and `repo sync` does not smudge it.
+
+       vendor/lenovo/malbec   libarcsoft_faceid.so, 134 MB — above GitHub's
+                              per-file limit. Left un-smudged it is a 134-byte
+                              text file and the build stops with "must have a
+                              valid ELF magic word", which reads like a corrupt
+                              blob rather than a missing object.
+       vendor/gapps           GmsCore.apk (175 MB) and Velvet.apk (254 MB).
+                              Left un-smudged, GMS builds "successfully" and the
+                              device has no Play Services at all.
+
+     In BOTH, run the two LFS commands from the device tree's README
+     (`git lfs install` with the local flag, then `git lfs pull`). `git lfs pull`
+     on its own prints "Skipping object checkout, Git LFS is not installed for
+     this repository" and EXITS 0. work/scripts/01-lfs-check.sh is tree-wide and
+     is a pre-flight in 40-build.sh, so a build cannot start with a pointer.
+
+     ⚠️ ABOUT vendor/gapps
+
+     This device ships full GMS (owner's decision, session 23). LineageOS's own
+     mechanism — WITH_GMS=true plus vendor/partner_gms — is not usable outside
+     the official build farm: partner_gms is not in the public manifest and
+     LineageOS/android_vendor_partner_gms is not a public repository. MindTheGapps
+     is the maintained public equivalent; branch `baklava` is Android 16, which
+     is what LineageOS 23.x is. It MUST be checked out at exactly `vendor/gapps`:
+     its common-vendor.mk inherits `vendor/gapps/common/common-vendor.mk` by
+     absolute path.
+
+     The revision is pinned to a branch rather than a SHA deliberately — GMS
+     needs to track Google's security updates — but that also means two syncs a
+     month apart do not produce the same image. Pin a SHA here if you need a
+     reproducible build.
 -->
 <manifest>
   <remote name="suddenBook"
@@ -57,4 +84,13 @@
   <project path="vendor/lenovo/malbec"
            name="proprietary_vendor_lenovo_malbec"
            remote="suddenBook" />
+
+  <remote name="mindthegapps"
+          fetch="https://gitlab.com/MindTheGapps" />
+
+  <project path="vendor/gapps"
+           name="vendor_gapps"
+           remote="mindthegapps"
+           revision="baklava"
+           clone-depth="1" />
 </manifest>

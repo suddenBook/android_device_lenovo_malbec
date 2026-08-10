@@ -134,8 +134,27 @@ allow hal_faceunlock_default tee_device:chr_file { ioctl read write open };
 get_prop(hal_faceunlock_default, vendor_arcsoft_faceunlock)
 get_prop(hal_faceunlock_default, vendor_lenovotb_init_prop)
 
-# Stock also grants dmabuf/qseecom heap access and a few more property reads.
-# Left out on purpose: those are the rules that only a real denial can justify,
-# and getting them wrong in either direction is invisible until the camera path
-# is exercised. Flash 1 is permissive precisely so this class gets measured
-# rather than guessed.
+# ★ The measurement this comment asked for has now happened, and it produced
+# exactly three denials. Session 23, `logcat -b all` on a clean boot (audit
+# serials 27-36, contiguous — nothing was dropped by a rolling buffer):
+#
+#   avc: denied { read open getattr map }
+#        path="/dev/__properties__/u:object_r:camera_config_prop:s0"
+#        scontext=u:r:hal_faceunlock_default:s0 tcontext=u:object_r:camera_config_prop:s0
+#   avc: denied { read open ioctl } path="/dev/dma_heap/qcom,qseecom"     ioctlcmd=0x4800
+#   avc: denied { read open ioctl } path="/dev/dma_heap/qcom,qseecom-ta"  ioctlcmd=0x4800
+#        scontext=u:r:hal_faceunlock_default:s0
+#
+# All three are ALLOW in stock's compiled vendor_sepolicy.cil and deny in ours —
+# established by diffing the two policies per domain, not by reading the denial.
+# The HAL is live and registered (android.hardware.biometrics.face.IFace/default,
+# oemStrength 4095 = BIOMETRIC_CONVENIENCE), so under enforcing this is a face
+# unlock that cannot reach its TEE buffers: enrolment and match both fail.
+#
+# Narrower than stock in one respect, deliberately: stock also grants `write` on
+# both heaps and `dmabuf_system_heap_device:chr_file write`. No write denial was
+# observed on either, so it is not granted. If one ever appears, add it then —
+# which is the same rule this block was written under.
+get_prop(hal_faceunlock_default, camera_config_prop)
+allow hal_faceunlock_default vendor_dmabuf_qseecom_heap_device:chr_file { ioctl read open };
+allow hal_faceunlock_default vendor_dmabuf_qseecom_ta_heap_device:chr_file { ioctl read open };

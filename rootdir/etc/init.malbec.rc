@@ -328,7 +328,52 @@ on post-fs
 #
 # (If a future flash reads 80 and 70 instead, this block did not run: look at
 # `adb logcat -b kernel -d | grep -i charge_control` and at init's own warnings.)
+#
+# ── ★ The second half of charging control: the HAL could not open its node ──
+#
+# device.mk wires LineageOS charging control to input_suspend and
+# sepolicy/vendor/hal_lineage_health.te grants
+# rw_dir_file(hal_lineage_health_default, vendor_sysfs_battery_supply) against
+# the label the node really carries. Both halves are right, and the feature was
+# still completely dead, because nobody checked the file MODE:
+#
+#     /sys/class/power_supply/battery/input_suspend   -rw-rw-r--  root root
+#     vendor.lineage.health-service.default           uid 1000, gid 1000,
+#                                                     no supplementary groups,
+#                                                     CapEff 0
+#
+# uid 1000 is neither the owner nor in the owning group, so it lands on `other`
+# = r--. Measured, with the feature switched on from the framework:
+#
+#     E vendor.lineage.health-service.default:
+#         Failed to write to charging enable node: Permission denied
+#
+# and input_suspend stayed 0 with the battery still charging past the limit.
+#
+# ⚠️ Stock DOES have a fix and it does not work either. init.target.rc:191 is
+# `chmod 0666 /sys/class/power_supply/battery/input_suspend`, in `on boot` —
+# and the battery power_supply device does not exist yet at `on boot`, which is
+# the identical reason the charge_control block below had to move here. Proof:
+# every `chmod 0666` in that stock block that targets a battery node reads 0664
+# at steady state, while the one targeting panel0-backlight/hbm (created at
+# t≈2.07 s) took. ZUI never noticed because it does not use this feature.
+#
+# ✔ Proven on the hardware, four steps with a control:
+#     enable, no chown  -> Permission denied ×2, input_suspend 0, "Charging"
+#     + chown, mode AUTO-> no error; controller reports "No alarm found"
+#     + mode LIMIT      -> input_suspend 1, status "Not charging", usb online 1,
+#                          mIsLimitSet true, notification posted, zero errors
+#     restored          -> back to 0 / "Charging"
+#
+# `chown`, not stock's `chmod 0666`: the only writer on this ROM is one uid-1000
+# HAL, so owner access is sufficient and a world-writable charge-inhibit node is
+# not a thing to inherit. Same shape and the same trigger as the hbm chown
+# below — OPEN-ISSUES #35a, whose lesson this node did not get.
+#
+# ⚠️ Fast charging is untouched: this writes nothing to restrict_chg/restrict_cur,
+# and input_suspend stays 0 with the feature off, which is the default.
 on property:sys.boot_completed=1
+    chown system system /sys/class/power_supply/battery/input_suspend
     write /sys/class/qcom-battery/charge_control_en 1
     write /sys/class/power_supply/battery/charge_control_end_threshold 100
     write /sys/class/power_supply/battery/charge_control_start_threshold 95

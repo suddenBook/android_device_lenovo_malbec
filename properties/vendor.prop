@@ -328,6 +328,24 @@ ro.vendor.qspm.enable=true
 
 # Storage / USB / other board-level
 ro.frp.pst=/dev/block/bootdevice/by-name/frp
+# ★ Without this the Developer Options "OEM unlocking" toggle does not exist.
+#
+# OemUnlockPreferenceController.java:66-72 reads ro.oem_unlock_supported with a
+# default of UNSUPPORTED ("-9999"); on anything but "1" it leaves mOemLockManager
+# null, and isAvailable() (:80-82) then returns false and the whole preference is
+# hidden. Measured session 23: `getprop ro.oem_unlock_supported` was empty on this
+# build and stock sets it to 1 (work/unpacked/parts/vendor/build.prop:154).
+#
+# The rest of the machinery is already here — ro.frp.pst is set one line up and
+# /dev/block/bootdevice/by-name/frp exists — so this was the only missing piece.
+# It matters even though this unit is already unlocked: the toggle is what has to
+# be on BEFORE a `fastboot flashing unlock`, so a device that is ever relocked
+# would have no way back without it.
+#
+# Lands on vendor, same partition as stock. Label check: it falls to
+# vendor_default_prop by longest prefix, which vendor_init may already set, so no
+# new sepolicy.
+ro.oem_unlock_supported=1
 ro.crypto.metadata_init_delete_all_keys.enabled=true
 # ⚠️ external_storage.{casefold,projid,sdcardfs}.enabled used to be set here and are
 # gone on purpose. device.mk:43 inherits emulated_storage.mk, which puts the same

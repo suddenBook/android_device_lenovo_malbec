@@ -74,7 +74,8 @@
     <string name="keyboard_app1">Assistant key (right of F12)</string>
     <string name="keyboard_app2">Apps key (far right)</string>
     <string name="keyboard_search">Fn + Assistant key</string>
-    <string name="keyboard_footer">Six keys whose printed function either has no Android equivalent or is meant to be chosen by you. Everything else in the function row — mute, volume, microphone, brightness, screenshot, full screen and lock — is already handled by Android and by the keyboard\'s own firmware. Hold Fn to get plain F1–F12.</string>
+    <string name="keyboard_fullscreen">Full screen key (F9)</string>
+    <string name="keyboard_footer">Seven keys whose printed function either has no Android equivalent or is meant to be chosen by you. Everything else in the function row — mute, volume, microphone, brightness, screenshot and lock — is already handled by Android and by the keyboard\'s own firmware. Hold Fn to get plain F1–F12.</string>
 
     <!-- Action picker -->
     <string name="action_picker_title">Choose an action</string>

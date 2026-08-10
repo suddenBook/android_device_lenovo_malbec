@@ -90,6 +90,18 @@ allow vendor_init sysfs_qcom_battery:dir search;
 allow vendor_init sysfs_qcom_battery:file rw_file_perms;
 allow vendor_init vendor_sysfs_battery_supply:dir search;
 allow vendor_init vendor_sysfs_battery_supply:file rw_file_perms;
+# ★ setattr, for the `chown system system input_suspend` in the same rc block.
+# rw_file_perms above does NOT include setattr, and without it the chown that
+# makes charging control work at all is denied the day SELinux goes enforcing —
+# which would silently put the feature straight back into the state the rc file
+# documents at length (HAL runs as uid 1000, node is 0664 root:root, every write
+# returns EACCES).
+#
+# Stock has no equivalent grant, and that is not an argument for leaving it out:
+# stock's own `chmod 0666 input_suspend` sits in init.target.rc's `on boot`,
+# where the node does not exist yet, so its denial has never had a chance to be
+# logged. Ours runs where the node is provably present.
+allow vendor_init vendor_sysfs_battery_supply:file setattr;
 
 # Touch mode. rootdir/etc/init.malbec.rc writes /proc/HighReportRate from
 # `on property:persist.sys.malbec.touch_mode=*`, which MalbecParts sets when the

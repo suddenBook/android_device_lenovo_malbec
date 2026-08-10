@@ -105,12 +105,18 @@
 #     F21       folio keyboard, split-screen key (F10 keycap)
 #     F22       folio keyboard, PC-link key (F11 keycap)
 #     F23       folio keyboard, Fn + App key 1 (search)
-#     F24       unallocated — leave free
-# (⚠️ this table used to read "F13..F18 pen / F19,F20 keyboard / F21..F24 free",
-#  which stopped being true when session 17's probes moved the folio keys onto
-#  F17 and F21..F23. Keeping it accurate is the entire point of writing it down:
-#  the two files' sets must stay disjoint, and they are —
-#  pen {F13,F14,F15,F16,F18} vs folio {F17,F19,F20,F21,F22,F23}.)
+#     F24       folio keyboard, full-screen key (F9 keycap)
+# ★ THERE IS NO FREE F-KEY LEFT. F24 is the last one and session 21 took it
+#   (Vendor_17ef_Product_62b2.kl, usage 0x0c0394). A seventh customisable key
+#   would need a different trigger shape — a modifier combination, since
+#   InputGestureData triggers are (keycode, modifierState) pairs.
+# (⚠️ this table has now been wrong twice. It first read "F13..F18 pen / F19,F20
+#  keyboard / F21..F24 free", which stopped being true when session 17's probes
+#  moved the folio keys onto F17 and F21..F23; then it read "F24 unallocated —
+#  leave free" for two sessions after session 21 allocated it. Keeping it
+#  accurate is the entire point of writing it down: the two files' sets must stay
+#  disjoint, and they are —
+#  pen {F13,F14,F15,F16,F18} vs folio {F17,F19,F20,F21,F22,F23,F24}.)
 # Vendor_17ef_Product_62b2.kl's inherited `key 183..194 → F13..F24` block was
 # deleted for exactly this reason; see the note there.
 #

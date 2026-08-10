@@ -43,9 +43,15 @@
 # device (InputGestureManager.getCustomGestureForKeyEvent, :499-513). The F-key
 # range is therefore allocated across BOTH input devices, and the two files must
 # stay disjoint:
-#     F13..F18  Bluetooth pen (Vendor_17ef_Product_617f.kl)
-#     F19, F20  this keyboard, APP1 / APP2
-#     F21..F24  unallocated
+#     F13..F16, F18  Bluetooth pen (Vendor_17ef_Product_617f.kl)
+#     F17            this keyboard, touchpad key (F7 keycap)
+#     F19, F20       this keyboard, APP1 / APP2
+#     F21            this keyboard, split-screen key (F10 keycap)
+#     F22            this keyboard, PC-link key (F11 keycap)
+#     F23            this keyboard, Fn + APP1 (search)
+#     F24            this keyboard, full-screen key (F9 keycap) — see :608
+#   (⚠️ this list said "F21..F24 unallocated" for four sessions after they were
+#    allocated. Nothing free remains.)
 #
 # Stock says exactly three keys on this folio are user-customisable — APP1, APP2
 # and an "AI" key — from work/unpacked/parts/system/usr/kb-type-config/

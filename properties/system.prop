@@ -160,11 +160,22 @@ persist.sys.wfd.virtual=0
 # framework already log every state transition that matters.
 log.tag.WifiHAL=W
 
-# AGM — `metadata: metadata_print:` dumps every key/value of every audio graph
-# metadata blob at D. 223 lines/minute.
+# ⚠️ AGM and PAL are the SAME unsuppressable-tag class as sec_channel below,
+# and these two lines have never reduced anything. Measured session 23:
+# `strings -a libagm.so | grep -x AGM` and the same for `PAL` on
+# libar-pal.so both return ZERO — there is no bare tag. The real tags are
+# `AGM: session`, `AGM: API`, `AGM: metadata`, `AGM: graph`, `AGM: device`,
+# `PAL: ResourceManager`, `PAL: API`, `PAL: ACDEngine`, … i.e. a padded
+# family name plus a subcomponent, with a space in it, so no property name
+# can match. The `223 lines/minute` figure was never moved by this line.
+#
+# Kept rather than deleted, unlike sec_channel: these two cost nothing, and
+# if a future PAL/AGM revision ever logs under a bare tag they start
+# working. The point of this comment is that they are not evidence of
+# anything today — if audio log volume is ever a problem, the lever is
+# `persist.vendor.pal.log_level` / the `vendor.audio.*` verbosity props,
+# not log.tag.
 log.tag.AGM=I
-
-# PAL — the same subsystem one layer up: findKVs / setDeviceMediaConfig traces.
 log.tag.PAL=W
 
 # SDM — `Received Idle Timeout` and `Tear down the Concurrent Writeback
@@ -265,7 +276,35 @@ log.tag.PERFHAL-SCENARIOD-BRIDGE=F
 #
 # ⚠️ If attestation ever regresses, unset this first — this daemon is still the
 # most likely place to look, and its errors are the only evidence it produces.
-log.tag.sec_channel=F
+# ⚠️ THERE IS NO PROPERTY THAT CAN SILENCE THIS, and `log.tag.sec_channel=F`
+# stood here for several sessions doing nothing. The block above diagnosed
+# the two trailing spaces and then wrote the *unpadded* name anyway.
+#
+# liblog builds the key as an exact `log.tag.<tag>` lookup
+# (system/logging/liblog/properties.cpp:88-136) — no prefix match, no
+# truncation — and the tags are literally `sec_channel  : Modemcomm`,
+# `sec_channel  : ModemThreadHandler`, `sec_channel  : TzThreadHandler`,
+# `sec_channel  : tzcomm`, `sec_channel  : csc_proxy`,
+# `sec_channel  : TTimeTrigger`, `sec_channel  : SecureChannelMain` and
+# `sec_channel  : MsgQueue` (strings -a on the blob). Every one contains a
+# space and a colon, and init's IsLegalPropertyName (util.cpp:380-401)
+# permits only [A-Za-z0-9._@:-] — so no property with those names can ever
+# be created, let alone read. Measured with the line shipped:
+# `getprop log.tag.sec_channel` -> F, and the buffer still held 428 lines.
+#
+# ★ Session 23 also re-measured the extent, and the twelve-hour figure above
+# is stock's, not ours. On this build the 442 sec_channel lines run from boot
+# to +19 min and stop with `Failed to get handle of SSGSCA service as well -
+# exiting`; total CPU over 46 min of uptime is 59 jiffies. The 527 kernel
+# `qrtr: ctrl_cmd_del_client()` lines start at +3 min and stop at the same
+# instant, confirming they are the other half of the same loop. Together they
+# are ~20% of the boot log and none of it is suppressible.
+#
+# Owner decision, session 23: keep the daemon (it is the TrustZone
+# secure-channel daemon and loads TAs — libtaautoload.so, Init_qwes — and
+# session 15 already showed what removing a merely-idle service costs),
+# delete the property that pretends to hide it, and live with a bounded
+# 19 minutes of noise. Do not re-add a log.tag line for this tag family.
 
 # SP — Google's on-device handwriting/speech models complaining that a TFLite
 # zip file ref was finalised without being closed. An app-side leak in a

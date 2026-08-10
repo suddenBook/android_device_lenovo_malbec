@@ -132,9 +132,27 @@ PRODUCT_PACKAGES += \
 # work/scripts/24-blob-reconcile.py now does the reverse reconciliation (present
 # in stock, absent from the image = a gap), so this class cannot go silently
 # missing again.
+# ⚠️ android.hardware.thermal-service.qti WAS in this list and is now a BLOB.
+# It is the one QTI HAL where "the source is in the tree, so build it" is
+# provably the wrong answer for this board, and the reason generalises to every
+# other entry here: these HALs carry a per-SoC table written against Qualcomm's
+# REFERENCE board, and Lenovo's board is not it.
+#
+# thermalConfig.cpp:2487-2500 maps SKIN for soc_id 694 to thermal zone
+# `sys-therm-3`, which this board does not populate — so the source build ships
+# with NO skin temperature, which takes PowerManager.getThermalHeadroom(),
+# HardwarePropertiesManager's skin reading and every skin-driven
+# THERMAL_STATUS_* with it. Stock's blob maps SKIN to `quiet-therm`, which
+# exists. Full derivation, the same-instant measurement that identifies the
+# zone, the ABI analysis and the on-device proof are on the entry in
+# proprietary-files.txt.
+#
+# The other five stay on source. Checked so far: the USB HAL's `dumpsys usb`
+# port_manager block is field-for-field identical to stock's, so its table is
+# right for this board. health / usb.gadget / qspa are unverified — if one of
+# them turns out to have the same shape, the answer is the same one.
 PRODUCT_PACKAGES += \
     android.hardware.health-service.qti \
-    android.hardware.thermal-service.qti \
     android.hardware.usb-service.qti \
     android.hardware.usb.gadget-service.qti \
     audiohalservice.qti \
@@ -724,6 +742,44 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/perf/perfconfigstore.xml:$(TARGET_COPY_OUT_VENDOR)/etc/perf/perfconfigstore.xml
 
 # RRO partition precedence.
+#
+# ★ SESSION 23: GApps were added, so the mechanism this file exists for is now
+# LIVE. It is still, measurably, changing nothing — and the difference between
+# those two statements is the whole point of keeping the file.
+#
+# What is now live: vendor/gapps/overlay/GmsOverlay is a STATIC RRO
+# (AndroidManifest.xml: isStatic="true" priority="1337") that lands on /product
+# and targets `android` — the same target package as FrameworkOverlayMalbec,
+# which is also static, on /vendor, at priority 1. So for the first time there
+# is a real competitor.
+#
+# ⚠️ And priority 1337 vs 1 is NOT what decides it, which is the thing to know
+# before reasoning about this again. OverlayConfig.java builds its list with the
+# PARTITION loop on the outside (:158 sortPartitions, then :199-208 collecting
+# each partition's static overlays and sorting THAT list with
+# sStaticOverlayComparator). android:priority therefore only ranks static
+# overlays against each other WITHIN one partition; across partitions the file
+# below is the only lever. Measured on the pre-GMS build and consistent with
+# this: `cmd overlay list android` prints in increasing priority and puts all
+# four /product static RROs BEFORE /vendor/overlay/FrameworkOverlayMalbec.apk,
+# i.e. ours wins — the reverse of AOSP's default order, which is exactly what
+# this file buys.
+#
+# What is still inert: the two resource sets do not intersect. GmsOverlay sets
+# 22 resources and every one of them names a Google package —
+# config_defaultAssistant, config_systemSpeechRecognizer, config_systemWellbeing,
+# config_persistentDataPackageName, config_defaultAccessibilityService, the two
+# credential-provider arrays, and so on. Not one of this device's 71 resources
+# is among them, and in particular config_defaultNightMode — the resource the
+# whole original argument was about — is NOT set by MindTheGapps at all. The
+# PixelConfigOverlay2021_GMS that started this story is a different package and
+# is not what ships here.
+#
+# ⚠️ Verify after the first GMS boot rather than trusting the paragraph above:
+#     cmd overlay list android          <- FrameworkOverlayMalbec must be LAST
+#     cmd overlay lookup android android:integer/config_defaultNightMode  -> 1
+#
+# ── The session-21 text, kept because it is the reasoning that was refuted ──
 #
 # ⚠️ SESSION 21: on LineageOS this file is INERT, and it is kept only because it
 # costs nothing and becomes load-bearing again the moment GApps are added. The

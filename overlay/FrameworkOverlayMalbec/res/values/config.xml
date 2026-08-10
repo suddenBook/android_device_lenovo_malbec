@@ -710,6 +710,21 @@
          and so do both peer trees. -->
     <string name="config_dozeComponent" translatable="false">com.android.systemui/com.android.systemui.doze.DozeService</string>
 
+    <!-- Screen saver off by default. AOSP ships true
+         (core/res/res/values/config.xml:2826) and nothing in
+         vendor/lineage/overlay/** changes it, so without this line the tablet
+         offers a screen saver where stock does not. Stock forces false in
+         product/overlay/LgsiFrameworksOverlay.apk.
+
+         ⚠️ This is the *user-facing* screen saver, not doze. It does not touch
+         config_dozeComponent above: DreamManagerService still binds DozeService
+         for ambient display — verified live, `dumpsys dreams` reports
+         mDreamsSupportedConfig=true with DozeService as the active dream while
+         the screen is off. Only the "Screen saver" Settings default changes.
+
+         Owner decision, session 23: match stock. -->
+    <bool name="config_dreamsEnabledByDefault">false</bool>
+
     <!-- ================================================================== -->
     <!-- Colour modes                                                       -->
     <!-- ================================================================== -->
@@ -794,6 +809,50 @@
     <integer name="config_nightDisplayColorTemperatureMax">4628</integer>
     <integer name="config_nightDisplayColorTemperatureDefault">3420</integer>
 
+    <!-- ★ The other half of the same stock RRO, added session 23. Carrying the
+         three integers above without these two arrays meant the shipped default
+         of 3420 K produced a DIFFERENT colour from stock's 3420 K, which makes
+         "calibrated for this panel" untrue of the thing that was carried.
+
+         Eight of the nine terms are AOSP's verbatim. The ninth, the blue
+         y-intercept, is Lenovo's: -0.298650895 against AOSP's -0.198650895
+         (frameworks/base/core/res/res/values/config.xml:947 and :960; stock's
+         values read out of product/overlay/LgsiFrameworksOverlay.apk with
+         aapt2 dump resources). At 3420 K that is roughly 0.614 blue on AOSP's
+         curve against 0.514 on Lenovo's — i.e. stock's Night Light is visibly
+         warmer at the same nominal temperature, and this is what the panel was
+         tuned against.
+
+         ColorDisplayService.java:1458-1459 picks between the two arrays by
+         colour mode, so both have to be set or the difference appears and
+         disappears when the user changes screen colours. Stock sets them
+         identically; so do we.
+
+         Owner decision, session 23: match stock. -->
+    <string-array name="config_nightDisplayColorTemperatureCoefficients">
+        <!-- R a-coefficient --> <item>0.0</item>
+        <!-- R b-coefficient --> <item>0.0</item>
+        <!-- R y-intercept --> <item>1.0</item>
+        <!-- G a-coefficient --> <item>-0.00000000962353339</item>
+        <!-- G b-coefficient --> <item>0.000153045476</item>
+        <!-- G y-intercept --> <item>0.390782778</item>
+        <!-- B a-coefficient --> <item>-0.0000000189359041</item>
+        <!-- B b-coefficient --> <item>0.000302412211</item>
+        <!-- B y-intercept --> <item>-0.298650895</item>
+    </string-array>
+
+    <string-array name="config_nightDisplayColorTemperatureCoefficientsNative">
+        <!-- R a-coefficient --> <item>0.0</item>
+        <!-- R b-coefficient --> <item>0.0</item>
+        <!-- R y-intercept --> <item>1.0</item>
+        <!-- G a-coefficient --> <item>-0.00000000962353339</item>
+        <!-- G b-coefficient --> <item>0.000153045476</item>
+        <!-- G y-intercept --> <item>0.390782778</item>
+        <!-- B a-coefficient --> <item>-0.0000000189359041</item>
+        <!-- B b-coefficient --> <item>0.000302412211</item>
+        <!-- B y-intercept --> <item>-0.298650895</item>
+    </string-array>
+
     <!-- Miracast / Wi-Fi Display. AOSP default is false
          (core/res/res/values/config.xml:3424) and
          DisplayManagerService.java:2397-2405 only builds a WifiDisplayAdapter
@@ -817,6 +876,25 @@
          leaving a Settings entry that fails — an option that is guaranteed to
          fail is worse than an absent one. -->
     <bool name="config_enableWifiDisplay">true</bool>
+
+    <!-- ★ Added session 23, and it belongs with the line above rather than on
+         its own: turning Miracast on without it means the cast display cannot
+         carry protected content.
+
+         WifiDisplayAdapter.java:116 -> :408 is the only place
+         FLAG_SUPPORTS_PROTECTED_BUFFERS is set on the cast virtual display, and
+         it reads exactly this resource. AOSP defaults it false
+         (core/res/res/values/config.xml:3494); stock sets it true in
+         product/overlay/FrameworksResCommon_Sys.apk. The hardware agrees:
+         `dumpsys wifi` reports WIFI_FEATURE_WFD_R2, and this tree already ships
+         the HDCP half of the stack (android.hardware.drm-service.wfdhdcp,
+         registered live as IDrmFactory/wfdhdcp).
+
+         The same caveat as config_enableWifiDisplay applies — untested against a
+         real sink — but the failure modes differ: without this, DRM video
+         silently casts as a black rectangle rather than not casting at all,
+         which is the harder one to diagnose. -->
+    <bool name="config_wifiDisplaySupportsProtectedBuffers">true</bool>
 
     <!-- ================================================================== -->
     <!-- Desktop windowing: off                                             -->

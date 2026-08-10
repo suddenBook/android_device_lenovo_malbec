@@ -44,6 +44,82 @@ $(call inherit-product, vendor/lineage/config/common_full_tablet_wifionly.mk)
 # Inherit from malbec device
 $(call inherit-product, device/lenovo/malbec/device.mk)
 
+# ── Google Mobile Services ──────────────────────────────────────────────────
+#
+# Owner's decision (session 23): this device ships with full GMS.
+#
+# ⚠️ WITH_GMS := true is NOT the switch here, and that is not an oversight.
+# LineageOS's own mechanism is vendor/lineage/config/partner_gms.mk, which is
+# gated `ifeq ($(WITH_GMS),true)` and then `ifneq (,$(wildcard
+# vendor/partner_gms))` — a guard added by change 379220 precisely so the switch
+# is a silent no-op when the payload is absent. And it is absent: partner_gms is
+# a LineageOS *partner* repository, not in the public manifest
+# (`grep partner_gms .repo/manifests/*.xml` is empty) and
+# github.com/LineageOS/android_vendor_partner_gms is not a public repo. Setting
+# WITH_GMS with no partner_gms would change exactly two things — it would drop
+# the /product, /system and /system_ext sideload headroom in
+# BoardConfigReservedSize.mk:8, and set WITH_GMS_COMMS_SUITE in telephony.mk,
+# which this Wi-Fi-only product does not inherit — and it would arm a trap: the
+# day someone does drop a real vendor/partner_gms in, BOTH it and MindTheGapps
+# would be inherited and GmsCore/Phonesky would collide.
+#
+# So GMS comes from MindTheGapps, which is the maintained public equivalent and
+# is structured the same way: a vendor tree you inherit one *-vendor.mk from.
+# Branch `baklava` = Android 16, which is what LineageOS 23.x is.
+#
+# ⚠️ THE TWO NAMESPACES BELOW HAVE TO BE DECLARED HERE. MindTheGapps' generated
+# arm64-vendor.mk and common-vendor.mk both do
+#
+#     PRODUCT_SOONG_NAMESPACES += $(LOCAL_PATH)
+#
+# without ever setting LOCAL_PATH — unlike our own extract-utils output, which
+# writes the path literally (vendor/lenovo/malbec/malbec-vendor.mk:6). In a
+# product-config context LOCAL_PATH is whatever the last makefile left behind,
+# which here is device/lenovo/malbec (device.mk:6), so both lines would export
+# the device tree a second time and NEITHER gapps namespace would be exported.
+# Every module in them — GmsCore, Phonesky, Velvet, SetupWizard — would then fail
+# to resolve. arm64/Android.bp:3 and common/Android.bp:3 are the real
+# soong_namespace declarations.
+#
+# (vendor/gapps/overlay deliberately not listed: it has no Android.bp of its own,
+# so the four Gms*Overlay RROs are in the ROOT namespace and need no export.
+# common-vendor.mk adds it anyway; that line is theirs, not ours.)
+PRODUCT_SOONG_NAMESPACES += \
+    vendor/gapps/arm64 \
+    vendor/gapps/common
+
+$(call inherit-product, vendor/gapps/arm64/arm64-vendor.mk)
+
+# ⚠️ TWO SETUP WIZARDS SHIP, AND THAT IS CORRECT — DO NOT TRY TO REMOVE ONE.
+#
+# MindTheGapps installs Google's com.google.android.setupwizard to
+# /system_ext/priv-app/SetupWizard, and vendor/lineage/config/common.mk:157 adds
+# LineageSetupWizard (org.lineageos.setupwizard) unconditionally for every
+# non-automotive product. Neither module's `overrides:` names the other — both
+# name AOSP's `Provision` (packages/apps/SetupWizard/Android.bp:17 and
+# vendor/gapps/arm64/Android.bp:49) — so both are installed and both declare
+# MAIN/HOME.
+#
+# LineageSetupWizard resolves this itself at runtime.
+# SetupWizardApp.onCreate() (:69-71) does
+#
+#     if (SetupWizardUtils.hasGMS(this)) SetupWizardUtils.disableHome(this);
+#
+# and hasGMS (SetupWizardUtils.java:144-158) is true only when BOTH
+# com.google.android.gms and com.google.android.setupwizard are installed and
+# the latter is not disabled. disableHome (:234-241) then sets its own
+# MAIN/HOME activity to COMPONENT_ENABLED_STATE_DISABLED, so Google's wizard
+# owns the flow from the next resolution onward.
+#
+# ⚠️ A filter-out here would not work even if it were needed, and it is worth
+# writing down why: `inherit-product` does not append values, it appends an
+# INHERIT_TAG marker per variable (build/make/core/product.mk), and the real
+# lists are only resolved after every product makefile has been read. So
+# `PRODUCT_PACKAGES := $(filter-out LineageSetupWizard,$(PRODUCT_PACKAGES))`
+# placed here filters a list that does not contain the name yet, silently
+# succeeds, and changes nothing. Verified: with that line in place,
+# `get_build_var PRODUCT_PACKAGES` still contained LineageSetupWizard.
+
 PRODUCT_NAME := lineage_malbec
 PRODUCT_DEVICE := malbec
 PRODUCT_MANUFACTURER := Lenovo
