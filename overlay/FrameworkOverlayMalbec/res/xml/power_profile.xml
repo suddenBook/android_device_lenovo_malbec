@@ -68,9 +68,14 @@
 
     <!-- ★ The controller group, and on THIS device it is the only Wi-Fi group
          that gets read. Added session 25; without it, Settings > Battery
-         attributed exactly nothing to Wi-Fi on a Wi-Fi-only tablet — measured,
-         `dumpsys batterystats --checkin | grep '^9,0,l,pwi,wifi'` returned
-         `9,0,l,pwi,wifi,0,0,0,0`.
+         attributed exactly nothing to Wi-Fi on a Wi-Fi-only tablet. Measured with
+         `dumpsys batterystats` in checkin mode, grepped for `^9,0,l,pwi,wifi`:
+         it returned `9,0,l,pwi,wifi,0,0,0,0`.
+
+         ⚠️ Do not write the flag out in full anywhere in this file. XML forbids a
+         double hyphen inside a comment, aapt2 rejects the whole file with
+         "not well-formed (invalid token)", and the error names only the line — it
+         does not say why. That cost a build in session 25.
 
          Android 16 has no legacy WifiPowerCalculator left (there is no
          *PowerCalculator.java in frameworks/base at all). The only path is
