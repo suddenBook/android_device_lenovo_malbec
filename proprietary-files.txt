@@ -1249,7 +1249,27 @@ vendor/bin/hw/vendor.qti.hardware.perf2-hal-service
 vendor/bin/power_off_alarm
 vendor/bin/thermal-engine-v2
 vendor/bin/tn_vendor_performance.sh
+# ★ BOTH vidc revisions of the media config, and the _v1 half is insurance for a
+# tablet that is not this one.
+#
+# /vendor/bin/init.qti.media.sh:60-71 picks the suffix at RUNTIME off a silicon
+# register, not off the model:
+#
+#     sku_ver=`cat /sys/devices/platform/soc/aa00000.qcom,vidc/sku_version`
+#     if [ $sku_ver -eq 1 ]; then setprop vendor.media.target_variant "_tuna_v1"; fi
+#
+# This unit reads 0, and `getprop vendor.media.target_variant` confirms `_tuna_v0`
+# — so shipping only _v0 works here and would keep working here forever. On a
+# TB390FU whose vidc reports 1 it selects `_tuna_v1`, finds nothing, and the media
+# framework comes up with no codec list, no performance table and no profiles.
+# The device tree cannot know which revision someone else's tablet has.
+#
+# 95 KB for four files against a whole-subsystem failure that would only ever
+# appear on hardware the maintainer does not own. Found by the blob-gap sweep
+# (OPEN-ISSUES.md #39); it is the clearest case in that list of a gap that is
+# invisible on the bench and fatal in the field.
 vendor/etc/media_codecs_performance_tuna_v0.xml
+vendor/etc/media_codecs_performance_tuna_v1.xml
 vendor/etc/perf/avcsysnodesconfigs.xml
 vendor/etc/perf/commonresourceconfigs.xml
 vendor/etc/perf/commonsysnodesconfigs.xml
@@ -1654,11 +1674,14 @@ vendor/etc/media_codecs_google_c2_video.xml
 vendor/etc/media_codecs_google_video.xml
 vendor/etc/media_codecs_google_video_le.xml
 vendor/etc/media_codecs_tuna_v0.xml
+vendor/etc/media_codecs_tuna_v1.xml
 vendor/etc/media_profiles.xml
 vendor/etc/media_profiles_V1_0.xml
 vendor/etc/media_profiles_tuna_v0.xml
+vendor/etc/media_profiles_tuna_v1.xml
 vendor/etc/media_sun/video_system_specs.json
 vendor/etc/media_tuna_v0/video_system_specs.json
+vendor/etc/media_tuna_v1/video_system_specs.json
 vendor/etc/mem_logger_config.xml
 vendor/etc/microphone_characteristics.xml
 vendor/etc/models/acd/environment.eai

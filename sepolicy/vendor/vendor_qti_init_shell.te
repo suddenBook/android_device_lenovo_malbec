@@ -36,3 +36,35 @@
 # policy version (proc_dirty_202404) predates the open-permission split that this
 # build's platform policy applies.
 allow vendor_qti_init_shell proc_dirty:file { open write };
+
+# The same script's other half, found once the rule above stopped hiding it.
+#
+#     avc: denied { write } for comm="sh" name="rq_affinity" dev="sysfs"
+#          scontext=u:r:vendor_qti_init_shell:s0 tcontext=u:object_r:sysfs:s0
+#
+# tn_vendor_performance.sh writes a set of tunables, not one node, and each
+# surfaces only as the kernel ring allows — so this arrived on a later boot than
+# the proc_dirty pair. Read out of the script itself rather than waiting for the
+# rest to appear one denial at a time:
+#
+#     /sys/block/*/queue/read_ahead_kb        (every dm-* and sd* device)
+#     /sys/block/mmcblk0{,rpmb}/bdi/read_ahead_kb
+#     /sys/class/kgsl/kgsl/page_reclaim_per_call
+#     /sys/class/kgsl/kgsl/max_reclaim_limit
+#     /proc/sys/vm/{compaction_proactiveness,dirty_background_ratio,dirty_ratio,
+#                   swappiness,min_free_kbytes,watermark_scale_factor}
+#
+# ★ Parity with the shipping device, not an invention. Diffed the two compiled
+# policies for this domain — 191 rules on stock, 160 here — and stock carries
+#
+#     (allow vendor_qti_init_shell sysfs_202404
+#            (file (ioctl read write getattr lock append map open watch watch_reads)))
+#
+# where this build has only `relabelfrom`. So the gap is ours.
+#
+# ⚠️ The same diff found 38 rules stock has and this build does not, and they are
+# deliberately NOT copied: nearly all are diagnostics and logging plumbing
+# (mdlog_data_file, vendor_qlogd_exec, vendor_diag_device, vendor_qdss_device,
+# logpersistd_logging_prop, …) for daemons this ROM does not ship. Granting
+# access to things that are not there is how a policy stops meaning anything.
+allow vendor_qti_init_shell sysfs:file rw_file_perms;
