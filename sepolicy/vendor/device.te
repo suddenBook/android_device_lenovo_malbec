@@ -17,7 +17,23 @@ type afw_device, dev_type;
 # proinfo holds this unit's serials and MAC addresses; prop_init reads the raw
 # block device. (Stock's other reader, tndiag, is deliberately not shipped --
 # see daemons.te.)
-# ⚠️ Stock declares this with only the file_type attribute, which makes its own
-# blk_file rules unusable. dev_type added here deliberately — that is a stock bug,
-# not a convention worth copying.
+# ⚠️ This comment used to read: "Stock declares this with only the file_type
+# attribute, which makes its own blk_file rules unusable. dev_type added here
+# deliberately — that is a stock bug, not a convention worth copying."
+#
+# The first sentence is wrong. An attribute is only needed by rules written
+# AGAINST that attribute; a direct `allow SRC vendor_proinfo_block_device:blk_file
+# …` needs none, and stock's five such rules (vendor_sepolicy.cil:4306, 4666-4669)
+# all work. Nothing about stock's declaration is broken.
+#
+# `dev_type` is still the right choice, for a reason worth stating properly: it
+# is what brings the node under AOSP's ueventd rules (`allow ueventd dev_type:
+# blk_file { create setattr … }`, system/sepolicy/private/ueventd.te), so the
+# node gets created and labelled with no device-specific rule at all. Stock
+# needed an explicit ueventd grant because it did not use dev_type.
+#
+# The one thing dev_type does NOT bring is setattr for vendor_init — AOSP's only
+# dev_type blk_file grant is `getattr` (private/vendor_init.te:219). That is
+# deliberate here and is argued in vendor_init.te; do not "fix" it by adding the
+# attribute or the rule.
 type vendor_proinfo_block_device, dev_type;

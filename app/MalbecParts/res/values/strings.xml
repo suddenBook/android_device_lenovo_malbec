@@ -51,7 +51,7 @@
     <string name="touch_mode_daily_toast">Daily mode: the stylus works, and the screen reads finger touches 120 times a second</string>
     <string name="touch_mode_game_toast">Game mode: 360 touch readings a second and full processor clocks for longer. The stylus does not work in this mode.</string>
     <string name="touch_mode_rate_restored_toast">Above 120 Hz the stylus stops working and touch readings drop to 185 a second, so the refresh rate has been set back to 120 Hz</string>
-    <string name="touch_mode_footer">The screen, the touch controller and the thermal policy move together, because the hardware cannot do all of it at once. Game mode reads finger touches 360 times a second instead of 120, and lets the processor hold its full clock until the tablet reaches 48°C rather than stepping down from 42°C — but the touch controller stops scanning for the stylus entirely. Daily is the default and the only mode the stylus works in.</string>
+    <string name="touch_mode_footer">The screen, the touch controller and the thermal policy move together, because the hardware cannot do all of it at once. Game mode reads finger touches 360 times a second instead of 120, and lets the processor hold its full clock until the tablet reaches 60°C rather than stepping down from 42°C — but the touch controller stops scanning for the stylus entirely. Daily is the default and the only mode the stylus works in.</string>
 
     <!-- Screen refresh rate -->
     <string name="refresh_rate_title">Screen refresh rate</string>

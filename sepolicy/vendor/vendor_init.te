@@ -82,6 +82,39 @@ allow vendor_init proc_lenovo_pen:file { open write getattr };
 #
 # The denial is expected noise, not a defect. Leave it.
 
+# ⚠️ NOT granted, deliberately, and this one is a decision rather than a
+# limitation: vendor_init -> vendor_proinfo_block_device:blk_file setattr.
+#
+#   avc: denied { setattr } name="sda1" scontext=u:r:vendor_init:s0
+#        tcontext=u:object_r:vendor_proinfo_block_device:s0 tclass=blk_file
+#
+# The source is /vendor/etc/init/hw/init.target.rc:188, `chmod 0777
+# /dev/block/sda1`, in `on boot`. sda1 is proinfo — this unit's serial numbers
+# and MAC addresses, as a RAW BLOCK DEVICE.
+#
+# Stock grants it (vendor_sepolicy.cil:4668, the full
+# {ioctl read write create getattr setattr lock append map unlink open ...} set)
+# and the result is measurable on this build too, because permissive lets the
+# chmod through anyway:
+#
+#   $ ls -lZ /dev/block/sda1
+#   brwxrwxrwx 1 root root u:object_r:vendor_proinfo_block_device:s0
+#
+# i.e. on the shipping ZUI image every uid on the device can WRITE the partition
+# holding the serials and MACs. That is the thing to fix, not to copy.
+#
+# Not granting it makes enforcing do the right thing by itself: the chmod fails,
+# the node keeps ueventd's root-only default, and nothing loses access, because
+# the only reader on this ROM runs as root —
+#
+#   $ ps -A -o USER,NAME | grep battery-service
+#   root  vendor.lenovo.hardware.battery-service
+#
+# (stock's other reader, tndiag, is deliberately not shipped — see daemons.te).
+# So `dontaudit` rather than `allow`: silence one expected boot denial, and end
+# up strictly tighter than stock rather than at parity with it.
+dontaudit vendor_init vendor_proinfo_block_device:blk_file setattr;
+
 # Charging control gate. init.malbec.rc opens /sys/class/qcom-battery/
 # charge_control_en at boot and parks the two threshold nodes at "no limit";
 # the derivation is in the rc file. Without this, Settings' Charging control
@@ -90,17 +123,39 @@ allow vendor_init sysfs_qcom_battery:dir search;
 allow vendor_init sysfs_qcom_battery:file rw_file_perms;
 allow vendor_init vendor_sysfs_battery_supply:dir search;
 allow vendor_init vendor_sysfs_battery_supply:file rw_file_perms;
-# ★ setattr, for the `chown system system input_suspend` in the same rc block.
-# rw_file_perms above does NOT include setattr, and without it the chown that
-# makes charging control work at all is denied the day SELinux goes enforcing —
-# which would silently put the feature straight back into the state the rc file
-# documents at length (HAL runs as uid 1000, node is 0664 root:root, every write
-# returns EACCES).
+# setattr, for the `chown system system input_suspend` in the same rc block.
 #
-# Stock has no equivalent grant, and that is not an argument for leaving it out:
-# stock's own `chmod 0666 input_suspend` sits in init.target.rc's `on boot`,
-# where the node does not exist yet, so its denial has never had a chance to be
-# logged. Ours runs where the node is provably present.
+# ⚠️ This used to be starred and to say: "rw_file_perms above does NOT include
+# setattr, and without it the chown that makes charging control work at all is
+# DENIED the day SELinux goes enforcing." That is wrong, and so is the same
+# paragraph's inference from stock having no equivalent grant.
+#
+# AOSP already grants vendor_init both halves, unconditionally, for every
+# sysfs/procfs type that is not on an explicit exclusion list
+# (system/sepolicy/private/vendor_init.te):
+#
+#   :190-203  allow vendor_init { fs_type -bpffs_type -contextmount_type
+#                                 -keychord_device -sdcard_type -fusefs_type
+#                                 -rootfs -proc_uid_* -proc_kallsyms
+#                               }:file { open read setattr map };   # "chown/chmod
+#                                                                   #  on pseudo files"
+#   :235      allow vendor_init { sysfs_type -sysfs_usermodehelper }:file rw_file_perms;
+#   :233      allow vendor_init sysfs_type:dir r_dir_perms;         # includes search
+#
+# and both types here carry both attributes —
+#   sysfs_qcom_battery            file.te:79                    (fs_type, sysfs_type)
+#   vendor_sysfs_battery_supply   device/qcom/sepolicy_vndr/sm8550/.../file.te:64
+# — and neither appears in any exclusion list. So the four rules above and this
+# one are ALL redundant today, and stock's silence is explained by the same fact
+# rather than by stock's chmod never having been logged.
+#
+# ★ Kept anyway, and that is the decision, not an oversight: they cost nothing,
+# they state at the point of use which nodes this device's init actually
+# touches, and AOSP has been narrowing vendor_init's blanket grants release by
+# release (the exclusion list above is that process, mid-flight). If one of these
+# types ever joins it, these five lines are the difference between a working
+# feature and #42 all over again. Do not delete them for tidiness; if you want
+# them gone, prove first that the compiled policy is byte-identical without them.
 allow vendor_init vendor_sysfs_battery_supply:file setattr;
 
 # Touch mode. rootdir/etc/init.malbec.rc writes /proc/HighReportRate from

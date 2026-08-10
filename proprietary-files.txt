@@ -674,20 +674,44 @@ vendor/etc/charger_fw_fstab.qti
 #     (/proc/*/maps and /proc/*/fd swept).
 #
 # Stock ships three families (bm5a73v04, bm5a73v08, bm5a79v08 — 154 files,
-# ~640 MB). This tree takes the 51 bm5a73v08. WHY v08 RATHER THAN v04 IS NOT
-# RECORDED ANYWHERE and could not be re-derived; both are arch v73, both are the
-# same file count, and their contents differ.
+# ~640 MB). This tree takes the 51 bm5a73v08.
 #
-# ⚠️ Do NOT "fix" this by also shipping v04 — that is another 211 MB for an
-# unproven need, which is the opposite trade from the media_tuna_v1 case above
-# (95 KB). And do not drop the v08 set on the strength of "nothing references
-# it" either: absence of a literal filename is exactly what a runtime-assembled
-# path looks like.
+# ★★ SETTLED IN SESSION 24 — the consumer has a name, and v08 is right for this
+# SoC. The loader is /vendor/lib64/libbitmlenginev2.so, Qualcomm's CamX "BITML
+# Engine V2", and the reason no byte scan could ever find these filenames is that
+# it never contains one: CamX::BITMLNetwork::setNetworkConfig() builds the path
+# by appending seven short fragments —
 #
-# What would settle it, in order of cost: remove them behind an `adb remount`
-# overlay and exercise the camera and any AI feature while watching for open()
-# failures; or find the QNN/HTP loader that assembles the name. See
-# work/OPEN-ISSUES.md #39.
+#     "/vendor/lib64/" + "bm5" + <arch> + <vtcm> + "s13" + "n" + <2-digit id> + ".bin"
+#
+# — then fopen()s it and hands the buffer to bitml_nsp_v2_domains_deserialize()
+# over FastRPC to the CDSP.
+#
+# ✔ Confirmed without disassembly, which is what makes it checkable here:
+# `strings -n 3` on that library yields each of `bm5`, `a68`, `a73`, `a75`,
+# `a79`, `v04`, `v08`, `s13`, `.bin` and `/vendor/lib64/` EXACTLY ONCE, as
+# standalone strings. Ten single-use fragments is the append construction made
+# visible.
+#
+# Selection is by soc_id (SocUtils::GetSocId(), overridable by an `OverrideSocId`
+# line in camxoverridesettings.txt, which our shipped copy does not have):
+# 655/694 -> a73 + v08. This unit reads 694 / TUNAP
+# (`cat /sys/devices/soc0/soc_id /sys/devices/soc0/machine`). `v04`/`v08` are
+# literally vtcm_mb=4 / vtcm_mb=8, matching the blobs' own metadata.
+#
+# ★ So v08 is not a coin toss and it is not per-unit: soc_id is fixed for the
+# whole TB390FU model, so unlike the media_tuna_v1 / camera-tuning cases there is
+# no other unit to insure against. The tree was already coherent with itself
+# without knowing why — it ships vendor/lib64/rfs/dsp/libbitml_nsp_73na_skel.so
+# and deliberately not the _79na_ skel, which is the DSP side only the a79 blobs
+# could use.
+#
+# ⚠️ Still do NOT also ship v04 or a79: 211 MB and 211 MB respectively, for
+# families this SoC's selection chain provably never reaches.
+#
+# (The 26 missing indices in the n00-n77 range are not gaps —
+# getNetworkIDFromName bounds at 77 contiguous IDs and not every network has a
+# compiled graph for this arch/vtcm build.) See work/OPEN-ISSUES.md #39/#52.
 vendor/lib64/bm5a73v08s13n00.bin
 vendor/lib64/bm5a73v08s13n01.bin
 vendor/lib64/bm5a73v08s13n02.bin
@@ -1109,7 +1133,7 @@ vendor/lib64/hw/com.qti.chi.override.so|8c1b90deff4010fa9a45b396d18f0e85a44f84d6
 vendor/lib64/libaidenoiser.so
 vendor/lib64/libaidenoiserv2.so
 vendor/lib64/libcamxcommonutils.so
-vendor/lib64/libcamxcoreutils.so
+vendor/lib64/libcamxcoreutils.so|4d29301b7a3d89626ed9ae8ef5f226a50d698a45|87d04a2724335eac9d2b89afe99ce8ef5dee4059
 vendor/lib64/libcamxcsl.so
 vendor/lib64/libcamxexternalformatutils.so
 vendor/lib64/libcamxfdengine.so
@@ -1119,7 +1143,7 @@ vendor/lib64/libcamxhwnodecontext.so
 vendor/lib64/libcamxifestriping.so
 vendor/lib64/libcamximageformatutils.so|0857d3c9d2bb45d20d72c9d334023a23de1437ce|c00f7863f915bb42dfc6e11a0cb37688bb7341db
 vendor/lib64/libcamxncsdatafactory.so
-vendor/lib64/libcamxods.so
+vendor/lib64/libcamxods.so|8dc243414b2c4fac539cb4b9974dac2b0a665257|f0745e336e07e4133bdcfd7b5a3855d9f572e5ff
 vendor/lib64/libcamxofehwl.so
 vendor/lib64/libcamxqsatalgo.so
 vendor/lib64/libcamxsettingsmanager.so
@@ -1207,7 +1231,7 @@ system_ext/lib64/vendor.qti.hardware.wifidisplaysession_aidl-V1-ndk.so
 vendor/bin/hw/vendor.lenovo.hardware.display-service
 vendor/bin/hw/vendor.qti.hardware.display.allocator-service
 vendor/bin/hw/vendor.qti.hardware.display.color-service
-vendor/bin/hw/vendor.qti.hardware.display.composer-service;DISABLE_DEPS
+vendor/bin/hw/vendor.qti.hardware.display.composer-service;DISABLE_DEPS|4c3e5116fce5862b578fe75a7157b617876cf891|18bfef7b11099b4c59e74dc53f9c03f00892fba6
 vendor/bin/hw/vendor.qti.hardware.display.demura-service
 vendor/bin/init.qti.display_boot.sh
 vendor/bin/qdcmss
@@ -1264,7 +1288,7 @@ vendor/lib64/libsdm-brightnessaware-parser.so
 vendor/lib64/libsdm-color.so
 vendor/lib64/libsdm-colormgr-algo.so
 vendor/lib64/libsdm-disp-vndapis.so
-vendor/lib64/libsdmclient.so
+vendor/lib64/libsdmclient.so|8d444d3a6126b82459dc706744fdf245fbc59fed|56e02d6571a0cbde3deb89ac298e3d6e7b773aa1
 vendor/lib64/libsdmcore.so
 vendor/lib64/libsdmdal.so
 vendor/lib64/libsdmextension.so
@@ -2009,7 +2033,7 @@ vendor/lib64/libjnihelper.so
 vendor/lib64/libjpege.so
 vendor/lib64/libkcl.so
 vendor/lib64/libkernelmanager.so
-vendor/lib64/liblearningmodule.so
+vendor/lib64/liblearningmodule.so|9c393788a591143f5256d52129122d85ed3f85ea|8aced06f7b471acea5400bb2f1c526632212d465
 vendor/lib64/liblenovo_keyboard.so
 vendor/lib64/liblightninglaunches.so
 vendor/lib64/libllvm-glnext.so

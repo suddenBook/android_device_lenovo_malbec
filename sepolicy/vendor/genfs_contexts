@@ -17,6 +17,37 @@
 genfscon sysfs /devices/platform/soc/soc:lenovo_kb            u:object_r:sysfs_kb:s0
 genfscon sysfs /devices/platform/soc/soc:lenovo_kb/wakeup      u:object_r:sysfs_wakeup:s0
 
+# The other two wakeup sources on this device that do NOT get sysfs_wakeup from
+# the kernel, and that stock labels here. Both were missing, and the first one
+# is an every-boot denial on this build (session 24):
+#
+#   avc: denied { read open } comm="android.system."
+#        path=".../spi4/spi4.0/wakeup/wakeup20/name"
+#        scontext=u:r:system_suspend:s0 tcontext=u:object_r:sysfs:s0
+#
+# ⚠️ This is a LABEL defect, not a rule defect, which is why a rule-level diff
+# against stock does not find it: `allow system_suspend sysfs_wakeup:file
+# { read open getattr }` is present in BOTH policies. Stock simply never hits
+# the `sysfs` type, because its genfs labels these two nodes and ours did not.
+#
+# Enumerated closed rather than guessed -- every wakeup source on the device was
+# resolved to its live label, and these are the only two of 40-odd that come
+# back plain `sysfs`:
+#
+#   for w in /sys/class/wakeup/*; do r=$(readlink -f $w); ls -Zd $r; done
+#     u:object_r:sysfs:s0  .../a90000.spi/spi_master/spi4/spi4.0/wakeup/wakeup20
+#     u:object_r:sysfs:s0  .../soc:qcom,pmic_glink_log:bm_adsp_ulog/wakeup/wakeup43
+#
+# spi4.0 is the Novatek touch controller (`cat .../spi4.0/modalias` ->
+# spi:NVT-ts-spi), so the cost of leaving it unlabelled is that touch-wake loses
+# its attribution in `dumpsys suspend_control` and in battery wakeup blame.
+#
+# Both paths are copied verbatim from stock's compiled policy
+# (work/unpacked/parts/vendor/etc/selinux/vendor_sepolicy.cil:44 and :53), so
+# they are Lenovo's own strings for Lenovo's own board, not a reconstruction.
+genfscon sysfs /devices/platform/soc/ac0000.qcom,qupv3_1_geni_se/a90000.spi/spi_master/spi4/spi4.0/wakeup                    u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/soc/soc:qcom,pmic_glink_log/soc:qcom,pmic_glink_log:bm_adsp_ulog/wakeup                     u:object_r:sysfs_wakeup:s0
+
 # The stylus and folio knobs. Stock leaves these as plain "proc" and lets its
 # touchscreen HAL write any proc file; labelling them lets that HAL be granted
 # these four alone (see hal_lenovo.te).

@@ -236,5 +236,46 @@
         <darkeningLightDebounceMillis>3000</darkeningLightDebounceMillis>
         <brighteningLightDebounceIdleMillis>2000</brighteningLightDebounceIdleMillis>
         <darkeningLightDebounceIdleMillis>3000</darkeningLightDebounceIdleMillis>
+
+        <!-- ★ The one AOSP knob that exists specifically for a stylus tablet, and
+             it was missing (session 24). Must be LAST in the element sequence —
+             display-device-config.xsd puts idleStylusTimeoutMillis after
+             luxToBrightnessMapping, and xsdc enforces xs:sequence order.
+
+             What it does: while the pen is in use, DisplayPowerController freezes
+             automatic brightness. `stylusGestureStarted()` (:3106) posts
+             MSG_SET_STYLUS_BEING_USED; the matching MSG_SET_STYLUS_USE_ENDED is
+             posted at `uptimeMillis() + mIdleStylusTimeoutMillisConfig` (:3258).
+             DisplayBrightnessStrategySelector then refuses the automatic-brightness
+             strategy for that window.
+
+             Why it matters HERE rather than in general: the hand and forearm rest
+             on a 13" panel while writing, directly over the gs6155 ALS, so the
+             measured lux drops for as long as the stroke lasts. With the debounce
+             values above (2 s brighten / 3 s darken) that is easily long enough to
+             trigger a dim mid-sentence, and the screen then brightens again when
+             the hand lifts.
+
+             ⚠️ The default is ZERO — DisplayDeviceConfig.java:711
+             DEFAULT_IDLE_STYLUS_TIMEOUT_MILLIS = 0 — so the freeze ended one
+             handler loop after each stroke and the feature was effectively off.
+             Measured before the change: `dumpsys display` -> mIdleStylusTimeoutMillis= 0.
+
+             The gate is on: the flag it hangs off,
+             com.android.server.display.feature.flags.block_autobrightness_changes_on_stylus_usage,
+             reads `enabled` and read-only on this build (`aflags list`), and
+             `dumpsys input_method` reports `mStylusIds=[6]`, i.e. the framework
+             already knows this device has one.
+
+             10000 is AOSP's own documented example (DisplayDeviceConfig.java:381)
+             and is the pause between strokes, not a lockout: any new pen event
+             re-arms it. It only has any effect at all when the user has turned
+             adaptive brightness on, which is not the default here (stock also
+             ships screen_brightness_mode=0).
+
+             Acceptance test: `dumpsys display | grep mIdleStylusTimeoutMillis`
+             must read 10000. Then, with adaptive brightness on, write with the pen
+             under a lamp and confirm the backlight holds. -->
+        <idleStylusTimeoutMillis>10000</idleStylusTimeoutMillis>
     </autoBrightness>
 </displayConfiguration>

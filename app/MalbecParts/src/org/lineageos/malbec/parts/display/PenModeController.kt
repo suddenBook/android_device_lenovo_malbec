@@ -282,9 +282,34 @@ object PenModeController {
      *
      * Called at boot and whenever this process starts. It writes the property
      * even when unchanged, which is deliberate: init notifies on every set, not
-     * only on a change (system/core/init/property_service.cpp:427), so this is
-     * what makes the /proc writes and the thermal policy happen on a fresh boot
-     * where the property already held the right value.
+     * only on a change (system/core/init/property_service.cpp:427).
+     *
+     * ⚠️ The rest of that sentence used to read "…so this is what makes the /proc
+     * writes and the thermal policy happen on a fresh boot where the property
+     * already held the right value." Measured in session 24, that is no longer
+     * true of a cold boot, and has not been since init.malbec.rc grew its
+     * `on property:sys.boot_completed=1` blocks:
+     *
+     *   2.876 s  load_persist_props sets persist.sys.malbec.touch_mode, the bare
+     *            trigger fires, `setprop vendor.thermal.mode <mode>`
+     *   3.935 s  thermal-switch-engine starts with the right conf
+     *  11.770 s  boot_completed blocks re-write /proc/support_pen and
+     *            /proc/HighReportRate (both modes are covered — the stylus block
+     *            first, the game block after it, in file order)
+     *  12.270 s  this process starts, reassert() -> publish()
+     *  12.400 s  init.qcom.rc:523-526 `on property:vendor.thermal.mode=*` does
+     *            stop/stop/start, so thermal-engine-v2 is restarted for nothing
+     *
+     * So on a cold boot this call costs one redundant thermal-engine restart and
+     * buys nothing. It is kept anyway, and the reason is the OTHER thing the rc
+     * file documents: nvt_touch.ko's Boot_Update_Firmware delayed work lands at
+     * ≈7.3 s and resets the controller, and nothing guarantees that is the last
+     * time something outside this app moves those nodes. Re-asserting a known
+     * state when the process starts is worth 130 ms once per boot.
+     *
+     * If that trade is ever re-decided, the change is to skip publish() when
+     * SystemProperties.get(PROP_TOUCH_MODE) already equals `mode` — but note
+     * that also gives up the /proc re-assertion, which is the half with value.
      */
     fun reassert(context: Context) {
         val mode = currentMode(context)

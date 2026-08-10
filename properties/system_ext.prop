@@ -23,6 +23,37 @@ ro.audio.ihaladaptervendorextension_enabled=true
 # been paired against, so keep parity rather than "fixing" it.)
 bluetooth.device.class_of_device=90,2,12
 
+# The name this tablet advertises over Bluetooth. Session 24; it was the third
+# leg of a decision the tree had already made twice and this one was missed.
+#
+# Measured on the build before the change — three names, three answers:
+#
+#   Settings.Global.device_name  Idea Tab Pro Gen 2          SettingsProviderOverlayMalbec
+#                                                            /res/values/defaults.xml
+#   Wi-Fi Direct device name     Lenovo Idea Tab Pro Gen 2   WifiOverlayMalbec
+#                                                            /res/values/config.xml
+#   Bluetooth adapter name       TB390FU                     <- nothing set it
+#
+# `TB390FU` is not a fallback anyone chose: btif_dm.cc reads
+# PROPERTY_DEFAULT_DEVICE_NAME ("bluetooth.device.default_name", :142) and, when
+# it is empty, falls back to PROPERTY_PRODUCT_MODEL ("ro.product.model", :145).
+# So the model code leaks out to every remote device as the pairing name.
+#
+# ⚠️ Stock does NOT set this property either — it gets there another way. ZUI
+# patches the framework to read ro.config.lgsi.market_name, which does not exist
+# on LineageOS, and stock's adapter therefore reads `Lenovo Idea Tab Pro Gen 2`
+# (work/device_dump/stock/dumpsys/bluetooth_manager.txt). Grepping stock's
+# build.prop files for this key finds nothing, so "stock does not set it" is true
+# and irrelevant — the mechanism, not the value, is what does not carry over.
+#
+# The value matches Settings.Global.device_name rather than stock's, because
+# that is the string Settings > About > Device name shows and the one
+# DeviceNamePreferenceController.java:147 pushes into
+# BluetoothAdapter.setName() the moment the user edits it. Two of the three now
+# agree exactly; Wi-Fi Direct keeps the "Lenovo " prefix it already had. This is
+# only the DEFAULT — renaming the device still overrides it.
+bluetooth.device.default_name=Idea Tab Pro Gen 2
+
 # aptX Voice / super-wideband HFP. This device carries the QTI Bluetooth HAL
 # blobs that implement it, so the stock values apply unchanged.
 bluetooth.hfp.codec_aptx_voice.enabled=true

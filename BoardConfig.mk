@@ -336,7 +336,12 @@ DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE += \
     $(DEVICE_PATH)/configs/hidl/compatibility_matrix.device.xml \
     hardware/qcom-caf/common/vendor_framework_compatibility_matrix.xml \
 
-DEVICE_MATRIX_FILE := hardware/qcom-caf/common/compatibility_matrix_aidl.xml
+# += for exactly the reason the comment below gives for DEVICE_MANIFEST_FILE —
+# this line was the one the argument was written about and did not get applied to
+# (session 24). soong_config.mk:681 is `$(call add_json_list, DeviceMatrixFile,
+# $(DEVICE_MATRIX_FILE))`, a list, and device/google/trout/aosp_trout_x86_64.mk:37
+# appends to it in-tree, so the same silent-drop applies.
+DEVICE_MATRIX_FILE += hardware/qcom-caf/common/compatibility_matrix_aidl.xml
 # += rather than :=. build/make/core/soong_config.mk:699 consumes this as a list
 # (add_json_list, DeviceManifestFiles) and AOSP's own build/make/target/product/
 # full.mk:26 appends to it, so := silently drops anything an inherited config
@@ -903,5 +908,59 @@ WIFI_DRIVER_STATE_CTRL_PARAM := "/dev/wlan"
 WIFI_DRIVER_STATE_OFF := "OFF"
 WIFI_DRIVER_STATE_ON := "ON"
 WIFI_FEATURE_HOSTAPD_11AX := true
+# ★ 11BE, session 24. WITHOUT THESE THE SOFTAP SILENTLY DOWNGRADES TO 11ax while
+# the framework advertises Wi-Fi 7 hotspot support, which is the same
+# "advertised and dead" shape this tree hunts everywhere else.
+#
+# external/wpa_supplicant_8/board_config_wpa_supplicant.mk:47-54 is the only
+# reader; it turns these into soong_config hostapd_11be / wpa_supplicant_11be,
+# and hostapd/Android.bp:483-485,638-641 gates -DCONFIG_IEEE80211BE and
+# src/ap/ieee802_11_eht.c on them. Nothing else sets them, so unset means the
+# EHT code is not compiled at all.
+#
+# Measured on the artefacts rather than reasoned about — count of `eht_` strings
+# in the shipped binaries, ours before this change vs stock's:
+#
+#                     ours   stock
+#   vendor/bin/hw/hostapd          6      20
+#   vendor/bin/hw/wpa_supplicant   5       6
+#   (`ieee80211be` as a whole word: hostapd 0 vs 1, supplicant 0 vs 8)
+#
+# i.e. Lenovo builds all of this and we did not, on the same silicon.
+#
+# ★★ And the decisive measurement is a runtime one, taken by starting the hotspot
+# on this build before the change. hostapd prints its own verdict:
+#
+#   hostapd: getGeneration hwmode=1, ht_enabled=1, vht_enabled=0,
+#            he_supported=1, eht_supported=1, ieee80211ax=1, ieee80211be=0
+#   SoftApInfo{... wifiStandard= 6 ...}          <- 6 = WIFI_STANDARD_11AX
+#
+# `eht_supported=1` is the DRIVER answering that the radio does EHT AP mode;
+# `ieee80211be=0` is our hostapd having no CONFIG_IEEE80211BE to turn it on with.
+# So this is not a hardware limit and not a driver limit — it is one missing
+# board variable, and the driver has already said yes.
+#
+# ⚠️ The STA side already worked WITHOUT the flag and that is not a reason to
+# skip it: live on this build, `dumpsys wifi` reports `Wi-Fi standard: 11be,
+# Link speed: 2882Mbps, mWifiStandard=7`, because EHT reporting reads
+# wpa_s->connection_eht, which events.c sets unconditionally. What the supplicant
+# flag adds is the ML-element handling in the SAE path (sme.c), i.e. MLO — and
+# this build reports `AP MLO Affiliated links: []`, `mlo_mode=0` today.
+#
+# ★ ACCEPTANCE TEST, and it must actually be run, because enabling EHT in hostapd
+# only helps if the qca_cld3 driver accepts EHT AP mode:
+#
+#   1. turn the hotspot on
+#   2. `dumpsys wifi | grep -i SoftApInfo`  -> expect WIFI_STANDARD_11BE
+#   3. `logcat -s hostapd`                  -> no "unknown configuration item",
+#                                              no start failure
+#
+# If the driver rejects it, revert BOTH of these AND set
+# overlay/WifiOverlayMalbec/res/values/config.xml's
+# config_wifiSoftapIeee80211beSupported back to false. The board flag and the
+# overlay resource are one decision and must move together — the overlay has
+# been claiming true since it was written.
+WIFI_FEATURE_HOSTAPD_11BE := true
+WIFI_FEATURE_SUPPLICANT_11BE := true
 WIFI_HIDL_UNIFIED_SUPPLICANT_SERVICE_RC_ENTRY := true
 WPA_SUPPLICANT_VERSION := VER_0_8_X

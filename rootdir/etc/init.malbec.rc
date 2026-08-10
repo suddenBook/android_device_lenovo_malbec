@@ -125,8 +125,18 @@ on property:sys.boot_completed=1
 #
 #   normal   CPU clusters 1/2/3 step down at 42/44/46/48 C
 #            (2611 -> 2323 -> 1920 -> 1190 MHz on cl1/2)
-#   game     the 42/44/46 C steps are GONE; a single step at 48 C.
-#            Full clock until 48 C. Battery-current throttle starts 1 C earlier.
+#   game     the 42/44/46 C steps are GONE. Full clock until 60 C, then a
+#            three-step ramp 60/64/68 C. Battery-current throttle starts 1 C
+#            earlier.
+#            ⚠️ These three lines used to read "a single step at 48 C. Full clock
+#            until 48 C", which described STOCK's game profile. This tree ships
+#            its own (configs/thermal/thermal-engine-malbec-game.conf), whose
+#            header documents the change: trigger raised 48 -> 60 C and the cliff
+#            replaced by a ramp, on the owner's decision. The conf file and this
+#            table had disagreed since that change; the conf file is the
+#            authority (`thresholds 60000 64000 68000` on MON-MSM-CPU1/2/3).
+#            MalbecParts' touch_mode_footer string said 48 C too, and was
+#            corrected in the same pass.
 #   skynet   onset moves 42 C -> 40 C, adds a whole MON-MSM-CPU0 block that
 #            throttles the little cluster (normal never touches it), and every
 #            rung is lower. It is SLOWER and cooler, not faster.
@@ -377,6 +387,85 @@ on property:sys.boot_completed=1
     write /sys/class/qcom-battery/charge_control_en 1
     write /sys/class/power_supply/battery/charge_control_end_threshold 100
     write /sys/class/power_supply/battery/charge_control_start_threshold 95
+
+# ---------------------------------------------------------------------------
+# ★ Reported charging speed: hide the UCSI *source* power supply from the health
+# HAL, which is what Qualcomm's own health HAL already asks for and does not get.
+# Session 24, OPEN-ISSUES #52.
+#
+# Symptom, measured on this build against the SAME unit's stock dump, on the SAME
+# 900 mA PC port:
+#
+#     ours   dumpsys battery -> Max charging current: 3000000   ("Charging rapidly")
+#     stock  dumpsys battery -> Max charging current:  900000   ("Charging")
+#
+# 3 A x 5 V = 15 W is over AOSP's 7.5 W "fast" threshold, so the lock screen, the
+# battery Settings page and every app reading EXTRA_MAX_CHARGING_CURRENT are told
+# the tablet is fast-charging off a USB2 port that can supply 4.5 W.
+#
+# It is not a kernel difference. Both sysfs trees are identical — stock's own
+# power_supply dump (work/device_dump/stock/power/power_supply.txt:72-80) has the
+# same two USB-type supplies with the same values:
+#
+#     ucsi-source-psy-…:ucsi1   type=USB  online=1  current_max=3000000
+#     usb                       type=USB  online=1  current_max= 900000
+#
+# The first is the Type-C *advertised source capability*; the second is what the
+# port is actually allowed to draw (its input_current_limit reads 500000).
+# BatteryMonitor::updateValues() (system/core/healthd/BatteryMonitor.cpp:477-577)
+# enumerates every online charger supply and keeps the one with the highest
+# current_max x voltage_max, so the advertisement wins over the reality.
+#
+# ★★ Qualcomm already fixed this and AOSP undoes it. healthd-ext's own board init
+# names this exact PSY:
+#
+#     vendor/qcom/opensource/healthd-ext/aidl/main.cpp:33-36,47-48
+#         constexpr char *ucsiPSYName[]{ "ucsi-source-psy-soc:qcom,pmic_glink:qcom,ucsi1",
+#                                        "…ucsi2" };
+#         hc->ignorePowerSupplyNames.push_back(String8(ucsiPSYName[0]));
+#
+# and BatteryMonitor honours that list in init() (:862-866) — but updateValues()
+# does `mChargerNames.clear()` and rescans /sys/class/power_supply from scratch
+# (:484-517) WITHOUT consulting it, so the very first update puts the ignored
+# supply straight back. The ignore list works exactly once, before any reading is
+# taken. That is an upstream AOSP defect, not a Qualcomm or a Lenovo one.
+#
+# The device-tree lever is the gate updateValues() uses to build its list:
+#
+#     path = ".../<name>/online";
+#     if (access(path, R_OK) == 0) mChargerNames.add(name);
+#
+# access() is DAC, and the health HAL runs as uid 1000 (`ps -A -o USER,NAME` ->
+# system  android.hardware.health-service.qti), so making `online` root-only
+# removes this one supply from the scan and leaves every other supply, and every
+# other reader, untouched. It is the narrowest expression of
+# ignorePowerSupplyNames that a device tree can write.
+#
+# ✔ Proven on the hardware, four steps with a control:
+#     chmod 0600 online + restart HAL   -> Max charging current:  900000
+#     chmod 0444 online + restart HAL   -> Max charging current: 3000000
+#   (the restart is required — BatteryService caches the last broadcast, so a
+#    chmod alone changes nothing until the HAL takes a new reading.)
+#
+# Trigger: boot_completed, not `on boot`. The supply is created by pmic_glink at
+# kernel ≈4.41 s and the vendor `on boot` block runs at ≈4.07 s — the same reason
+# the charge-threshold block above had to move. Between boot and boot_completed
+# the value is briefly 3 A; nothing reads it that early.
+#
+# Enforcing: covered with no new rule. vendor_sysfs_usb_supply is declared
+# `sysfs_type, fs_type` (device/qcom/sepolicy_vndr/sm8750/generic/vendor/common/
+# file.te:107) and AOSP grants vendor_init `fs_type:file setattr`.
+#
+# ⚠️ If this ever needs reverting, the node is only used for this: drop the line,
+# and `Max charging current` goes back to reporting the Type-C advertisement.
+# The clean fix is four lines upstream (make updateValues() consult
+# ignorePowerSupplyNames the way init() does); this tree does not patch upstream.
+#
+# (Its own action rather than a line appended to the charging-control block
+# above: the two are independent, and this file already documents that ordering
+# between same-trigger blocks is load-bearing where it matters.)
+on property:sys.boot_completed=1
+    chmod 0600 /sys/class/power_supply/ucsi-source-psy-soc:qcom,pmic_glink:qcom,ucsi1/online
 
 # ---------------------------------------------------------------------------
 # LiveDisplay Outdoor mode: wait for the HBM node before `class hal` starts.
