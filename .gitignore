@@ -1,0 +1,4 @@
+# `26-orphan-blobs.py` imports extract-files.py to read its blob_fixups dict,
+# and Python drops a bytecode cache next to it. It is not part of the tree.
+__pycache__/
+*.pyc
