@@ -1225,6 +1225,25 @@ PRODUCT_PACKAGES += \
     SystemUIOverlayMalbec \
     WifiOverlayMalbec
 
+# ── Parallel window (系统级平行视界) ────────────────────────────────────────
+#
+# Per-app routing that lets a phone-only app be laid out as two panes. The
+# engine is in frameworks/base and is device-agnostic; this is the rule corpus,
+# which is not. Installed to /system_ext/etc/parallel_window/.
+#
+# ⚠️ The feature depends on two properties this tree does NOT own:
+# persist.wm.extensions.enabled and
+# persist.wm.extensions.activity_embedding_guard_with_android_15. Both arrive via
+# lineage_malbec.mk -> common_full_tablet_wifionly.mk -> tablet.mk ->
+# large_screen_common.mk -> window_extensions.mk. If that inherit chain is ever
+# changed the whole feature disappears silently, which is why
+# work/scripts/52-parallel-window.py checks for them rather than assuming them.
+#
+# Master switch at runtime: persist.sys.parallel_window.enabled (default true).
+# Control surface: `wm parallel-window status|dump|list|reload|enable|disable`.
+PRODUCT_PACKAGES += \
+    malbec_parallel_window_rules
+
 # ── LiveDisplay ─────────────────────────────────────────────────────────────
 #
 # New in session 21. LineageOS ships a display-tuning framework that PixelOS has

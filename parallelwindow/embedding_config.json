@@ -1,0 +1,68 @@
+{
+  "_comment": [
+    "Rule corpus for the system-imposed parallel window. Schema and semantics: README.md",
+    "in this directory. This is the SEED set -- three apps that ship on the device, chosen so",
+    "the engine can be exercised on a freshly wiped tablet that has no third-party apps at all.",
+    "The real corpus replaces it."
+  ],
+  "EmbeddingConfigVersion": "1.0.0",
+
+  "blocklist": [],
+
+  "packages": [
+    {
+      "_why": [
+        "AOSP Contacts. The reference subject for this feature: a genuine list-detail app, on",
+        "the device already, and -- verified with `dumpsys package` -- one of the 131 of 178",
+        "packages that do NOT have androidx.window.extensions in their classloader. If the",
+        "engine works at all, it works here first."
+      ],
+      "name": "com.android.contacts",
+      "activityPairs": [
+        { "from": "com.android.contacts.activities.PeopleActivity", "to": "*" }
+      ],
+      "forceFullscreenPages": [
+        "com.android.contacts.activities.ContactEditorActivity",
+        "com.android.contacts.activities.CompactContactEditorActivity",
+        "com.android.contacts.activities.AttachPhotoActivity",
+        "com.android.contacts.vcard.ImportVCardActivity",
+        "com.android.contacts.vcard.NfcImportVCardActivity"
+      ],
+      "transActivities": [
+        "com.android.contacts.activities.ContactEditorSpringBoardActivity",
+        "com.android.contacts.activities.ShowOrCreateActivity",
+        "com.android.contacts.NonPhoneActivity"
+      ],
+      "showEmbeddingDivider": "true"
+    },
+
+    {
+      "_why": [
+        "LineageOS Gallery. Grid to viewer, which is the other common shape of this feature.",
+        "The picker and wallpaper flows are invoked BY other apps and must own the screen."
+      ],
+      "name": "org.lineageos.glimpse",
+      "activityPairs": [
+        { "from": "org.lineageos.glimpse.MainActivity", "to": "*" }
+      ],
+      "forceFullscreenPages": [
+        "org.lineageos.glimpse.PickerActivity",
+        "org.lineageos.glimpse.SetWallpaperActivity"
+      ],
+      "showEmbeddingDivider": "true"
+    },
+
+    {
+      "_why": [
+        "LineageOS Calendar. A month grid beside an event is the layout this feature is for,",
+        "and Etar is a useful third shape because its detail views are launched from a custom",
+        "view rather than a list row."
+      ],
+      "name": "org.lineageos.etar",
+      "activityPairs": [
+        { "from": "com.android.calendar.AllInOneActivity", "to": "*" }
+      ],
+      "showEmbeddingDivider": "true"
+    }
+  ]
+}
