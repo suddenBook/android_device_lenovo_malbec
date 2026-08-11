@@ -1,9 +1,8 @@
 {
   "_comment": [
     "Rule corpus for the system-imposed parallel window. Schema and semantics: README.md",
-    "in this directory. This is the SEED set -- three apps that ship on the device, chosen so",
-    "the engine can be exercised on a freshly wiped tablet that has no third-party apps at all.",
-    "The real corpus replaces it."
+    "in this directory. The three system-app rules provide wipe-safe smoke tests; third-party",
+    "rules are admitted only with an exact APK version/hash and recorded device evidence."
   ],
   "EmbeddingConfigVersion": "1.0.0",
 
@@ -61,6 +60,53 @@
       "name": "org.lineageos.etar",
       "activityPairs": [
         { "from": "com.android.calendar.AllInOneActivity", "to": "*" }
+      ],
+      "showEmbeddingDivider": "true"
+    },
+
+    {
+      "_why": [
+        "Weibo is a proven third-party list/detail subject and already links Jetpack Window,",
+        "so it also exercises the app-classloader injection path. SplashActivity is a",
+        "forwarding trampoline and must never occupy either pane."
+      ],
+      "_testedVersionName": "16.8.0",
+      "_testedVersionCode": 8105,
+      "_testedApkSha256": "77ecb1d7918367c8f8d9543e9526d6c1e5718ce351a63177b932c78525ee1023",
+      "name": "com.sina.weibo",
+      "activityPairs": [
+        { "from": "com.sina.weibo.MainTabActivity", "to": "*" },
+        { "from": "com.sina.weibo.VisitorMainTabActivity", "to": "*" }
+      ],
+      "transActivities": [
+        "com.sina.weibo.SplashActivity"
+      ],
+      "showEmbeddingDivider": "true"
+    },
+
+    {
+      "_why": [
+        "Taobao's Xiaomi-vendor rule shape, narrowed against the exact installed 10.65.0 APK.",
+        "TBMainActivity opens Taobao's own MagicWindowActivity as the placeholder; three",
+        "catalog/search activities then route details into the secondary pane. Two stale",
+        "transition classes from the imported corpus were removed because this APK lacks them."
+      ],
+      "_testedVersionName": "10.65.0",
+      "_testedVersionCode": 854,
+      "_testedApkSha256": "a2e42ab3d3b8728b4e97e8533ffa334091c026d94fa71707fba7f2983decdd9e",
+      "name": "com.taobao.taobao",
+      "mainPage": "com.taobao.tao.TBMainActivity",
+      "defaultRelate": "com.taobao.tao.MagicWindowActivity",
+      "activityPairs": [
+        { "from": "com.taobao.search.sf.MainSearchResultActivity", "to": "*" },
+        { "from": "com.taobao.android.detail.alittdetail.TTDetailActivity", "to": "*" },
+        { "from": "com.alibaba.triver.triver_shop.newShop.ShopActivity", "to": "*" }
+      ],
+      "transActivities": [
+        "com.taobao.tao.TBMainActivity",
+        "com.taobao.android.shop.activity.ShopUrlRouterActivity",
+        "com.taobao.browser.router.FromH5RouterActivity",
+        "com.taobao.taolive.room.TaoLiveRouterActivity"
       ],
       "showEmbeddingDivider": "true"
     }

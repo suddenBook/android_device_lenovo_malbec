@@ -11,18 +11,24 @@ part that is not: which packages get the treatment, and how.
 ## What the engine does with this file
 
 `ParallelWindowService` (system_server) parses it at `systemReady()` and keeps an
-immutable snapshot. Three things read that snapshot:
+immutable snapshot. Two things read that snapshot:
 
 | reader | question |
 |---|---|
 | `WindowOrganizerController#createTaskFragment` | may this non-resizeable owner activity be embedded anyway? |
-| `ActivityRecord#shouldRelaunchLocked` | should this activity be spared the relaunch a split transition causes? |
 | `ActivityTaskManagerService#getParallelWindowConfigForCaller` | what are this app process's own rules? |
 
-The third is answered once per app process, from `ActivityThread`, which hands
+The second is answered once per app process, from `ActivityThread`, which hands
 the answer to that process's own stock `SplitController`. **The split itself is
 built entirely by AOSP** — containers, transitions, divider, back navigation. The
 only thing this device supplies is the rules and the permission to apply them.
+
+An app remains authoritative over its own embedding policy. If it calls
+`SplitController#setEmbeddingRules`, including with an empty set to opt out, the
+late system injection is skipped. The framework registers its lifecycle callback
+and activity monitor through non-virtual platform helpers so compatibility
+wrappers cannot accidentally discard the callbacks the embedding controller
+requires.
 
 That division is not a design preference. `createTaskFragment` requires
 `ownerTask.effectiveUid == ownerActivity.getUid() == Binder.getCallingUid()` with
@@ -73,10 +79,10 @@ that the much larger Xiaomi corpus converts into it mechanically.
       "minWidthDp":            840,     // task must be this wide to split
       "minSmallestWidthDp":    600,
 
-      // ── relaunch (read the section below before touching these) ──────────
-      "suppressRelaunch": true,                              // default true
-      "forceRelaunch":  [ "com.example.app.CanvasActivity" ],  // must relaunch
-      "limitRelaunch":  [ "com.example.app.ListActivity" ],    // must not
+      // ── imported relaunch metadata; intentionally not applied ───────────
+      "suppressRelaunch": true,
+      "forceRelaunch":  [ "com.example.app.CanvasActivity" ],
+      "limitRelaunch":  [ "com.example.app.ListActivity" ],
 
       "enabled": "true"                 // ours: off without deleting the entry
     }
@@ -98,7 +104,7 @@ OPPO's of which a strict reader silently drops 69 working rules. So a malformed
 entry is skipped with a log rather than failing the file, a duplicate name lets
 the last win, and unknown keys are ignored.
 
-## Relaunch is not a tuning knob
+## Relaunch metadata is preserved, but not enforced
 
 Forming or collapsing a split changes an activity's bounds, which surfaces as
 `CONFIG_SCREEN_SIZE | CONFIG_SMALLEST_SCREEN_SIZE | CONFIG_SCREEN_LAYOUT |
@@ -109,11 +115,17 @@ split appears or goes away**, losing scroll position, form state and playback.
 `CONFIG_WINDOW_CONFIGURATION` is `@hide` with no manifest token, so an app could
 not have opted in even if it wanted to.
 
-That is why `suppressRelaunch` defaults to `true` for anything with a rule, and
-why `forceRelaunch` / `limitRelaunch` exist per activity. It is also the largest
-hidden curation cost of this feature: Lenovo ships 194 activities that must not
-relaunch and 53 that must, for a 288-package corpus, and OPPO sets its equivalent
-on 2,944 of 3,022 entries.
+Vendor corpora carry `suppressRelaunch`, `forceRelaunch`, and `limitRelaunch`
+because their embedding engines can associate a configuration change with a
+specific split transition. This port currently cannot. Applying those fields in
+`ActivityRecord#shouldRelaunchLocked` by package alone also suppresses legitimate
+rotation, freeform-resize, display-move, and resource-density relaunches when no
+split exists. That is a correctness bug, not a tuning trade-off.
+
+The parser and parcel retain the fields so curated vendor data is not lost, but
+normal Android relaunch handling remains in force until the engine has a
+transition-scoped signal. Apps are expected to save and restore their ordinary
+instance state across split-bound changes just as they do across rotation.
 
 ## Excluded regardless of what this file says
 
@@ -126,10 +138,12 @@ exclusions with `blocklist`; it cannot remove one of those.
 ## Tuning without a build
 
 `ParallelWindowService` reads
-`/data/system/parallel_window/embedding_config.json` **first**, and if it exists
-it replaces this file wholesale. Same slot Lenovo's own implementation uses, for
-the same reason — rule work is an edit-measure loop, and making each iteration
-cost a build and a flash means it does not happen.
+`/data/system/parallel_window/embedding_config.json` **first**. A structurally
+valid file replaces the product rules wholesale, even when it intentionally
+contains zero packages. An unreadable, oversized, malformed, or wrong-schema
+override is rejected and the product file is tried instead. The bounded loader
+accepts at most 8 MiB, so a privileged but accidental giant file cannot force an
+unbounded system-server allocation.
 
 ```sh
 adb push candidate.json /data/system/parallel_window/embedding_config.json
@@ -138,13 +152,16 @@ adb shell wm parallel-window status     # says which file is live
 adb shell wm parallel-window disable com.example.app
 ```
 
-Changing rules for a package that is already running does not affect it: rules
-are read once per process, at first activity launch. Force-stop it.
+Changing rules or using `enable` / `disable` for a package that is already
+running does not affect its copied controller state: rules are read once per
+process, at first activity launch. Force-stop and relaunch that package after
+every change. Runtime disables last only until reboot.
 
 ## Provenance of the corpus
 
-The seed set in `embedding_config.json` is three apps that ship on this device,
-written by hand so the engine can be exercised on a freshly wiped tablet — which
-has no third-party apps at all. Anything larger comes from vendor corpora, and
-whatever is imported must arrive in one clearly labelled commit that names where
-it came from.
+The first three entries ship on the device and keep the engine testable after a
+wipe. The Weibo and Taobao entries are tied to the exact APK version, version
+code, and SHA-256 recorded alongside each rule. Taobao's imported Xiaomi rule was
+narrowed against its decoded manifest; two stale transition activities absent
+from 10.65.0 were removed. Future imports must arrive in a clearly labelled
+commit with source provenance and exact-device evidence.

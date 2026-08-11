@@ -11,10 +11,10 @@
 // jar it feeds already lives, and because /product on this device is reserved sideload headroom
 // (HANDOFF.md, the GApps decision).
 //
-// ⚠️ ParallelWindowService reads /data/system/parallel_window/embedding_config.json FIRST and lets
-// it replace this file wholesale. That is the tuning loop -- push a candidate rule set, run
-// `wm parallel-window reload`, watch -- and it means what is installed here is the fallback, not
-// necessarily what is running. `wm parallel-window status` prints which one is live.
+// ⚠️ ParallelWindowService reads /data/system/parallel_window/embedding_config.json first and lets
+// a bounded, structurally valid candidate replace this file wholesale. That is the tuning loop:
+// push a candidate rule set, run `wm parallel-window reload`, and watch. An invalid candidate
+// falls back here; `wm parallel-window status` prints which source is live.
 prebuilt_etc {
     name: "malbec_parallel_window_rules",
     src: "embedding_config.json",
