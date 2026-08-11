@@ -42,10 +42,12 @@ The format is the one Lenovo ships in this tablet's own stock firmware
 (`framework-res.apk` → `res/raw/embedding_config.json`), which is in turn the
 Huawei `easygo` lineage that OPPO's `activityPairs` / `transActivities` also
 descends from. Picking it means a rule file lifted from stock loads verbatim.
-Other vendor fields can be mapped into this schema deterministically, but a
-whole-corpus import is not automatic: it still requires compatible licensing,
-parser validation, per-package exception review, and exact-device evidence. The
-full HyperOS corpus remains quarantined and is not shipped.
+The product file is now a deterministic conversion of the official HyperOS
+`3.01.48` Activity Embedding release corpus. The owner confirmed a signed
+cross-licensing agreement covering AI-assisted processing and ROM
+redistribution; the private agreement is not copied here. See
+`AUTHORIZATION.md`, `hyperos_source_lock.json`, and the exact vendored inputs in
+`upstream/3.01.48/`.
 
 ```jsonc
 {
@@ -61,10 +63,15 @@ full HyperOS corpus remains quarantined and is not shipped.
       // corpus measured, and a missing `to` means the same thing.
       "activityPairs": [ { "from": "com.example.app.MainActivity", "to": "*" } ],
 
-      // Split on entry instead of lazily: show `defaultRelate` in the empty
-      // second pane as soon as `mainPage` appears. Both halves or neither.
-      "mainPage":      "com.example.app.MainActivity",
-      "defaultRelate": "com.example.app.PlaceholderActivity",
+      // Split on entry instead of lazily. More than one relation is legal;
+      // Taobao's official rule has two. Legacy mainPage/defaultRelate remains
+      // accepted as a single-relation compatibility spelling.
+      "placeholderPairs": [
+        {
+          "from": "com.example.app.MainActivity",
+          "to": "com.example.app.PlaceholderActivity"
+        }
+      ],
 
       // Must span the whole task: scanners, capture, payment, login, video.
       // Becomes ActivityRule(alwaysExpand=true), so the split underneath
@@ -77,10 +84,15 @@ full HyperOS corpus remains quarantined and is not shipped.
       "transActivities": [ "com.example.app.SplashActivity" ],
 
       // ── presentation ──────────────────────────────────────────────────────
-      "showEmbeddingDivider": "true",   // AOSP's draggable divider (vendor API 6+)
-      "splitRatio":            0.35,    // primary pane fraction; default 0.35
-      "minWidthDp":            840,     // task must be this wide to split
+      // Effective HyperOS divider: raw isShowDivider AND scaleMode == 0.
+      "showEmbeddingDivider": true,     // AOSP's draggable divider (vendor API 6+)
+      "dividerDraggingToFullscreenAllowed": true, // raw supportFullSize
+      "splitRatio":            0.5,     // HyperOS primary fraction default
+      "minWidthDp":            600,     // HyperOS metrics default
       "minSmallestWidthDp":    600,
+      "clearTop":              true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
 
       // ── imported relaunch metadata; intentionally not applied ───────────
       "suppressRelaunch": true,
@@ -89,6 +101,9 @@ full HyperOS corpus remains quarantined and is not shipped.
 
       // `enabled=false` removes the rule. `defaultEnabled=false` keeps it
       // eligible and visible in MalbecParts, but initially switched off.
+      // HyperOS embedded_setting_config.xml is authoritative. In an existing
+      // row only literal embeddedEnable=true is on; when there is no row,
+      // rules XML defaultSettings is the fallback.
       "enabled": true,
       "defaultEnabled": false
     }
@@ -96,19 +111,69 @@ full HyperOS corpus remains quarantined and is not shipped.
 }
 ```
 
+For a HyperOS row without `splitPairRule`, the generated entry contains
+`"autoPrimary": true` instead of `activityPairs`. The process latches its first
+eligible activity as primary and routes later launches from it. Generated rules
+never carry both forms.
+
+⚠️ **`autoPrimary` is this importer's invention, not upstream's, and where
+nothing guards it the entry ships default-disabled (#81).** A HyperOS row with
+no `splitPairRule` says the package is embeddable and says *nothing* about how;
+HyperOS covers that with engine defaults recorded below as unsupported. "The
+first activity the process creates is the primary, forever" is our substitute
+for those defaults — and it then inherits `finishSecondaryWithPrimary = 2`
+(`FINISH_ADJACENT`), which really is upstream's, materialized onto every row.
+Composed, on the very common shape of a splash that finishes itself:
+
+    splash is the first activity   -> becomes the permanent primary
+    splash starts the real main    -> pair matches, split forms
+    splash finishes itself         -> FINISH_ADJACENT finishes the secondary
+                                      with it, and the app exits
+
+`transActivities` and `forceFullscreenPages` are the two things that keep a
+splash out of contention. A row with `autoPrimary`, neither of those, and a
+finish behaviour that can take the secondary down is therefore **imported in
+full, enableable from `wm parallel-window` or the MalbecParts row, and off until
+someone asks for it.** 4,834 rows are gated this way; six more were already
+disabled upstream and are left alone.
+
+The distinction this draws is the one the data draws: the 2,028 packages where
+upstream said how to split are automatic, and the ones where we guessed are
+opt-in. Rows whose `finishSecondaryWithPrimary` is `0` are deliberately *not*
+gated — there the same wrong guess is inert, because the splash finishes, the
+secondary survives, and `autoPrimary` is simply left pointing at a dead class.
+
+This is the only place the importer departs from materializing exactly what
+upstream released. It changes the DEFAULT only — never whether a rule exists,
+never a routing value — and every package it touches is listed in
+`hyperos_import_audit.json` under `unguardedAutoPrimaryDefaultDisabled`.
+
+An item in `placeholderPairs` may carry `"waitForContent": true`. It delays the
+placeholder until the primary activity has attached content. The importer emits
+this only for HyperOS's exact Taobao
+`welcome.Welcome → MagicWindowActivity` relation, whose stock predicate checks
+that `android.R.id.content` has a child; the second Taobao placeholder and every
+other relation use the ordinary predicate.
+
 Keys not listed above are ignored. Booleans may be JSON booleans or the strings
 `"true"` / `"false"` — Lenovo's corpus writes every one of them as a string, so a
 reader that only accepted real booleans would read every one as absent. Class
-names may be fully qualified or use the `.Foo` shorthand. Any key beginning with
-`_` is a comment; the seed file uses `_why`.
+names may be fully qualified or use the `.Foo` shorthand. The importer also
+normalizes Android's `/fully.qualified`, `package/.Relative`, and
+`package/fully.qualified` flattened-component spellings. Any key beginning with
+`_` is metadata.
 
 **The parser is lenient on purpose.** Every corpus this will be fed is hand-edited
 at a scale where hand-editing goes wrong — measured: 28 duplicate-attribute
 elements and four misspelt attribute names in Xiaomi's, a `forceFullScreenPages`
 typo costing three packages their rule in Lenovo's, 83 malformed JSON bodies in
 OPPO's of which a strict reader silently drops 69 working rules. So a malformed
-entry is skipped with a log rather than failing the file, a duplicate name lets
-the last win, and unknown keys are ignored.
+JSON entry is skipped with a log rather than failing the file, a duplicate name
+lets the last classifiable JSON entry win, and unknown keys are ignored. The
+source importer has a deliberately stricter duplicate boundary: HyperOS inserts
+each XML row into its package map unconditionally, so it selects the final XML
+row before conversion and does not fall back if that row is malformed. The
+locked release has 22 duplicate rows and none of their final rows is malformed.
 
 ## Relaunch metadata is preserved, but not enforced
 
@@ -128,7 +193,7 @@ specific split transition. This port currently cannot. Applying those fields in
 rotation, freeform-resize, display-move, and resource-density relaunches when no
 split exists. That is a correctness bug, not a tuning trade-off.
 
-The parser and parcel retain the fields so curated vendor data is not lost, but
+The parser and parcel retain the fields so imported vendor data is not lost, but
 normal Android relaunch handling remains in force until the engine has a
 transition-scoped signal. Apps are expected to save and restore their ordinary
 instance state across split-bound changes just as they do across rotation.
@@ -174,12 +239,104 @@ of an already-running process disagreeing: both retain the old snapshot. The
 change applies when that package next starts. The UI does not stop apps; when
 testing from the shell, force-stop and relaunch the affected package explicitly.
 
-## Provenance of the corpus
+## Provenance and deterministic regeneration
 
-All five entries in this file ship on the device. The first three keep the engine
-testable after a wipe; the Weibo and Taobao entries are tied to the exact APK
-version, version code, and SHA-256 recorded alongside each rule. Taobao's
-individually curated rule, derived from Xiaomi data, was narrowed against its
-decoded manifest; two stale transition activities absent from 10.65.0 were
-removed. Future imports must arrive in a clearly labelled commit with source
-provenance, compatible licensing, and exact-device evidence.
+`embedding_config.json` is official-only: there is no local curated prefix and
+no special priority for Taobao, Weibo, Contacts, Etar, or Glimpse. The release's
+last package row is authoritative.
+
+The locked source has 8,046 rows / 8,024 unique packages. Exactly 1,056 final
+rows carry `fullRule`; HyperOS uses those for its fullscreen/orientation mode,
+not Activity Embedding, so they are recorded and excluded. The separate
+`fixed_orientation_list.xml` is likewise not an input. A
+`fixedOrientationEnable=true` value in the settings file does **not** erase an
+existing non-full embedding row: the five such packages remain eligible but
+default-disabled, so the user can explicitly enable them. The resulting product
+contains 6,968 embedding packages. **Upstream's own defaults are 6,952 enabled
+and 16 disabled**; after the unguarded-`autoPrimary` gate described above
+default-disables 4,834 more, the shipped product is **2,118 enabled and 4,850
+disabled by default**. Both numbers stay pinned by the golden test, and the
+release figure remains recoverable as
+`default_disabled - imported_auto_primary_default_disabled = 4850 - 4834 = 16`.
+HyperOS supplies missing presentation fields in its app-side extension jar as
+`clearTop=true`, `finishPrimaryWithSecondary=0`, and
+`finishSecondaryWithPrimary=2`. The importer writes those effective values into
+every output row. Five packages explicitly override `clearTop` to false and ten
+override `finishSecondaryWithPrimary` to 0; primary finish remains 0 throughout.
+Thus behavior does not depend on target-parser defaults.
+
+The same rule applies to metrics: HyperOS defaults to a 0.5 split ratio and
+600dp minimum width / smallest width. All 6,968 rows materialize those values;
+three source rows override minimum width to 900dp and 298 override the ratio.
+This intentionally differs from the legacy Malbec JSON defaults of 0.35 and
+840/600, which remain only for old override files that omit these keys.
+
+Divider presentation is also an effective value rather than a direct rename.
+HyperOS shows it only when `isShowDivider=true` and `scaleMode` is absent/zero,
+yielding 5,504 shown and 1,464 hidden rules. `supportFullSize` is materialized as
+`dividerDraggingToFullscreenAllowed`; among shown dividers it is true for 5,480
+and false for 24. Other vendor scaling behavior remains unsupported and its raw
+`scaleMode` value stays in the audit with the mapped divider side effect noted.
+
+The final corpus has 2,028 explicit-pair packages and 3,750 usable relationships.
+Two official tokens—one each in `com.boohee.box` and `com.kurogame.kjq`—contain
+the unambiguous typo `A:*B:*` where a comma is missing. The importer
+deterministically recovers each into `A:*` and `B:*`, recording the original
+token and both output relations in `recoveredPairTokens`. It does not silently
+repair other malformed syntax; Booking.com's empty token remains an audited
+drop.
+
+Four other official tokens contain surrounding component whitespace that
+HyperOS's exact class-name matching would not recognize: the second pair in
+`com.zhongan.ibank`, the only pair in `dxwt.questionnaire.ui`, the second
+`activityRule` item in `com.cmcc.cmvideo`, and the second transition in
+`com.ygkj.chelaile.standard`. Their intended class names are unambiguous, so the
+importer restores only those exact package/attribute/raw-token tuples and records
+each in `recoveredWhitespaceTokens`. There is no general whitespace trimming;
+any unreviewed whitespace token is dropped with its original value in the audit.
+
+The `com.wzsykj.wei` source also contains a pair whose primary component is `*`.
+HyperOS tests the primary pattern as a literal class-name substring, so that row
+can never match there, while the target schema would interpret it as match-any.
+The importer therefore drops and audits that one relation, retaining the
+package's other three pairs and its placeholder.
+
+This distinction is visible in two familiar packages:
+
+- the final official Weibo row is `fullRule="nra:cr:rcr:nr:uc"`, so Weibo is
+  absent from the embedding product;
+- Taobao is imported exactly as released, default-disabled, with all four
+  activity pairs, all eight transition entries, and both placeholder relations;
+  its Welcome relation also carries the audited stock content-readiness check.
+
+The rendered XML files are checked in for offline reproducibility and verified
+before every conversion. Regenerate and verify with:
+
+```sh
+python3 parallelwindow/tools/import_hyperos_rules.py
+python3 parallelwindow/tools/import_hyperos_rules.py --check
+python3 -m unittest discover -v -s parallelwindow/tools/tests
+```
+
+`hyperos_import_audit.json` accounts for every duplicate, exclusion, malformed
+token, deterministic repair, component normalization, ignored or fallback rule
+default, unsupported attribute, and unsupported flag directive down to package,
+source row, and raw value. The golden test independently pins the input,
+product and full audit hashes, literal release counts, Taobao's exact mapping,
+Weibo's exclusion, and the 8 MiB loader bound.
+
+Corpus membership expresses upstream intent, not per-version device proof. The
+MalbecParts page intersects these rules with packages installed for the selected
+user; applications outside the loaded rule snapshot are neither displayed nor
+modified.
+
+## Known approximation boundaries
+
+The conversion does not claim that AOSP Activity Embedding is Xiaomi's engine.
+The source audit retains unsupported `middleRule`, `autoUiRule`, portrait,
+process-compatibility, scaling, camera-preview, and flag semantics. In
+particular, HyperOS also consults application-manifest portrait/orientation
+state; that runtime gate cannot be reconstructed from this static corpus alone.
+Relaunch metadata is transported but deliberately unenforced for the reasons
+above. These are explicit approximation boundaries, not silently converted
+fields.

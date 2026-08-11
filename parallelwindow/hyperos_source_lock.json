@@ -1,0 +1,36 @@
+{
+  "authorization": {
+    "record": "AUTHORIZATION.md",
+    "confirmedDate": "2026-08-11",
+    "scope": "AI-assisted processing and redistribution in the owner's ROM"
+  },
+  "upstream": {
+    "repository": "https://github.com/sothx/mipad-magic-window",
+    "tag": "3.01.48",
+    "commit": "a1c197a3d95b99d8aac9b387e8eeeb95472e50df"
+  },
+  "release_asset": {
+    "url": "https://github.com/sothx/mipad-magic-window/releases/download/3.01.48/pad-hyperos3-based-on-vanillaIceCream-3.01.48.zip",
+    "sizeBytes": 13844057,
+    "sha256": "cf01225b777ce67e44bfc88a54e6adf46f7a7326c6cb5d5e2c1508cea43f4e09",
+    "reason": "This is the deployed HyperOS 3 compatibility product for the pinned release."
+  },
+  "rendered_xml": {
+    "releaseMember": "common/source/embedded_rules_list.xml",
+    "vendoredPath": "upstream/3.01.48/embedded_rules_list.xml",
+    "sizeBytes": 1331074,
+    "sha256": "fa8caafac66c17d4786175e7dbd2b6c9514419a88499adb277dc12002beddf7a"
+  },
+  "rendered_settings_xml": {
+    "releaseMember": "common/source/embedded_setting_config.xml",
+    "vendoredPath": "upstream/3.01.48/embedded_setting_config.xml",
+    "sizeBytes": 629445,
+    "sha256": "d50e462dfd7e62711b27cb87440e28560cf7ab6c699f9fe96cc8988b8e87144c"
+  },
+  "excluded_release_members": [
+    {
+      "path": "common/source/fixed_orientation_list.xml",
+      "reason": "Separate fixed-orientation display mode, not Activity Embedding input"
+    }
+  ]
+}
