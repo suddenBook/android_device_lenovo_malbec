@@ -36,6 +36,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- The action picker lists every launchable app. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <!-- Signature-only framework control surface for the parallel-window rule
+         set. The service derives the user from this process's Binder uid;
+         MalbecParts never asks for cross-user access. -->
+    <uses-permission android:name="android.permission.MANAGE_PARALLEL_WINDOW" />
 
     <application
         android:allowBackup="false"
@@ -170,6 +174,40 @@
                 android:name="com.android.settings.summary"
                 android:resource="@string/stylus_summary" />
         </activity-alias>
+
+        <!-- Settings > Apps > Parallel windows.
+
+             all_profiles is deliberate. Settings presents its standard profile
+             chooser when a work profile exists and launches this activity as
+             the selected user. IActivityTaskManager then derives that user from
+             the caller uid, so personal and work settings cannot bleed into
+             one another. -->
+        <activity
+            android:name=".parallelwindow.ParallelWindowSettingsActivity"
+            android:label="@string/parallel_window_title"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.android.settings.action.IA_SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.apps" />
+            <meta-data
+                android:name="com.android.settings.order"
+                android:value="-10" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_parallel_window" />
+            <meta-data
+                android:name="com.android.settings.icon_tintable"
+                android:value="true" />
+            <meta-data
+                android:name="com.android.settings.summary"
+                android:resource="@string/parallel_window_tile_summary" />
+            <meta-data
+                android:name="com.android.settings.profile"
+                android:value="all_profiles" />
+        </activity>
 
         <!-- ⚠️ There is no PLAY_AUTO_INSTALL marker receiver here any more, and
              that is deliberate rather than an omission. This package used to

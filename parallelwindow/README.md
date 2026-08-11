@@ -41,8 +41,11 @@ and the only organizer there is AOSP's.
 The format is the one Lenovo ships in this tablet's own stock firmware
 (`framework-res.apk` → `res/raw/embedding_config.json`), which is in turn the
 Huawei `easygo` lineage that OPPO's `activityPairs` / `transActivities` also
-descends from. Picking it means a rule file lifted from stock loads verbatim, and
-that the much larger Xiaomi corpus converts into it mechanically.
+descends from. Picking it means a rule file lifted from stock loads verbatim.
+Other vendor fields can be mapped into this schema deterministically, but a
+whole-corpus import is not automatic: it still requires compatible licensing,
+parser validation, per-package exception review, and exact-device evidence. The
+full HyperOS corpus remains quarantined and is not shipped.
 
 ```jsonc
 {
@@ -84,7 +87,10 @@ that the much larger Xiaomi corpus converts into it mechanically.
       "forceRelaunch":  [ "com.example.app.CanvasActivity" ],
       "limitRelaunch":  [ "com.example.app.ListActivity" ],
 
-      "enabled": "true"                 // ours: off without deleting the entry
+      // `enabled=false` removes the rule. `defaultEnabled=false` keeps it
+      // eligible and visible in MalbecParts, but initially switched off.
+      "enabled": true,
+      "defaultEnabled": false
     }
   ]
 }
@@ -149,19 +155,31 @@ unbounded system-server allocation.
 adb push candidate.json /data/system/parallel_window/embedding_config.json
 adb shell wm parallel-window reload
 adb shell wm parallel-window status     # says which file is live
-adb shell wm parallel-window disable com.example.app
+adb shell wm parallel-window master off
+adb shell wm parallel-window disable --user 0 com.example.app
+adb shell wm parallel-window reset --user 0 com.example.app  # use rule default again
 ```
 
-Changing rules or using `enable` / `disable` for a package that is already
-running does not affect its copied controller state: rules are read once per
-process, at first activity launch. Force-stop and relaunch that package after
-every change. Runtime disables last only until reboot.
+The shell and **Settings > Apps > Parallel windows** page in MalbecParts are two
+projections of the same hidden per-user `Settings.Secure` master and per-package
+state; MalbecParts does not persist a second copy. The choices survive a reboot.
+Packages not covered by the loaded rule snapshot have no UI or disable path.
+`status` reports the selected user's master, installed eligible count and
+package-preference-disabled subset.
+
+Every app process receives one immutable decision on its first rule lookup, and
+the non-resizeable server gate latches that same package decision. Consequently
+changing rules, the master, or a package preference never leaves the two halves
+of an already-running process disagreeing: both retain the old snapshot. The
+change applies when that package next starts. The UI does not stop apps; when
+testing from the shell, force-stop and relaunch the affected package explicitly.
 
 ## Provenance of the corpus
 
-The first three entries ship on the device and keep the engine testable after a
-wipe. The Weibo and Taobao entries are tied to the exact APK version, version
-code, and SHA-256 recorded alongside each rule. Taobao's imported Xiaomi rule was
-narrowed against its decoded manifest; two stale transition activities absent
-from 10.65.0 were removed. Future imports must arrive in a clearly labelled
-commit with source provenance and exact-device evidence.
+All five entries in this file ship on the device. The first three keep the engine
+testable after a wipe; the Weibo and Taobao entries are tied to the exact APK
+version, version code, and SHA-256 recorded alongside each rule. Taobao's
+individually curated rule, derived from Xiaomi data, was narrowed against its
+decoded manifest; two stale transition activities absent from 10.65.0 were
+removed. Future imports must arrive in a clearly labelled commit with source
+provenance, compatible licensing, and exact-device evidence.

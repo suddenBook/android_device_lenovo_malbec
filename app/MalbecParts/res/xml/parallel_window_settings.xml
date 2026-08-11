@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    android:title="@string/parallel_window_title">
+
+    <SwitchPreferenceCompat
+        android:key="parallel_window_master"
+        android:title="@string/parallel_window_master_title"
+        android:summary="@string/parallel_window_master_summary_on"
+        android:persistent="false" />
+
+    <Preference
+        android:key="parallel_window_status"
+        android:title="@string/parallel_window_error_title"
+        android:persistent="false" />
+
+    <PreferenceCategory
+        android:key="parallel_window_apps"
+        android:title="@string/parallel_window_apps_category"
+        android:persistent="false">
+
+        <Preference
+            android:key="parallel_window_loading"
+            android:title="@string/parallel_window_loading"
+            android:selectable="false"
+            android:persistent="false" />
+
+    </PreferenceCategory>
+
+    <com.android.settingslib.widget.FooterPreference
+        android:key="parallel_window_footer"
+        android:title="@string/parallel_window_footer"
+        android:selectable="false"
+        android:persistent="false" />
+
+</PreferenceScreen>
