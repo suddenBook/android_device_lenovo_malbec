@@ -15,8 +15,8 @@
          line 327   git ls-remote https://:@github.com/LineageOS/<repo_name>
 
      and the `remote` escape at lines 226 to 233 applies only to `aosp-*`
-     remotes; for anything else it sets project.remote and leaves the
-     LineageOS-prefixed name in place. So a dependency written as
+     remotes; other remote names are ignored and the LineageOS-prefixed project
+     remains. So a dependency written as
 
          "repository": "suddenBook/proprietary_vendor_lenovo_malbec"
 
@@ -30,8 +30,9 @@
      organisation prefix cannot be fixed from the device tree at all. Hence this
      file.
 
-     `lineage.dependencies` is kept as it is. It is correct, and it starts
-     working the day these repos live under LineageOS.
+     `lineage.dependencies` is retained as machine-readable dependency intent,
+     but it is not a working bootstrap file. If the repositories ever move to
+     LineageOS, their `suddenBook/` prefixes must also be removed there.
 
      ⚠️ AFTER SYNCING, BEFORE BUILDING
 
@@ -63,10 +64,10 @@
      its common-vendor.mk inherits `vendor/gapps/common/common-vendor.mk` by
      absolute path.
 
-     The revision is pinned to a branch rather than a SHA deliberately — GMS
-     needs to track Google's security updates — but that also means two syncs a
-     month apart do not produce the same image. Pin a SHA here if you need a
-     reproducible build.
+     These custom projects use moving branch revisions. That is deliberate for
+     normal development and GMS security updates, but it means two syncs a month
+     apart need not produce the same image. Pin every project to a SHA for an
+     immutable source selection.
 -->
 <manifest>
   <remote name="suddenBook"
@@ -89,24 +90,24 @@
        ⚠️ FRAMEWORKS/BASE IS FORKED, AND THIS IS THE ONLY THING THAT SAYS SO.
 
        The parallel-window feature (系统级平行视界 — a phone-only app laid out
-       as two panes) cannot be built from a device tree. It needs five changes
-       inside frameworks/base, and no amount of overlay, property or prebuilt
-       reaches any of them:
+       as two panes) cannot be built from a device tree. It needs framework
+       changes at these seams, none reachable through an overlay or property:
 
-         ActivityThread              loads androidx.window.extensions into app
-                                     processes that do not declare it — measured,
+         ActivityThread              loads and injects rules into app processes
+                                     that do not declare the extension — measured,
                                      131 of 178 packages on this device do not
+         Application/Instrumentation non-virtual callback registration that
+                                     survives app compatibility delegates
+         SplitController             app-policy precedence and system-rule input
          WindowOrganizerController   lets a rule-covered package past the
                                      non-resizeable owner-activity gate
-         ActivityRecord              suppresses the relaunch a split transition
-                                     would otherwise cause
          IActivityTaskManager        one @hide method, uid-authenticated
          wm/parallelwindow/          the rule store itself
+         DividerPresenter            tears down hidden divider input channels
 
-       The fork is LineageOS/android_frameworks_base with one topic commit on
-       top of lineage-23.2. It is NOT a divergent branch — rebasing it onto a
-       newer lineage-23.2 is an ordinary rebase, and the whole delta is +224
-       lines in seven existing files plus six new ones.
+       The fork is LineageOS/android_frameworks_base with a small topic stack on
+       top of lineage-23.2. It is not a divergent platform branch; keep the topic
+       commits isolated and rebase them onto newer lineage-23.2 revisions.
 
        (An XML comment cannot contain a double hyphen. This file learned that
        once already in 78f79a8, and this comment reintroduced it by quoting a
@@ -118,11 +119,13 @@
        launch, nothing splits. work/scripts/52-parallel-window.py exists because
        every supply chain in this feature fails exactly that quietly.
   -->
-  <remove-project name="LineageOS/android_frameworks_base" />
+  <remove-project name="LineageOS/android_frameworks_base"
+                  path="frameworks/base" />
 
   <project path="frameworks/base"
            name="android_frameworks_base"
-           remote="suddenBook" />
+           remote="suddenBook"
+           groups="pdk-cw-fs,pdk-fs,sysui-studio" />
 
   <remote name="mindthegapps"
           fetch="https://gitlab.com/MindTheGapps" />

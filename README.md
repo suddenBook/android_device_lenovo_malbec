@@ -55,8 +55,12 @@ malbec/
 | [`android_device_lenovo_malbec`](https://github.com/suddenBook/android_device_lenovo_malbec) | `device/lenovo/malbec` |
 | [`android_device_lenovo_malbec-kernel`](https://github.com/suddenBook/android_device_lenovo_malbec-kernel) | `device/lenovo/malbec-kernel` |
 | [`proprietary_vendor_lenovo_malbec`](https://github.com/suddenBook/proprietary_vendor_lenovo_malbec) | `vendor/lenovo/malbec` |
+| [`android_frameworks_base`](https://github.com/suddenBook/android_frameworks_base) | `frameworks/base` |
+| [MindTheGapps `vendor_gapps`](https://gitlab.com/MindTheGapps/vendor_gapps) | `vendor/gapps` |
 
-All three track **`lineage-23.2`**.
+The four suddenBook repositories track **`lineage-23.2`**; MindTheGapps tracks
+its Android 16 **`baklava`** branch. These are moving revisions, so archive the
+resolved SHAs from a release build when byte-for-byte source selection matters.
 
 ## ⚠️ `breakfast malbec` cannot fetch these repos. Use the local manifest.
 
@@ -69,7 +73,8 @@ for a fork outside the LineageOS organisation.
 :327   git ls-remote https://:@github.com/LineageOS/<repo_name>
 ```
 
-and the `remote` escape at `:226-233` applies only to `aosp-*` remotes. So
+and the `remote` escape at `:226-233` applies only to `aosp-*` remotes; other
+remote names are ignored. So
 `"repository": "suddenBook/…"` is probed as `LineageOS/suddenBook/…`, returns no
 branches, and `:349` exits with *"Default revision lineage-23.2 not found …
 Bailing."*
@@ -82,32 +87,35 @@ fixed from a device tree at all.
 **So:**
 
 ```bash
+# From an existing malbec source tree. In a bare Lineage checkout, bootstrap
+# with work/malbec-local-manifest.xml or fetch this file by its raw URL first.
 cp device/lenovo/malbec/malbec.xml .repo/local_manifests/malbec.xml
 repo sync
 ```
 
-`lineage.dependencies` is kept as-is: it is correct, and it starts working the
-day these repos live under LineageOS.
+`lineage.dependencies` is retained as dependency intent, not as a working
+bootstrap file. Its repository values include `suddenBook/`; even after a move
+to LineageOS those prefixes would need to be removed.
 
 ## ⚠️ Then, before the first build
 
 ```bash
 cd vendor/lenovo/malbec && git lfs install --local && git lfs pull
+cd ../../../vendor/gapps && git lfs install --local && git lfs pull
 ```
 
-`libarcsoft_faceid.so` is 134 MB — over GitHub's per-file limit — so it is the
-one path under Git LFS. Without this you get a **134-byte text file** and the
-build stops with `must have a valid ELF magic word`, which reads like a corrupt
-blob rather than a missing object. `git lfs pull` **on its own is not enough**:
-it prints *"Skipping object checkout, Git LFS is not installed for this
-repository"* and exits **0**.
+`libarcsoft_faceid.so` is 134 MB, while MindTheGapps carries GmsCore and Velvet
+through LFS. An unsmudged vendor pointer stops the build with `must have a valid
+ELF magic word`; unsmudged GApps pointers can produce a green image without Play
+Services. `git lfs pull` **on its own is not enough**: it prints *"Skipping
+object checkout, Git LFS is not installed for this repository"* and exits **0**.
 
 ## Building
 
 ```bash
 source build/envsetup.sh
 lunch lineage_malbec bp4a userdebug
-mka bacon
+m bacon superimage
 ```
 
 or, equivalently, `bash work/scripts/40-build.sh`, which also exports
