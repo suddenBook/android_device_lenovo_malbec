@@ -137,6 +137,19 @@ full, enableable from `wm parallel-window` or the MalbecParts row, and off until
 someone asks for it.** 4,834 rows are gated this way; six more were already
 disabled upstream and are left alone.
 
+★ **This is not a precaution any more — it was reproduced.** `cn.com.sina.finance`
+is a gated row with exactly this shape. Enabled by hand on the 2026-08-12 build,
+it closes itself **1.07 s** after launch: 29 activity references at t+1s, **0 at
+t+2s**, launcher back on top, no FATAL and no ANR — it does not crash, it exits.
+
+    04.875  ParallelWindow: pair? from=LoadingActivity to=MainActivity2 -> MATCH
+    05.530  Remove task fragment: removeLastChild LoadingActivity t-1 f
+    05.552  Remove task fragment: removeLastChild MainActivity2   t-1 f
+
+22 ms between the two removals, and the splash is literally named
+`LoadingActivity`. Trace:
+`work/session-30-build-repair-20260812/evidence/81-confirmed-sina-finance.txt`.
+
 The distinction this draws is the one the data draws: the 2,028 packages where
 upstream said how to split are automatic, and the ones where we guessed are
 opt-in. Rows whose `finishSecondaryWithPrimary` is `0` are deliberately *not*

@@ -747,6 +747,21 @@ def _convert_entry(
     # what upstream released". It is recorded in the audit for every package it
     # touches, and it changes only the DEFAULT -- never whether the rule exists,
     # and never any routing value.
+    #
+    # ★ REPRODUCED ON HARDWARE, 2026-08-12. cn.com.sina.finance is a gated row
+    # with exactly this shape. Enabled by hand, it closes itself 1.07 s after
+    # launch -- 29 activity references at t+1s, 0 at t+2s, launcher back on top,
+    # no FATAL and no ANR:
+    #
+    #     04.875  ParallelWindow: pair? from=LoadingActivity
+    #                             to=...home.MainActivity2 -> MATCH
+    #     05.530  Remove task fragment: removeLastChild LoadingActivity t-1 f
+    #     05.552  Remove task fragment: removeLastChild MainActivity2   t-1 f
+    #
+    # 22 ms between the two removals. The splash is literally named
+    # LoadingActivity. So this gate is not a precaution and it is not
+    # over-cautious: without it, 4,834 packages would each do that on first
+    # launch. Do not relax it without a replacement for the synthesis itself.
     if (output.get("autoPrimary") is True
             and not output.get("transActivities")
             and not output.get("forceFullscreenPages")
