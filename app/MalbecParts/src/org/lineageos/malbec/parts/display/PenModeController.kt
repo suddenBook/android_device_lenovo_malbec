@@ -92,6 +92,20 @@ object PenModeController {
     private const val MIN_REFRESH_RATE = "min_refresh_rate"
 
     /**
+     * Settings.SECURE, not System — and it is not a refresh RATE, it is the mode
+     * SWITCHING type. `MATCH_CONTENT_FRAMERATE_NEVER` (0) maps onto
+     * `DisplayManager.SWITCHING_TYPE_NONE`, which is numerically the same value;
+     * DisplayModeDirector.java:1258-1261 reads the setting straight into
+     * mModeSwitchingType with no translation.
+     *
+     * It has NO user interface on LineageOS 23.2 — zero hits across
+     * packages/apps/Settings, SettingsLib and SystemUI — so nothing on screen can
+     * contradict this value and nothing but a backup restore will move it.
+     */
+    private const val MATCH_CONTENT_FRAME_RATE = "match_content_frame_rate"
+    private const val MATCH_CONTENT_FRAMERATE_NEVER = 0
+
+    /**
      * The mode this process last told the user about; null until the first sync.
      *
      * Every writer runs on this app's main thread — the QS tile (TileService is
@@ -219,9 +233,9 @@ object PenModeController {
      *
      * What actually stops the second toast is [needsCeiling]: by the time the
      * observer's `onChange` reaches the main looper, [enforceCeiling] has left
-     * `peak == ceiling` and `min <= ceiling`, so [onExternalRefreshRateChange]
-     * returns early and never calls [announce]. The behaviour was always right;
-     * the mechanism written down was not.
+     * `peak == ceiling`, `min == ceiling` and the switching type NEVER, so
+     * [onExternalRefreshRateChange] returns early and never calls [announce]. The
+     * behaviour was always right; the mechanism written down was not.
      *
      * ★ Why the field is kept rather than deleted: [reassert] sets it too, and a
      * future gating decision (skip publish() when the property already matches)
@@ -281,27 +295,76 @@ object PenModeController {
         if (!(Settings.System.getFloat(cr, PEAK_REFRESH_RATE, -1f) == ceiling)) {
             Settings.System.putFloat(cr, PEAK_REFRESH_RATE, ceiling)
         }
-        // MIN is clamped to the same ceiling and never raised. Leaving a min of 0
-        // alone is what preserves AOSP's idle drop to 30 Hz, which is worth real
-        // standby power; raising it would pin the panel and cost that.
-        if (!(Settings.System.getFloat(cr, MIN_REFRESH_RATE, 0f) <= ceiling)) {
+        // ★ MIN is PINNED to the ceiling, not clamped below it. This reverses a
+        // decision, so the reason it was made is worth keeping: this line used to
+        // read `<=` and the comment said *"Leaving a min of 0 alone is what
+        // preserves AOSP's idle drop to 30 Hz, which is worth real standby
+        // power."* That was true about the power and wrong about the panel.
+        //
+        // 30 Hz VISIBLY FLICKERS on this LCD — the owner reported it, and it is
+        // not a corner case: SurfaceFlinger's own residency counters had the
+        // tablet at 30 Hz for 38m49s against 120 Hz for 20m11s in one session,
+        // i.e. most of its awake life. ⚠️ Do not go looking for that in
+        // `dumpsys display`; mActiveModeId there is the DESIRED mode and read 120
+        // throughout. Only `dumpsys SurfaceFlinger` carries the physical one.
+        //
+        // The floor cannot be an RRO. Settings.System.MIN_REFRESH_RATE has a
+        // HARDCODED 0f default (DisplayModeDirector.java:1169) — no config_*
+        // resource, no def_ in SettingsProvider — so a write is the only lever,
+        // and this app already owns the other half of the pair.
+        //
+        // With min == peak, updateRefreshRateSettingLocked (:1213-1214) posts
+        // Vote.forRenderFrameRates(min, POSITIVE_INFINITY), and VoteSummary
+        // :344-347 then drops every physical mode that cannot produce that render
+        // rate — so 30/60/90 leave the mode list entirely rather than merely
+        // losing a preference. Measured: primaryRanges [120,120], and the same
+        // rule gives [60,60] when the user picks 60, which is why this is one
+        // rule and not three.
+        if (!(Settings.System.getFloat(cr, MIN_REFRESH_RATE, 0f) == ceiling)) {
             Settings.System.putFloat(cr, MIN_REFRESH_RATE, ceiling)
+        }
+        // ★ And the second half, because the first one leaves a hole.
+        //
+        // PRIORITY_USER_SETTING_MIN_RENDER_FRAME_RATE is 3 (Vote.java:46) and
+        // APP_REQUEST_REFRESH_RATE_RANGE_PRIORITY_CUTOFF is 5 (:190), so the min
+        // vote sits BELOW the cutoff and does not bound the app-request range:
+        // measured appRequestRanges stayed [0,120] with the primary pinned, and
+        // an app calling Surface.setFrameRate() can still reach 30 Hz through it.
+        // SWITCHING_TYPE_NONE closes it — DisplayModeDirector.java:376-391 gives
+        // both summaries disableModeSwitching() AND disableRenderRateSwitching().
+        //
+        // ⚠️ The thing that makes this safe is not obvious and was checked before
+        // it was written. `disableModeSwitching(fps)` pins to `baseMode`, and this
+        // panel's DEFAULT mode is 144 Hz — the rate at which the digitizer cannot
+        // see the pen at all. But baseMode comes from selectBaseMode(availableModes,
+        // …) at :357, i.e. the VOTE-FILTERED list, not defaultMode. Measured on the
+        // device: it pinned to 120, and appRequestRanges became [120,120].
+        if (Settings.Secure.getInt(cr, MATCH_CONTENT_FRAME_RATE, -1)
+            != MATCH_CONTENT_FRAMERATE_NEVER
+        ) {
+            Settings.Secure.putInt(cr, MATCH_CONTENT_FRAME_RATE, MATCH_CONTENT_FRAMERATE_NEVER)
         }
     }
 
     /**
      * Exactly the condition applyCeiling would act on — nothing more.
      *
-     * Kept as a mirror of applyCeiling's two tests, including the `!(a == b)` /
-     * `!(a <= b)` spelling, so the pair cannot drift apart. That equivalence is
-     * also what makes the observer terminate: applyCeiling leaves peak == ceiling
-     * and min <= ceiling, so the write it performs wakes the observer once and
-     * the next pass reads false here and returns.
+     * Kept as a mirror of applyCeiling's three tests, including the `!(a == b)`
+     * spelling, so the pair cannot drift apart. That equivalence is also what
+     * makes the observer terminate: applyCeiling leaves peak == ceiling,
+     * min == ceiling and the switching type NEVER, so the writes it performs wake
+     * the observer once and the next pass reads false here and returns.
+     *
+     * ⚠️ The min test was `<=` while applyCeiling clamped rather than pinned. Both
+     * changed together and must keep changing together — a `<=` here against a
+     * `==` there would make every observer wake-up a no-op that never restores.
      */
     private fun needsCeiling(context: Context, ceiling: Float): Boolean {
         val cr = context.contentResolver
         return !(Settings.System.getFloat(cr, PEAK_REFRESH_RATE, -1f) == ceiling) ||
-            !(Settings.System.getFloat(cr, MIN_REFRESH_RATE, 0f) <= ceiling)
+            !(Settings.System.getFloat(cr, MIN_REFRESH_RATE, 0f) == ceiling) ||
+            Settings.Secure.getInt(cr, MATCH_CONTENT_FRAME_RATE, -1) !=
+            MATCH_CONTENT_FRAMERATE_NEVER
     }
 
     /**
@@ -443,9 +506,15 @@ object PenModeController {
      * defends the one refresh rate both modes depend on. Zero cost when nothing
      * changes.
      *
-     * ⚠️ BOTH uris. Registering only peak_refresh_rate misses a min-only change,
-     * and min is the half that can hold the panel above the ceiling —
+     * ⚠️ BOTH System uris. Registering only peak_refresh_rate misses a min-only
+     * change, and min is the half that can hold the panel above the ceiling —
      * DisplayModeDirector.java:955-957 registers both for the same reason.
+     *
+     * ★ And the Secure one, which is a DIFFERENT table and so needs its own loop.
+     * Since min is pinned rather than clamped, all three values are now things
+     * this app asserts rather than merely bounds, and a defence that watches two
+     * of three would let a backup restore quietly re-enable content-driven mode
+     * switching with every surface still reporting the pinned rate.
      */
     class RefreshRateObserver(
         private val context: Context,
@@ -461,6 +530,11 @@ object PenModeController {
                     this,
                 )
             }
+            cr.registerContentObserver(
+                Settings.Secure.getUriFor(MATCH_CONTENT_FRAME_RATE),
+                /* notifyForDescendants = */ false,
+                this,
+            )
             // Establish announcedMode and bring the hardware into line, silently:
             // the process may have just been (re)started, which is not a user
             // action and must not produce a toast.

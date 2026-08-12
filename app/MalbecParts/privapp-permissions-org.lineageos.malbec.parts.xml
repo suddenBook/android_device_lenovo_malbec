@@ -42,5 +42,15 @@
              is what makes Settings show the pen's own detail page.
              StylusMetadataTagger.kt:91. -->
         <permission name="android.permission.BLUETOOTH_PRIVILEGED" />
+        <!-- Settings.Secure.match_content_frame_rate = MATCH_CONTENT_FRAMERATE_NEVER,
+             the half of the refresh-rate pin that WRITE_SETTINGS cannot reach.
+             PenModeController.applyCeiling.
+
+             signature|privileged|development|role|installer — the `privileged`
+             flag is what puts it here, and it is the flag that matters: this app
+             is platform-signed, so `signature` alone would grant it, but
+             ro.control_privapp_permissions is `enforce` and the allowlist is
+             checked independently of how the grant is earned. -->
+        <permission name="android.permission.WRITE_SECURE_SETTINGS" />
     </privapp-permissions>
 </permissions>
