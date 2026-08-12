@@ -355,6 +355,9 @@ class HyperOsRuleImporterTest(unittest.TestCase):
         for bare in ("com.example.bare", "com.example.trans"):
             self.assertNotIn("activityPairs", by_name[bare], bare)
             self.assertNotIn("autoPrimary", by_name[bare], bare)
+            # Not inert: being on the list is the enrolment into the centred
+            # single pane, which is what a bare row is for.
+            self.assertIs(True, by_name[bare]["middle"], bare)
         self.assertEqual(
             [{"from": ".First", "to": "*"}],
             by_name["com.example.explicit"]["activityPairs"])
@@ -373,6 +376,40 @@ class HyperOsRuleImporterTest(unittest.TestCase):
             False, by_name["com.example.already_off"]["defaultEnabled"])
         self.assertEqual(3, audit["counts"]["default_enabled"])
         self.assertEqual(1, audit["counts"]["default_disabled"])
+        self.assertEqual(4, audit["counts"]["imported_middle"])
+        self.assertEqual(3, audit["counts"]["imported_middle_only"])
+
+    def test_middle_rule_attribute_is_audited_with_its_mapped_side_effect(self):
+        """The 36 explicit middleRule rows, and the one that is an approximation.
+
+        On HyperOS middleRule OVERRIDES the centring judgement rather than
+        opting into it, and every imported row is centred anyway, so the "*"
+        form is exactly honoured. The form that names activities is not: this
+        engine has no per-activity middle whitelist, so more activities end up
+        centred than upstream intended. That is recorded rather than silently
+        converted.
+        """
+        document, audit = self.generate([
+            xml_element("package", name="com.example.all", middleRule="*"),
+            xml_element(
+                "package", name="com.example.some",
+                middleRule="com.example.some.Launcher0"),
+        ], [])
+
+        by_name = {rule["name"]: rule for rule in document["packages"]}
+        self.assertIs(True, by_name["com.example.all"]["middle"])
+        self.assertIs(True, by_name["com.example.some"]["middle"])
+
+        effects = {
+            item["package"]: item["mappedSideEffect"]
+            for item in audit["unmappedAttributes"]
+            if item["attribute"] == "middleRule"
+        }
+        self.assertEqual(
+            "package is centred (middle=true)", effects["com.example.all"])
+        self.assertIn("MORE activities are centred here than upstream",
+                      effects["com.example.some"])
+        self.assertEqual(2, audit["counts"]["source_middle_rule_rows"])
 
     def test_malformed_and_unmapped_values_are_auditable_not_just_counted(self):
         document, audit = self.generate([

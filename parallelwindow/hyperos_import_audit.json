@@ -8,6 +8,9 @@
     "setting_duplicate_rows": 0,
     "source_final_full_rule": 1056,
     "imported": 6968,
+    "imported_middle": 6968,
+    "imported_middle_only": 4917,
+    "source_middle_rule_rows": 36,
     "imported_explicit_pair_packages": 2028,
     "imported_pair_relationships": 3750,
     "imported_placeholder_packages": 184,
@@ -14646,7 +14649,8 @@
       "package": "com.FillGreat",
       "row": 3174,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.FillGreat",
@@ -15663,7 +15667,8 @@
       "package": "com.ali.croak",
       "row": 2799,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.ali.croak",
@@ -15688,7 +15693,8 @@
       "package": "com.ali.croak.mi",
       "row": 2798,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.ali.croak.mi",
@@ -17420,7 +17426,8 @@
       "package": "com.badaolaogui.hyykt",
       "row": 7845,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.badaolaogui.hyykt",
@@ -17511,7 +17518,8 @@
       "package": "com.baidu.baike",
       "row": 3188,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.baidu.baike",
@@ -17699,7 +17707,8 @@
       "package": "com.baidu.searchbox.mission",
       "row": 4760,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.baidu.searchbox.mission",
@@ -18859,7 +18868,8 @@
       "package": "com.bjgas.shop",
       "row": 4200,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.bjgas.shop",
@@ -28067,7 +28077,8 @@
       "package": "com.epet.zjm",
       "row": 3175,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.epet.zjm",
@@ -30900,7 +30911,8 @@
       "package": "com.funplus.fun",
       "row": 2793,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.funplus.fun",
@@ -32687,7 +32699,8 @@
       "package": "com.guozhigq.pilipala",
       "row": 8000,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.guozhigq.pilipala",
@@ -33841,7 +33854,8 @@
       "package": "com.hexin.android.futures",
       "row": 3231,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.hexin.android.futures",
@@ -34768,7 +34782,8 @@
       "package": "com.hongbeibang.app",
       "row": 2687,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.hongbeibang.app",
@@ -35682,7 +35697,8 @@
       "package": "com.huawei.security2",
       "row": 5551,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.huawei.security2",
@@ -35724,7 +35740,8 @@
       "package": "com.huaxiafengwu.android",
       "row": 2701,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.huaxiafengwu.android",
@@ -35742,7 +35759,8 @@
       "package": "com.huaxiaozhu.driver",
       "row": 2877,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.huaxiaozhu.driver",
@@ -38093,7 +38111,8 @@
       "package": "com.inzhiyu.client.android",
       "row": 2803,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.inzhiyu.client.android",
@@ -39132,7 +39151,8 @@
       "package": "com.jeejen.family",
       "row": 2874,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.jeejen.family",
@@ -46033,7 +46053,8 @@
       "package": "com.master.jilianwifi",
       "row": 2873,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.master.jilianwifi",
@@ -47410,7 +47431,8 @@
       "package": "com.miui.hybrid",
       "row": 3343,
       "attribute": "middleRule",
-      "value": "com.miui.hybrid.VendorLauncherActivity$Launcher0,com.miui.hybrid.VendorLauncherActivity$Launcher1,com.miui.hybrid.VendorLauncherActivity$Launcher2,com.miui.hybrid.VendorLauncherActivity$Launcher3,com.miui.hybrid.VendorLauncherActivity$Launcher4,com.miui.hybrid.VendorLauncherActivity$GameLauncher0,com.miui.hybrid.VendorLauncherActivity$GameLauncher1,com.miui.hybrid.VendorLauncherActivity$GameLauncher2,com.miui.hybrid.VendorLauncherActivity$GameLauncher3,com.miui.hybrid.VendorLauncherActivity$GameLauncher4"
+      "value": "com.miui.hybrid.VendorLauncherActivity$Launcher0,com.miui.hybrid.VendorLauncherActivity$Launcher1,com.miui.hybrid.VendorLauncherActivity$Launcher2,com.miui.hybrid.VendorLauncherActivity$Launcher3,com.miui.hybrid.VendorLauncherActivity$Launcher4,com.miui.hybrid.VendorLauncherActivity$GameLauncher0,com.miui.hybrid.VendorLauncherActivity$GameLauncher1,com.miui.hybrid.VendorLauncherActivity$GameLauncher2,com.miui.hybrid.VendorLauncherActivity$GameLauncher3,com.miui.hybrid.VendorLauncherActivity$GameLauncher4",
+      "mappedSideEffect": "package is centred (middle=true); the per-activity restriction is not expressed, so MORE activities are centred here than upstream"
     },
     {
       "package": "com.miui.hybrid",
@@ -49810,7 +49832,8 @@
       "package": "com.nintendo.zaca",
       "row": 2710,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.nintendo.zaca",
@@ -55156,7 +55179,8 @@
       "package": "com.ruanyikeji.vesal.vesal",
       "row": 3224,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.ruanyikeji.vesal.vesal",
@@ -56362,7 +56386,8 @@
       "package": "com.sf.activity",
       "row": 7818,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.sf.activity",
@@ -60017,7 +60042,8 @@
       "package": "com.superjiasu.wifi",
       "row": 2875,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.superjiasu.wifi",
@@ -61402,7 +61428,8 @@
       "package": "com.tencent.mymedinfo",
       "row": 3104,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.tencent.mymedinfo",
@@ -63701,7 +63728,8 @@
       "package": "com.ugreen.iot",
       "row": 7032,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.ugreen.iot",
@@ -63859,7 +63887,8 @@
       "package": "com.unicom.woshipin",
       "row": 2677,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.unicom.woshipin",
@@ -64552,7 +64581,8 @@
       "package": "com.vistastory.news",
       "row": 2732,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.vistastory.news",
@@ -64704,7 +64734,8 @@
       "package": "com.vpclub.mofang",
       "row": 2802,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.vpclub.mofang",
@@ -66966,7 +66997,8 @@
       "package": "com.wujie.chengxin",
       "row": 2869,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.wujie.chengxin",
@@ -68132,7 +68164,8 @@
       "package": "com.xiaomi.mitime",
       "row": 2690,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.xiaomi.mitime",
@@ -70639,7 +70672,8 @@
       "package": "com.yek.android.kfc.activitys",
       "row": 7817,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "com.yek.android.kfc.activitys",
@@ -76380,7 +76414,8 @@
       "package": "es.leishen.cn",
       "row": 2739,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "es.leishen.cn",
@@ -76452,7 +76487,8 @@
       "package": "flipboard.cn",
       "row": 7001,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "flipboard.cn",
@@ -77005,7 +77041,8 @@
       "package": "io.iftech.android.box",
       "row": 2786,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "io.iftech.android.box",
@@ -77199,7 +77236,8 @@
       "package": "jp.pokemon.pokemonhome",
       "row": 2711,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "jp.pokemon.pokemonhome",
@@ -79845,7 +79883,8 @@
       "package": "vip.qufenqian.wifionekey",
       "row": 2870,
       "attribute": "middleRule",
-      "value": "*"
+      "value": "*",
+      "mappedSideEffect": "package is centred (middle=true)"
     },
     {
       "package": "vip.qufenqian.wifionekey",

@@ -586,6 +586,25 @@ def _convert_entry(
         "splitRatio": DEFAULT_SPLIT_RATIO,
         "minWidthDp": DEFAULT_MIN_WIDTH_DP,
         "minSmallestWidthDp": DEFAULT_MIN_SMALLEST_WIDTH_DP,
+        # ★ EVERY IMPORTED ROW IS CENTRED. (#87)
+        #
+        # On HyperOS the centred single pane is not opt-in. Its judgement runs
+        # for every package on the list and is decided by geometry and by
+        # whether the activity is alone -- the explicit `middleRule` attribute
+        # (36 of 8,046 rows) is an override of that judgement, not an enrolment
+        # in it. So being on the list IS the enrolment, and that is what makes
+        # a bare row meaningful: 4,917 of these rows carry no routing at all
+        # and this is the entire reason they exist.
+        #
+        # Written into every row rather than left to the target parser's
+        # default, for the same reason clearTop and the finish behaviours are:
+        # the product document should say what it does.
+        #
+        # `middleRatio` is deliberately NOT materialized. It has no upstream
+        # counterpart -- it is this port's own knob -- so a per-row copy of one
+        # constant would be noise. The parser default is 0.5, which is
+        # HyperOS's own fraction, and the /data override slot can retune it.
+        "middle": True,
     }
 
     # ★ A ROW WITH NO `splitPairRule` GETS NO ROUTING RULE. (#87)
@@ -723,6 +742,17 @@ def _convert_entry(
                 item["mappedSideEffect"] = (
                     "mapped into showEmbeddingDivider; remaining scale "
                     "semantics unsupported")
+            elif attribute == "middleRule":
+                # Every imported row already carries middle=true, so the "*" form
+                # -- 35 of the 36 -- is exactly honoured and this record is only
+                # provenance. The one row that names activities is an
+                # approximation, and it says so.
+                item["mappedSideEffect"] = (
+                    "package is centred (middle=true)"
+                    if attributes[attribute].strip() == "*" else
+                    "package is centred (middle=true); the per-activity "
+                    "restriction is not expressed, so MORE activities are "
+                    "centred here than upstream")
             audit["unmappedAttributes"].append(item)
 
     return output
@@ -752,6 +782,14 @@ def _finalize_counts(
         "setting_duplicate_rows": len(audit["duplicateSettingRows"]),
         "source_final_full_rule": len(full_rule_names),
         "imported": len(packages),
+        "imported_middle": sum(
+            rule.get("middle") is True for rule in packages),
+        "imported_middle_only": sum(
+            rule.get("middle") is True and "activityPairs" not in rule
+            and "placeholderPairs" not in rule for rule in packages),
+        "source_middle_rule_rows": sum(
+            "middleRule" in attributes
+            for _, attributes in final_rules.values()),
         "imported_explicit_pair_packages": len(explicit),
         "imported_pair_relationships": sum(
             len(rule["activityPairs"]) for rule in explicit),

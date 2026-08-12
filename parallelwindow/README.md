@@ -106,6 +106,13 @@ Full comparison and method: `work/notes/parallel-window-corpus-provenance.md`.
       "transActivities": [ "com.example.app.SplashActivity" ],
 
       // ── presentation ──────────────────────────────────────────────────────
+      // Centred single pane: when an activity of this package is alone in its
+      // task, it is shown at `middleRatio` of the task width, centred, instead
+      // of stretched across the landscape tablet. Every imported row carries
+      // this. See the MiddleRule section below.
+      "middle":      true,
+      "middleRatio": 0.5,               // optional; parser default is 0.5
+
       // Effective HyperOS divider: raw isShowDivider AND scaleMode == 0.
       "showEmbeddingDivider": true,     // AOSP's draggable divider (vendor API 6+)
       "dividerDraggingToFullscreenAllowed": true, // raw supportFullSize
@@ -174,16 +181,60 @@ it did not crash, it exited.
 `LoadingActivity`. Trace:
 `work/session-30-build-repair-20260812/evidence/81-confirmed-sina-finance.txt`.
 
-So the importer now materializes exactly what upstream released, with no
-departure anywhere: 2,028 packages carry `activityPairs`, 23 more carry only
-`placeholderPairs`, and the remaining **4,917 are known and inert** —
-`hasSplitRouting()` is false, and `ParallelWindowService` classifies them
-`disabled`. Defaults are once again upstream's own, **6,952 enabled and 16
-disabled**, because nothing in the conversion decides a default any more.
+So the importer materializes exactly what upstream released, with no departure
+anywhere: 2,028 packages carry `activityPairs`, 23 more carry only
+`placeholderPairs`, and the remaining 4,917 carry no routing. Defaults are once
+again upstream's own, **6,952 enabled and 16 disabled**, because nothing in the
+conversion decides a default any more.
 
-⚠️ **Inert is not the end state.** Those 4,917 rows are what MiddleRule exists
-for — single-pane centred presentation, the third mode AOSP lacks — and until it
-lands they contribute nothing but their own size. See `work/OPEN-ISSUES.md` #87.
+## MiddleRule — what those 4,917 rows are for
+
+AOSP has two presentations: two containers side by side, and one container
+filling the task. HyperOS has a third, and it is the one most of this corpus
+needs — **one container, narrower than the task, centred in it**.
+
+`"middle": true` is on **every** imported row, and that is not a bulk edit: on
+HyperOS the centring judgement runs for every package on the list and is decided
+by geometry and by whether the activity is alone. The explicit `middleRule`
+attribute — 36 of the source's 8,046 rows — *overrides* that judgement rather
+than enrolling in it. Being on the list is the enrolment.
+
+The rect is the middle `middleRatio` of the task width, full height. It is
+**not applied**, and the container fills the task exactly as stock would, when:
+
+* the task is portrait or square — the app already has a phone-shaped window;
+* the ratio is degenerate;
+* the pane's own aspect falls outside `(0.5, 1.0)`. This is HyperOS's own
+  `ratioMatch` and it is the test that makes the feature mean something: it asks
+  whether half of this screen is still roughly phone-proportioned. On this
+  device's 1752 × 1095 dp landscape task a 0.5 pane is 876 × 1095 dp, i.e. 0.80.
+
+`transActivities` and `forceFullscreenPages` opt an activity out — the first so
+a splash still renders its launch image at full size, which is the same
+exclusion HyperOS derives from `transitionRules`.
+
+Centring and splitting compose rather than compete. A package with
+`activityPairs` is centred while its primary is alone, expands into a two-pane
+split when a pair matches, and returns to centred when the split collapses. A
+package with no pairs — the overwhelming majority — is only ever centred.
+
+`middleRatio` is deliberately **not** materialized into the rows. It has no
+upstream counterpart; it is this port's own knob. The parser default is 0.5,
+which is HyperOS's own fraction, and the `/data` override slot below can retune
+it per package with no rebuild.
+
+Two approximation boundaries, both audited rather than silently converted:
+
+* the one source row whose `middleRule` names activities
+  (`com.miui.hybrid`, ten launcher classes) becomes a whole-package `middle`,
+  so **more** activities are centred there than upstream intended. It is a
+  HyperOS system package that cannot be installed here;
+* `flags: ignoreActivityBelowWhenJudgeMiddle` (16 rows) has no counterpart.
+  HyperOS needs it because its judgement requires "nothing below me in the
+  task", and apps that keep a junk activity underneath would never qualify.
+  This port decides middle per *container* rather than per launch, so the
+  condition the flag removes was never imposed. The directive stays in
+  `unmappedFlagDirectives`.
 
 An item in `placeholderPairs` may carry `"waitForContent": true`. It delays the
 placeholder until the primary activity has attached content. The importer emits
@@ -370,8 +421,10 @@ modified.
 ## Known approximation boundaries
 
 The conversion does not claim that AOSP Activity Embedding is Xiaomi's engine.
-The source audit retains unsupported `middleRule`, `autoUiRule`, portrait,
-process-compatibility, scaling, camera-preview, and flag semantics. In
+The source audit retains unsupported `autoUiRule`, portrait,
+process-compatibility, scaling, camera-preview, and flag semantics — and
+`middleRule`, which is now partially mapped and carries its side effect with it.
+In
 particular, HyperOS also consults application-manifest portrait/orientation
 state; that runtime gate cannot be reconstructed from this static corpus alone.
 Relaunch metadata is transported but deliberately unenforced for the reasons

@@ -17,14 +17,14 @@ RELEASE_SHA256 = "cf01225b777ce67e44bfc88a54e6adf46f7a7326c6cb5d5e2c1508cea43f4e
 RULES_SHA256 = "fa8caafac66c17d4786175e7dbd2b6c9514419a88499adb277dc12002beddf7a"
 SETTINGS_SHA256 = "d50e462dfd7e62711b27cb87440e28560cf7ab6c699f9fe96cc8988b8e87144c"
 # ⚠️ The three hashes ABOVE pin the INPUT and must never move without a new
-# source-lock review. The two BELOW pin the OUTPUT and have moved twice, both
-# times deliberately: once when the unguarded-autoPrimary gate landed (#81), and
-# again when autoPrimary itself was deleted (#87) and a bare row went back to
-# meaning what upstream released -- presentation attributes and no routing.
+# source-lock review. The two BELOW pin the OUTPUT and have moved three times,
+# each time deliberately: the unguarded-autoPrimary gate (#81); deleting
+# autoPrimary so a bare row went back to meaning what upstream released (#87);
+# and marking every row centred, which is what a bare row is on the list FOR.
 # If a change moves an INPUT hash, stop: that is a different upstream release,
 # not a conversion change.
-PRODUCT_SHA256 = "5571c3187350f30bf92fb0706cf8b8bcfc7ac896f2ec2c93fc89f4714b067bbf"
-AUDIT_SHA256 = "8f75d6d225324ddfca246b5632b23e3a4c40dbf8688d29c300b290d95d72a642"
+PRODUCT_SHA256 = "20d6d1bc8a8da159bdd3b6d0fc9a726fe0a603507ccbf535055c7d0d0bcc4d31"
+AUDIT_SHA256 = "54928ddcce3c5a8cbcda122411a6fe948a32bc1006ec662f68be0daf60dd5087"
 MAX_DEVICE_RULE_BYTES = 8 * 1024 * 1024
 
 
@@ -78,6 +78,13 @@ class GeneratedCorpusTest(unittest.TestCase):
             "setting_duplicate_rows": 0,
             "source_final_full_rule": 1_056,
             "imported": 6_968,
+            # Every row is centred; 4,917 have nothing else at all, which is the
+            # population MiddleRule exists for and the reason the corpus is this
+            # size. 36 source rows carry an explicit middleRule attribute, which
+            # on HyperOS overrides its judgement rather than opting into it.
+            "imported_middle": 6_968,
+            "imported_middle_only": 4_917,
+            "source_middle_rule_rows": 36,
             "imported_explicit_pair_packages": 2_028,
             "imported_pair_relationships": 3_750,
             "imported_placeholder_packages": 184,
@@ -150,19 +157,17 @@ class GeneratedCorpusTest(unittest.TestCase):
             "org.lineageos.glimpse",
         ):
             self.assertNotIn(removed_seed, names)
-        # ⚠️ THIS USED TO ASSERT THAT EVERY SHIPPED ROW CAN DO SOMETHING, via
-        # "autoPrimary or activityPairs or placeholderPairs". Deleting
-        # autoPrimary (#87) makes that false for 4,917 rows, and the honest
-        # replacement is to pin the split rather than drop the guard: those rows
-        # carry presentation attributes and no routing, exactly as upstream
-        # released them, and the framework parser classifies them `disabled`.
-        # They are on the list for MiddleRule, which is the next change; when it
-        # lands the inert count goes to zero and this pins that instead.
+        # Every shipped row can do something -- the invariant that briefly did
+        # not hold between deleting autoPrimary (#87) and shipping MiddleRule.
+        # 2,051 rows can route; all 6,968 are centred; none is inert.
         routable = [rule for rule in packages
                     if rule.get("activityPairs") or rule.get("placeholderPairs")]
         self.assertEqual(2_051, len(routable))
-        self.assertEqual(4_917, len(packages) - len(routable))
         for rule in packages:
+            self.assertIs(True, rule.get("middle"), rule["name"])
+            # middleRatio has no upstream counterpart, so it is deliberately not
+            # materialized -- the parser default of 0.5 is HyperOS's own value.
+            self.assertNotIn("middleRatio", rule)
             self.assertFalse(any(key.startswith("_tested") for key in rule))
 
     def test_official_taobao_rule_preserves_both_placeholders_and_default(self):
@@ -177,6 +182,7 @@ class GeneratedCorpusTest(unittest.TestCase):
             "splitRatio": 0.5,
             "minWidthDp": 600,
             "minSmallestWidthDp": 600,
+            "middle": True,
             "activityPairs": [
                 {"from": "com.taobao.search.sf.MainSearchResultActivity", "to": "*"},
                 {"from": "com.taobao.tao.welcome.Welcome", "to": "*"},
