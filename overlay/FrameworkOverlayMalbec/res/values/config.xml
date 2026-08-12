@@ -875,7 +875,20 @@
 
          ⚠️ Do NOT reach for config_multiuserMaximumUsers = 1 instead. That makes
          UserManager.supportsMultipleUsers() false, which deletes the whole
-         Multiple users page and guest mode — far more than was asked for. -->
+         Multiple users page and guest mode — far more than was asked for.
+
+         ★ ⚠️ AND THIS LINE ALONE DOES NOTHING. The target declares both of these
+         bools in values-sw600dp/ as well, this device is sw1095dp, and a
+         target's more specific configuration OUT-MATCHES an overlay's default
+         one — the value here is found and then never consulted. Both names are
+         restated in ../values-sw600dp/config.xml, which is what actually takes
+         effect, and that file's header has the measurement, the audit of every
+         other resource in this tree's six overlays, and the one-line test:
+         `adb shell cmd overlay lookup`, in verbose mode, against `android` and
+         `android:bool/config_showUserSwitcherByDefault`, must print an
+         "Overlaid:" line. "Found initial:" on its own is the failure.
+
+         This was caught by flashing and looking, not by reading. -->
     <bool name="config_showUserSwitcherByDefault">false</bool>
 
     <!-- Stock: true, from product/overlay/FrameworksResCommon_Sys.apk.

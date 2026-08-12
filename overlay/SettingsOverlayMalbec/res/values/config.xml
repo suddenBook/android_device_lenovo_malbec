@@ -142,6 +142,54 @@
          session-21 note at the top of this file:
          packages/apps/Settings/res/values/config.xml:496 declares it, true.
 
+         ★★ ⚠️ AND IT DOES NOT WORK ON THIS DEVICE, FOR A REASON THAT IS NOT
+         OURS. MEASURED AFTER FLASHING: the row is still in Settings > System.
+
+         The bool resolves correctly — `cmd overlay lookup` returns false from
+         this apk, alongside config_show_smooth_display, whose effect IS visible
+         (Display has no refresh-rate row). The RRO is right. The READER is gone:
+
+             W PrefCtrlListHelper: Cannot instantiate controller from reflection:
+                 com.android.settings.system.SystemUpdatePreferenceController
+
+         and it is the only controller on this whole build that fails. The cause
+         is three lines away from the bool. SystemUpdatePreferenceController
+         constructs a ClientInitiatedActionRepository, which begins:
+
+             private val configManager =
+                 context.getSystemService(CarrierConfigManager::class.java)!!
+
+         ★ This is a Wi-Fi-only tablet (common_full_tablet_wifionly.mk). No
+         android.hardware.telephony feature, no carrier_config in `service list`
+         — so getSystemService returns null and the Kotlin not-null assertion
+         throws. createInstance wraps that InvocationTargetException in
+         IllegalStateException, PreferenceControllerListHelper catches it without
+         logging the cause, and the controller is silently dropped.
+
+         With no controller, nothing reads this bool, nothing calls
+         displayPreference to hide the preference, and nothing sets its summary —
+         which is what gave it away: the row renders with the bare
+         summary_placeholder (a non-breaking space) instead of "Android 16".
+         The preference then comes straight out of system_dashboard_fragment.xml,
+         unconditionally.
+
+         ⚠️ So config_show_system_update_settings is a DEAD RESOURCE on every
+         Wi-Fi-only device, upstream, and not only on this one.
+
+         The line stays. It is correct, it states the intent, and it begins
+         working the moment the controller can be constructed. But it is recorded
+         as INERT rather than left looking effective — the same rule this session
+         applied to config_keyguardUserSwitcher over in FrameworkOverlayMalbec,
+         and for the same reason.
+
+         There is no device-tree lever for the row itself, and the obvious one is
+         a trap: an RRO of system_dashboard_fragment.xml would carry
+         `settings:`-namespace attributes, which inside an overlay resolve to the
+         overlay's own package, so every controller binding in the file would
+         break. That mechanism is measured with aapt2 in OPEN-ISSUES #93.
+         Fixing this properly means fixing the not-null assertion upstream.
+         OPEN-ISSUES #94.
+
          ⚠️ STATED RESIDUE. GMS ALSO injects itself into Security & privacy
          (com.android.settings.category.ia.security, keyhint
          security_status_security_patch_level — a key that exists nowhere in
