@@ -56,12 +56,29 @@ known package name one at a time. An app outside the device rule set therefore
 has no row and no write path. A supported app whose rule default is off still
 has a row; its switch is unchecked.
 
-Writes do not stop applications. After a successful setter call, the page reads
-the complete state back and reports success only when the requested value is in
-that projection. If an app leaves the installed-and-supported intersection
-during the write, the refreshed list is shown with an unconfirmed warning. A
-confirmed change takes effect on the app's next process start. The app-info
-shortcut is offered only as an explicit user action.
+After a successful setter call, the page reads the complete state back and
+reports success only when the requested value is in that projection. If an app
+leaves the installed-and-supported intersection during the write, the refreshed
+list is shown with an unconfirmed warning.
+
+**A confirmed per-app change then closes that app** (session 33), because a rule
+is latched per process and a running app cannot pick a new one up. This replaced
+a dialog that said *"the app was not stopped"* and offered an App info shortcut
+so the user could press Force stop themselves.
+
+The mechanism is `ActivityManager#killBackgroundProcesses`, **not**
+`forceStopPackage`: it does not set `FLAG_STOPPED`, so alarms, jobs, sync,
+widgets and saved instance state all survive and the user returns to the screen
+they left. The price is that it does nothing for an app above the background
+cutoff — one in the foreground, visible, or holding a foreground service — and
+says nothing when it doesn't. So the page measures the process list afterwards
+and shows one of two different sentences: *closed, already in effect* or *takes
+effect the next time it starts*. `APPLIED` is a claim that requires evidence;
+everything else, including an unreadable process list, degrades to the weaker
+statement, which is true either way.
+
+**The master switch never closes anything.** It affects every eligible installed
+app, and stopping all of them from a toggle is not defensible at any scale.
 
 The pure list and write-confirmation boundaries are covered by the host module
 `MalbecPartsParallelWindowModelTests`.

@@ -510,8 +510,18 @@ Every app process receives one immutable decision on its first rule lookup, and
 the non-resizeable server gate latches that same package decision. Consequently
 changing rules, the master, or a package preference never leaves the two halves
 of an already-running process disagreeing: both retain the old snapshot. The
-change applies when that package next starts. The UI does not stop apps; when
-testing from the shell, force-stop and relaunch the affected package explicitly.
+change applies when that package next starts.
+
+⚠️ **Session 33 changed who performs that restart, not the latch.** This
+paragraph used to end *"The UI does not stop apps; when testing from the shell,
+force-stop and relaunch the affected package explicitly."* The latch is
+unchanged and is still the reason a restart is needed at all — what changed is
+that the MalbecParts page now closes the app itself, with
+`killBackgroundProcesses`, and reports whether that actually worked (it cannot
+touch a foreground or visible app, silently). **The shell surface is unchanged:
+`wm parallel-window` still stops nothing, so the instruction above still holds
+when testing from a shell** — and `reload` still only re-reads the rule file,
+with already-running processes staying latched.
 
 ## Provenance and deterministic regeneration
 

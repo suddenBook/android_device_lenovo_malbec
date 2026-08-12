@@ -5,17 +5,13 @@
 
 package org.lineageos.malbec.parts.parallelwindow
 
-import android.app.AlertDialog
 import android.content.Context
-import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
-import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import android.window.ParallelWindowControlState
@@ -116,8 +112,17 @@ class ParallelWindowSettingsFragment : SettingsBasePreferenceFragment() {
             logMutationDiagnostics(result, target, requestedEnabled)
             val outcome = when (result.confirmation) {
                 ParallelWindowMutationConfirmation.CONFIRMED ->
-                    result.authoritativePage?.let(MutationOutcome::Saved)
-                        ?: MutationOutcome.Unconfirmed(lastAuthoritativePage)
+                    result.authoritativePage?.let { page ->
+                        // ★ The restart happens HERE — after the authoritative
+                        // reread has confirmed the write, and on this background
+                        // thread, never on the main one.
+                        //
+                        // After, because killing an app for a change that did not
+                        // land would be pure cost. On this thread, because the
+                        // kill is a Binder call followed by a bounded poll and
+                        // the main thread must not wait for either.
+                        MutationOutcome.Saved(page, restartChangedApp(context, changedApp))
+                    } ?: MutationOutcome.Unconfirmed(lastAuthoritativePage)
                 ParallelWindowMutationConfirmation.MISMATCHED ->
                     result.authoritativePage?.let(MutationOutcome::Rejected)
                         ?: MutationOutcome.Unconfirmed(lastAuthoritativePage)
@@ -129,7 +134,7 @@ class ParallelWindowSettingsFragment : SettingsBasePreferenceFragment() {
                 when (outcome) {
                     is MutationOutcome.Saved -> {
                         renderPage(outcome.page)
-                        showNextProcessNotice(changedApp)
+                        announceRestart(changedApp, outcome.restart)
                     }
                     is MutationOutcome.Rejected -> showRejectedMutation(outcome.page)
                     is MutationOutcome.Unconfirmed -> showUnconfirmedMutation(outcome.page)
@@ -355,41 +360,62 @@ class ParallelWindowSettingsFragment : SettingsBasePreferenceFragment() {
         ).show()
     }
 
-    private fun showNextProcessNotice(changedApp: PageApp?) {
-        val builder = AlertDialog.Builder(requireContext())
-            .setTitle(R.string.parallel_window_change_title)
-        if (changedApp == null) {
-            builder
-                .setMessage(R.string.parallel_window_master_change_message)
-                .setPositiveButton(android.R.string.ok, null)
-        } else {
-            builder
-                .setMessage(
-                    getString(R.string.parallel_window_change_message, changedApp.row.label),
-                )
-                .setNegativeButton(R.string.parallel_window_later, null)
-                .setPositiveButton(R.string.parallel_window_app_info) { _, _ ->
-                    openAppInfo(changedApp.row.packageName)
-                }
-        }
-        builder.show()
+    /**
+     * Ends the changed app so its next start reads the new rule.
+     *
+     * ⚠️ SESSION 33 — this replaces a dialog, and the dialog was not laziness.
+     * It said *"The change for X takes effect the next time the app starts. The
+     * app was not stopped."* and offered an App info button so the user could
+     * press Force stop themselves. Every word of it was true, and it was true
+     * because of the latch described in [ParallelWindowRestartOutcome]: a running
+     * process cannot pick up a rule change, on either side of the Binder.
+     *
+     * The owner asked for the app to be stopped automatically instead. Doing that
+     * means the dialog's central claim stops being true, so the claim moves here
+     * rather than disappearing: this returns what actually happened, and
+     * [announceRestart] says it.
+     *
+     * The master switch is deliberately excluded. It affects an unbounded set of
+     * installed packages, and killing all of them from a settings toggle is not
+     * defensible at any scale — [changedApp] is null there and this returns
+     * NOT_ATTEMPTED.
+     */
+    private fun restartChangedApp(
+        context: Context,
+        changedApp: PageApp?,
+    ): ParallelWindowRestartOutcome {
+        val packageName = changedApp?.row?.packageName
+            ?: return parallelWindowRestartOutcome(killAttempted = false, stillRunning = null)
+        val killed = backend.killBackgroundProcesses(context, packageName)
+        val stillRunning = if (killed) backend.stillRunningAfterKill(context, packageName) else null
+        return parallelWindowRestartOutcome(killAttempted = killed, stillRunning = stillRunning)
+            .also { Log.i(TAG, "restart $packageName -> $it") }
     }
 
-    private fun openAppInfo(packageName: String) {
-        val intent = Intent(
-            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-            Uri.fromParts("package", packageName, null),
-        )
-        try {
-            startActivity(intent)
-        } catch (exception: RuntimeException) {
-            Log.e(TAG, "Unable to open app info for $packageName", exception)
-            Toast.makeText(
-                requireContext(),
-                R.string.parallel_window_error_title,
-                Toast.LENGTH_LONG,
-            ).show()
+    /**
+     * One line, no dialog, and it never claims more than was measured.
+     *
+     * A Toast rather than an AlertDialog because nothing here needs a decision
+     * from the user: the change is already saved and the switch has already moved.
+     * The three outcomes are three different facts, not three severities.
+     */
+    private fun announceRestart(
+        changedApp: PageApp?,
+        restart: ParallelWindowRestartOutcome,
+    ) {
+        // A null label and NOT_ATTEMPTED are the same case — the master switch —
+        // but they are checked separately rather than assumed equal, because the
+        // two per-app strings both interpolate a name and neither has anything
+        // sensible to say without one.
+        val label = changedApp?.row?.label
+        val message = when {
+            label == null || restart == ParallelWindowRestartOutcome.NOT_ATTEMPTED ->
+                getString(R.string.parallel_window_master_change_message)
+            restart == ParallelWindowRestartOutcome.APPLIED ->
+                getString(R.string.parallel_window_applied, label)
+            else -> getString(R.string.parallel_window_next_start, label)
         }
+        Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
     }
 
     private fun showLoading() {
@@ -441,7 +467,10 @@ class ParallelWindowSettingsFragment : SettingsBasePreferenceFragment() {
     }
 
     private sealed interface MutationOutcome {
-        data class Saved(val page: PageData) : MutationOutcome
+        data class Saved(
+            val page: PageData,
+            val restart: ParallelWindowRestartOutcome,
+        ) : MutationOutcome
         data class Rejected(val page: PageData) : MutationOutcome
         data class Unconfirmed(val page: PageData?) : MutationOutcome
     }

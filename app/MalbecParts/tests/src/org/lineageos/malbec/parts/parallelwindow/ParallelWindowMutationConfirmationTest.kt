@@ -41,6 +41,51 @@ class ParallelWindowMutationConfirmationTest {
         )
     }
 
+    /**
+     * The restart classifier exists to stop the UI claiming a kill it did not
+     * get, so the cases that matter are the two that must NOT reach APPLIED.
+     * killBackgroundProcesses is a void call that silently does nothing for a
+     * foreground or visible app, and the process list can also simply fail to
+     * read — neither is evidence.
+     */
+    @Test
+    fun parallelWindowRestartOutcome_onlyAProvenDeadProcessIsApplied() {
+        assertEquals(
+            ParallelWindowRestartOutcome.APPLIED,
+            parallelWindowRestartOutcome(killAttempted = true, stillRunning = false),
+        )
+    }
+
+    @Test
+    fun parallelWindowRestartOutcome_survivingProcessFallsBackToNextStart() {
+        assertEquals(
+            ParallelWindowRestartOutcome.NEXT_START,
+            parallelWindowRestartOutcome(killAttempted = true, stillRunning = true),
+        )
+    }
+
+    @Test
+    fun parallelWindowRestartOutcome_unreadableProcessListIsNotEvidence() {
+        // The dangerous direction: an unknown must not be optimistic, because
+        // NEXT_START is true whether or not the app died and APPLIED is not.
+        assertEquals(
+            ParallelWindowRestartOutcome.NEXT_START,
+            parallelWindowRestartOutcome(killAttempted = true, stillRunning = null),
+        )
+    }
+
+    @Test
+    fun parallelWindowRestartOutcome_masterSwitchNeverClaimsARestart() {
+        // changedApp == null (the master) never attempts a kill, and must not be
+        // reported as one however the process list happens to read.
+        for (stillRunning in listOf(null, true, false)) {
+            assertEquals(
+                ParallelWindowRestartOutcome.NOT_ATTEMPTED,
+                parallelWindowRestartOutcome(killAttempted = false, stillRunning = stillRunning),
+            )
+        }
+    }
+
     @Test
     fun coordinateParallelWindowMutation_falseSetterStillRereadsAndConfirms() {
         var rereadCalled = false
