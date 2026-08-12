@@ -7,7 +7,8 @@
     "renderedRulesSha256": "fa8caafac66c17d4786175e7dbd2b6c9514419a88499adb277dc12002beddf7a",
     "renderedSettingsSha256": "d50e462dfd7e62711b27cb87440e28560cf7ab6c699f9fe96cc8988b8e87144c",
     "policy": "official release last row wins; fullRule mode excluded",
-    "authorization": "See parallelwindow/AUTHORIZATION.md"
+    "authorization": "See parallelwindow/AUTHORIZATION.md",
+    "localLayer": "local_additions.json, merged last; see local_source_lock.json"
   },
   "EmbeddingConfigVersion": "1.0.0",
   "blocklist": [],
@@ -1520,6 +1521,29 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "cn.coldlake.stellarmobile",
+      "activityPairs": [
+        {
+          "from": "cn.coldlake.university.lib.launch.home.HomeActivity",
+          "to": "*"
+        }
+      ],
+      "forceFullscreenPages": [
+        "com.tribe.sdk.flutter.activity.CustomFlutterActivity",
+        "com.douyu.tribe.module.usercenter.activity.FlutterScanActivity",
+        "com.douyu.tribe.module.usercenter.activity.FlutterLoginActivity"
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -8448,6 +8472,32 @@
       ]
     },
     {
+      "name": "com.alibaba.ailabs.tg",
+      "activityPairs": [
+        {
+          "from": "com.alibaba.ailabs.tg.activity.HomeActivity",
+          "to": "*"
+        }
+      ],
+      "transActivities": [
+        "com.alibaba.ailabs.tg.activity.LoginStartActivity"
+      ],
+      "forceFullscreenPages": [
+        "com.alibaba.ailabs.tg.device.add.ArAndQrCodeActivity",
+        "com.alibaba.ailabs.tg.activity.HomeActivity",
+        "com.alibaba.ailabs.tg.dynamic.windvane.WVUCWebViewActivity"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.alibaba.aliyun",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -8898,6 +8948,27 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.almighty.calculators",
+      "activityPairs": [
+        {
+          "from": "com.ibox.calculators.CalculatorActivity",
+          "to": "*"
+        }
+      ],
+      "transActivities": [
+        "com.bytedance.sdk.openadsdk.activity.base.TTDelegateActivity"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -10024,6 +10095,24 @@
       ]
     },
     {
+      "name": "com.app.jianying.xs",
+      "activityPairs": [
+        {
+          "from": "com.xs.app.jy.app.activity.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.app.julymovies",
       "showEmbeddingDivider": false,
       "dividerDraggingToFullscreenAllowed": true,
@@ -10389,6 +10478,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.arivoc.ky",
+      "activityPairs": [
+        {
+          "from": "com.arivoc.accentz2.HomeActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -11218,6 +11325,24 @@
       "middle": true
     },
     {
+      "name": "com.baidu.browser.apps",
+      "activityPairs": [
+        {
+          "from": "com.baidu.searchbox.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.baidu.dict",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -11535,6 +11660,32 @@
           "to": "*"
         }
       ]
+    },
+    {
+      "name": "com.baidu.searchbox.lite",
+      "activityPairs": [
+        {
+          "from": "com.baidu.searchbox.MainActivity",
+          "to": "*"
+        },
+        {
+          "from": "com.baidu.searchbox.newreader.discovery.novel.NovelHomeActivity",
+          "to": "*"
+        }
+      ],
+      "forceFullscreenPages": [
+        "com.baidu.searchbox.godeye.CodeScannerActivity",
+        "com.baidu.searchbox.download.center.clearcache.view.ClearCacheBDActivity"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
     },
     {
       "name": "com.baidu.searchbox.mission",
@@ -11910,6 +12061,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.baitao.btbz",
+      "activityPairs": [
+        {
+          "from": "com.zfxm.pipi.wallpaper.main.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -12690,6 +12859,24 @@
       "middle": true
     },
     {
+      "name": "com.benqu.wuta",
+      "activityPairs": [
+        {
+          "from": "com.benqu.wuta.activities.home.HomeActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.berchina.zx.zhongxin",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -13192,6 +13379,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.bilibili.studio",
+      "activityPairs": [
+        {
+          "from": "com.bcut.homepage.widget.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -15919,6 +16124,31 @@
       "middle": true
     },
     {
+      "name": "com.cat.readall",
+      "activityPairs": [
+        {
+          "from": "com.cat.readall.activity.BrowserMainActivity",
+          "to": "*"
+        }
+      ],
+      "transActivities": [
+        "com.ss.android.template.page.MainLynxActivity",
+        "com.ss.android.newmedia.activity.browser.BrowserActivity"
+      ],
+      "forceFullscreenPages": [
+        "com.ss.android.ugc.detail.refactor.ui.TikTokActivity"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.cat.simulation",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -16874,6 +17104,24 @@
           "to": "*"
         }
       ]
+    },
+    {
+      "name": "com.changba",
+      "activityPairs": [
+        {
+          "from": "com.changba.activity.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
     },
     {
       "name": "com.changdu",
@@ -19525,6 +19773,24 @@
       ]
     },
     {
+      "name": "com.cnki.client",
+      "activityPairs": [
+        {
+          "from": "com.cnki.client.core.navigator.main.HomeActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.cnnb.forum",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -19643,6 +19909,24 @@
           "to": "*"
         }
       ]
+    },
+    {
+      "name": "com.codemao.lunarb2c",
+      "activityPairs": [
+        {
+          "from": "com.codemao.lunar.MainActivityV2",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
     },
     {
       "name": "com.codemao.nemo",
@@ -24206,6 +24490,24 @@
       ]
     },
     {
+      "name": "com.dongao.kaoqian.phone",
+      "activityPairs": [
+        {
+          "from": "com.dongao.kaoqian.module.home.main.HomeMainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.dongchu.yztq",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -25471,6 +25773,24 @@
       "middle": true
     },
     {
+      "name": "com.duohappy.skin",
+      "activityPairs": [
+        {
+          "from": "vip.qufenqian.app_skin.activity.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.duokaiqi.virtual",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -25658,6 +25978,24 @@
       ]
     },
     {
+      "name": "com.duowan.mobile",
+      "activityPairs": [
+        {
+          "from": "com.yy.mobile.plugin.homepage.ui.home.HomeActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.duowan.xunhuan",
       "showEmbeddingDivider": false,
       "dividerDraggingToFullscreenAllowed": true,
@@ -25764,6 +26102,24 @@
           "to": "*"
         }
       ]
+    },
+    {
+      "name": "com.dw.btime",
+      "activityPairs": [
+        {
+          "from": "com.dw.btime.MainHomeTabActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
     },
     {
       "name": "com.dw.hzwzm.mi",
@@ -25950,6 +26306,27 @@
           "to": "*"
         }
       ]
+    },
+    {
+      "name": "com.dyxc.banxue",
+      "activityPairs": [
+        {
+          "from": "com.dyxc.banxue.MainActivity",
+          "to": "*"
+        }
+      ],
+      "forceFullscreenPages": [
+        "com.dyxc.passservice.login.ui.LoginLoadingActivity"
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
     },
     {
       "name": "com.dz.hmjc",
@@ -26780,6 +27157,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.edrawsoft.mindmaster",
+      "activityPairs": [
+        {
+          "from": "com.edrawsoft.mindmaster.view.app_view.main.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -27947,6 +28342,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.everyday.collection",
+      "activityPairs": [
+        {
+          "from": "com.everyday.collection.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -31993,6 +32406,24 @@
       "middle": true
     },
     {
+      "name": "com.galaxy.metawp",
+      "activityPairs": [
+        {
+          "from": "com.galaxy.metawp.ui.activity.HomeActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.galaxy.stock",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -33251,6 +33682,28 @@
       "middle": true
     },
     {
+      "name": "com.gkid.crazyrope",
+      "activityPairs": [
+        {
+          "from": "com.gkid.crazyrope.ui.home.HomeActivity",
+          "to": "*"
+        }
+      ],
+      "forceFullscreenPages": [
+        "com.gkid.crazyrope.ui.unity.UnityActivity",
+        "com.gkid.crazyrope.ui.settings.ScanActivity"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.gkid.gkid",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -33308,6 +33761,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.glodon.drawingexplorer",
+      "activityPairs": [
+        {
+          "from": "com.glodon.drawingexplorer.activity.DefaultActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -41633,6 +42104,24 @@
       "middle": true
     },
     {
+      "name": "com.ihuman.classstudent",
+      "activityPairs": [
+        {
+          "from": "com.ihumand.classstudent.main.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.ihuman.story",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -42614,6 +43103,27 @@
       ]
     },
     {
+      "name": "com.intsig.camscanner",
+      "activityPairs": [
+        {
+          "from": "com.intsig.camscanner.mainmenu.mainactivity.MainActivity",
+          "to": "*"
+        }
+      ],
+      "forceFullscreenPages": [
+        "com.intsig.camscanner.capture.CaptureActivity"
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.intsig.zdao",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -42683,6 +43193,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.ioowow.vod",
+      "activityPairs": [
+        {
+          "from": "com.ayctech.mky.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -44837,6 +45365,24 @@
       ]
     },
     {
+      "name": "com.jianpian.xiaoxigua",
+      "activityPairs": [
+        {
+          "from": "com.xiaoxigua.media.ui.main.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.jianshu.haruki",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -45886,6 +46432,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.jjwxc.reader",
+      "activityPairs": [
+        {
+          "from": "com.example.jinjiangshucheng.ui.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -47377,6 +47941,24 @@
       ]
     },
     {
+      "name": "com.jym.mall",
+      "activityPairs": [
+        {
+          "from": "com.jym.mall.activity.MainHostActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.jym.zuhao",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -48823,6 +49405,24 @@
       ]
     },
     {
+      "name": "com.kkys.video",
+      "activityPairs": [
+        {
+          "from": "com.lxr.video_player.ui.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.klcxkj.rs",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -49214,6 +49814,42 @@
       "middle": true
     },
     {
+      "name": "com.koolearn.android",
+      "activityPairs": [
+        {
+          "from": "com.koolearn.android.home.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
+      "name": "com.koolearn.android.cg",
+      "activityPairs": [
+        {
+          "from": "com.koolearn.android.home.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.koolearn.english.donutabc",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -49301,6 +49937,31 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.koudai.weidian.buyer",
+      "activityPairs": [
+        {
+          "from": "com.vdian.android.wdb.main.ui.activity.MainTabsActivity",
+          "to": "*"
+        }
+      ],
+      "transActivities": [
+        "com.vdian.android.lib.wdaccount.community.ui.activity.ACJVerifyHelperActivity",
+        "com.vdian.android.lib.wdaccount.community.ui.activity.ACLoginCommunityActivity"
+      ],
+      "forceFullscreenPages": [
+        "com.vdian.flutter.buyer_base.page.WDBFlutterWrapTranslucentActivity"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -50340,6 +51001,37 @@
       "transActivities": [
         "com.yxcorp.gifshow.detail.PhotoDetailActivityTablet"
       ]
+    },
+    {
+      "name": "com.kwai.videoeditor",
+      "activityPairs": [
+        {
+          "from": "com.kwai.videoeditor.activity.MainActivity",
+          "to": "com.kwai.videoeditor.vega.slideplay.v2.activity.SlidePlayActivityV2"
+        },
+        {
+          "from": "com.kwai.videoeditor.activity.MainActivity",
+          "to": "com.kwai.videoeditor.vega.search.TemplateSearchActivity"
+        },
+        {
+          "from": "com.kwai.videoeditor.activity.MainActivity",
+          "to": "com.kwai.videoeditor.activity.SettingActivity"
+        }
+      ],
+      "transActivities": [
+        "com.kwai.videoeditor.ksad.SdkSplashActivity",
+        "com.kwai.videoeditor.vega.search.TemplateSearchActivity",
+        "com.kwai.videoeditor.commercialization.splash.GeneralAdSplashActivity"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
     },
     {
       "name": "com.ky.zzjqy",
@@ -53398,6 +54090,30 @@
       "middle": true
     },
     {
+      "name": "com.lofter.android",
+      "activityPairs": [
+        {
+          "from": "com.lofter.android.global.home.TabHomeActivity",
+          "to": "*"
+        }
+      ],
+      "transActivities": [
+        "com.lofter.android.global.splash.HomeActivity"
+      ],
+      "forceFullscreenPages": [
+        "com.lofter.android.module_publish.video.MCamera"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.logictech.scs",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -54176,6 +54892,24 @@
           "to": "*"
         }
       ]
+    },
+    {
+      "name": "com.lwby.breader.ad",
+      "activityPairs": [
+        {
+          "from": "com.lwby.breader.view.BKHomeActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
     },
     {
       "name": "com.lws207lws",
@@ -57027,6 +57761,24 @@
       "middle": true
     },
     {
+      "name": "com.microsoft.translator",
+      "activityPairs": [
+        {
+          "from": "com.microsoft.translator.activity.LandingActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.mida.messagehelper",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -58079,6 +58831,27 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.moji.mjweather",
+      "activityPairs": [
+        {
+          "from": "com.moji.mjweather.MainActivity",
+          "to": "*"
+        }
+      ],
+      "transActivities": [
+        "com.mojiweather.area.AddAreaFirstRunActivity"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -60826,6 +61599,24 @@
       "middle": true
     },
     {
+      "name": "com.networkspeed.master",
+      "activityPairs": [
+        {
+          "from": "com.aso114.cyp.speed.act.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.neulion.android.cntv",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -62758,6 +63549,29 @@
       "middle": true
     },
     {
+      "name": "com.ophone.reader.ui",
+      "activityPairs": [
+        {
+          "from": "com.cmread.bplusc.bookshelf.LocalMainActivity",
+          "to": "*"
+        }
+      ],
+      "transActivities": [
+        "com.cmread.bplusc.bookshelf.PrivacyBrowseActivity",
+        "com.cmread.login.ui.LocalLoginDialogActivity",
+        "com.cmread.settings.interestsetting.InterestPageSettingActivity"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.oppa.qz1yuan",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -64016,6 +64830,24 @@
       "middle": true
     },
     {
+      "name": "com.peopledailychina.activity",
+      "activityPairs": [
+        {
+          "from": "com.peopledailychina.activity.activity.AppMainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.peopledog",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -64807,6 +65639,24 @@
       ]
     },
     {
+      "name": "com.pleasure.hlbz",
+      "activityPairs": [
+        {
+          "from": "com.zfxm.pipi.wallpaper.main.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.plus.cleaner.booster",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -64912,6 +65762,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.pocket.drawing",
+      "activityPairs": [
+        {
+          "from": "com.fenghuajueli.module_host.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -65346,6 +66214,24 @@
           "to": "*"
         }
       ]
+    },
+    {
+      "name": "com.puddingchildren2.NewConceptEnglish",
+      "activityPairs": [
+        {
+          "from": "com.puddingchildren2.NewConceptEnglish.activity.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
     },
     {
       "name": "com.pudi.book",
@@ -66013,6 +66899,28 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.qihoo.browser",
+      "activityPairs": [
+        {
+          "from": "com.baidu.searchbox.discovery.novel.NovelHomeActivity",
+          "to": "*"
+        },
+        {
+          "from": "com.qihoo.browser.BrowserActivity",
+          "to": "org.geometerplus.android.fbreader.FBReader"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -68728,6 +69636,24 @@
       ]
     },
     {
+      "name": "com.rockets.chang",
+      "activityPairs": [
+        {
+          "from": "com.rockets.chang.main.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.rong360.app",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -70161,6 +71087,59 @@
       "middle": true
     },
     {
+      "name": "com.santi.sinology",
+      "activityPairs": [
+        {
+          "from": "com.santi.sinology.ui.MainActivity",
+          "to": "*"
+        },
+        {
+          "from": "com.santi.sinology.ui.TangActivity",
+          "to": "com.santi.sinology.ui.TangList"
+        },
+        {
+          "from": "com.santi.sinology.ui.SONGCIActivity",
+          "to": "com.santi.sinology.ui.SongciList"
+        },
+        {
+          "from": "com.santi.sinology.ui.PoetryActivity",
+          "to": "com.santi.sinology.ui.PoetryList"
+        },
+        {
+          "from": "com.santi.sinology.ui.SHENGZIActivity",
+          "to": "com.santi.sinology.ui.DictionaryActivity"
+        },
+        {
+          "from": "com.santi.sinology.ui.WholeActivity",
+          "to": "com.santi.sinology.ui.WholeListActivity"
+        },
+        {
+          "from": "com.santi.sinology.ui.WholeListActivity",
+          "to": "com.santi.sinology.ui.WholeContentActivity"
+        },
+        {
+          "from": "com.santi.sinology.ui.ClassicalActivity",
+          "to": "com.santi.sinology.ui.ClassicalList"
+        },
+        {
+          "from": "com.santi.sinology.ui.LUNYUActivity",
+          "to": "com.santi.sinology.ui.ListActivity"
+        }
+      ],
+      "transActivities": [
+        "com.santi.sinology.ui.LoadingActivity"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.sanya.sanyadailys",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -71080,6 +72059,24 @@
       "middle": true
     },
     {
+      "name": "com.sgsp.video.xs",
+      "activityPairs": [
+        {
+          "from": "com.xs.video.bayi.activity.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.sh.cm.shydhn",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -71173,6 +72170,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.shanbay.news",
+      "activityPairs": [
+        {
+          "from": "com.shanbay.news.home.thiz.activity.HomeActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -73229,6 +74244,41 @@
         "com.sina.wbsupergroup.main.VisitorFrameActivity",
         "com.sina.wbsupergroup.main.MainFrameActivity"
       ]
+    },
+    {
+      "name": "com.sina.weibo",
+      "activityPairs": [
+        {
+          "from": "com.sina.weibo.MainTabActivity",
+          "to": "*"
+        },
+        {
+          "from": "com.sina.weibo.VisitorMainTabActivity",
+          "to": "*"
+        }
+      ],
+      "transActivities": [
+        "com.sina.weibo.SplashActivity",
+        "com.sina.weibo.FixedCarshActivity",
+        "com.sina.weibo.MainTabActivity",
+        "com.sina.weibo.VisitorMainTabActivity"
+      ],
+      "forceFullscreenPages": [
+        "com.sina.weibo.MainTabRestarActivity",
+        "com.sina.weibo.composerinde.OriginalComposerActivity",
+        "com.sina.weibo.qrcode.CaptureActivity",
+        "com.sina.weibo.browser.WeiboBrowser",
+        "com.sina.weibo.wboxsdk.page.acts.WBXPageActivity"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
     },
     {
       "name": "com.sina.weibolite",
@@ -76270,6 +77320,24 @@
       "middle": true
     },
     {
+      "name": "com.strawberry.cmbz",
+      "activityPairs": [
+        {
+          "from": "com.zfxm.pipi.wallpaper.main.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.strong.letalk",
       "showEmbeddingDivider": false,
       "dividerDraggingToFullscreenAllowed": true,
@@ -76714,6 +77782,30 @@
       "middle": true
     },
     {
+      "name": "com.sup.android.superb",
+      "activityPairs": [
+        {
+          "from": "com.sup.android.base.MainActivity",
+          "to": "*"
+        }
+      ],
+      "transActivities": [
+        "com.sup.android.uikit.VideoDownloadProgressActivity"
+      ],
+      "forceFullscreenPages": [
+        "com.bytedance.mira.stub.p0.StubStandardActivity1"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.super8.android",
       "showEmbeddingDivider": false,
       "dividerDraggingToFullscreenAllowed": true,
@@ -76753,6 +77845,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.superclear.fqkj",
+      "activityPairs": [
+        {
+          "from": "com.xiaoniu.cleanking.ui.main.activity.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -77340,6 +78450,24 @@
       ]
     },
     {
+      "name": "com.szy.gamemorphvox",
+      "activityPairs": [
+        {
+          "from": "com.szy.gamemorphvox.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.szzc",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -77664,6 +78792,24 @@
       "middle": true
     },
     {
+      "name": "com.tal.kaoyan",
+      "activityPairs": [
+        {
+          "from": "com.tal.kaoyan.ui.activity.HomeTabActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.tal.monkey",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -77673,6 +78819,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.tal.tiku",
+      "activityPairs": [
+        {
+          "from": "com.tal.tiku.main.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -77879,6 +79043,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.taobao.litetao",
+      "activityPairs": [
+        {
+          "from": "com.taobao.ltao.maintab.MainFrameActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -78585,6 +79767,33 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.tencent.android.qqdownloader",
+      "activityPairs": [
+        {
+          "from": "com.tencent.assistantv2.activity.MainActivity",
+          "to": "*"
+        }
+      ],
+      "transActivities": [
+        "com.tencent.pangu.activity.TranslucentAppDemoActivity"
+      ],
+      "forceFullscreenPages": [
+        "com.tencent.assistant.plugin.proxy.PluginProxyActivity",
+        "com.tencent.nucleus.manager.wxqqclean.WxCleanActivity",
+        "com.tencent.nucleus.manager.spacecleannew.GarbageCleanActivity",
+        "com.tencent.assistant.activity.BrowserActivity"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -79492,6 +80701,42 @@
       "middle": true
     },
     {
+      "name": "com.tencent.qqpim",
+      "activityPairs": [
+        {
+          "from": "com.tencent.qqpim.ui.home.QQPimHomeActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
+      "name": "com.tencent.qqpimsecure",
+      "activityPairs": [
+        {
+          "from": "com.tencent.server.fore.QuickLoadActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.tencent.qqpimsecure.sc",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -79681,6 +80926,27 @@
       "middle": true
     },
     {
+      "name": "com.tencent.tim",
+      "activityPairs": [
+        {
+          "from": "com.tencent.mobileqq.activity.SplashActivity",
+          "to": "*"
+        }
+      ],
+      "transActivities": [
+        "com.tencent.mobileqq.activity.LoginActivity"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.tencent.tmgp.qqx5",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -79730,6 +80996,27 @@
       ]
     },
     {
+      "name": "com.tencent.tv.qie",
+      "activityPairs": [
+        {
+          "from": "com.tencent.tv.qie.main.activity.MainActivity",
+          "to": "*"
+        }
+      ],
+      "transActivities": [
+        "com.tencent.tv.qie.splash.activity.AppSplashActivity"
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.tencent.videolite.android",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -79754,6 +81041,24 @@
       "middle": true
     },
     {
+      "name": "com.tencent.weishi",
+      "activityPairs": [
+        {
+          "from": "com.tencent.oscar.module.main.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.tencent.wesing",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -79770,6 +81075,24 @@
           "to": "*"
         }
       ]
+    },
+    {
+      "name": "com.tencent.wetype",
+      "activityPairs": [
+        {
+          "from": "com.tencent.wetype.plugin.hld.reactnative.activity.FeedbackChatActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
     },
     {
       "name": "com.tencent.wifimanager",
@@ -80268,6 +81591,24 @@
       "middle": true
     },
     {
+      "name": "com.thorough.ttbz",
+      "activityPairs": [
+        {
+          "from": "com.zfxm.pipi.wallpaper.main.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.three.characters",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -80685,6 +82026,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.tianyancha.skyeye",
+      "activityPairs": [
+        {
+          "from": "com.tianyancha.skyeye.DefaultMainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -81930,6 +83289,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.ttule.picture",
+      "activityPairs": [
+        {
+          "from": "com.ttule.picture.activity.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -84633,6 +86010,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.walixiwa.flash.player",
+      "activityPairs": [
+        {
+          "from": "com.jason.videocat.ui.activity.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -89541,6 +90936,45 @@
       ]
     },
     {
+      "name": "com.xiaomi.gamecenter",
+      "activityPairs": [
+        {
+          "from": "com.xiaomi.gamecenter.ui.MainTabActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
+      "name": "com.xiaomi.hm.health",
+      "activityPairs": [
+        {
+          "from": "com.xiaomi.hm.health.activity.ChannelMainTabActivity",
+          "to": "*"
+        }
+      ],
+      "transActivities": [
+        "com.huami.account.ui.login.LoginActivity"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.xiaomi.loan",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -90080,6 +91514,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.ximalaya.ting.lite",
+      "activityPairs": [
+        {
+          "from": "com.ximalaya.ting.android.host.activity.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -91955,6 +93407,24 @@
       "middle": true
     },
     {
+      "name": "com.xtuone.android.syllabus",
+      "activityPairs": [
+        {
+          "from": "com.xtuone.android.friday.MainFragmentActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.xuanbao.kuaidu",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -93510,6 +94980,27 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.yiche.autoeasy",
+      "activityPairs": [
+        {
+          "from": "com.yiche.autoeasy.MainActivity3",
+          "to": "*"
+        }
+      ],
+      "forceFullscreenPages": [
+        "com.bitauto.carmodel.view.activity.IdentifyCarActivity"
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -95347,6 +96838,24 @@
       ]
     },
     {
+      "name": "com.youdao.course",
+      "activityPairs": [
+        {
+          "from": "com.youdao.course.activity.MainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": true,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
+      "middle": true
+    },
+    {
       "name": "com.youdao.crackingenglish",
       "showEmbeddingDivider": true,
       "dividerDraggingToFullscreenAllowed": true,
@@ -96384,6 +97893,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.yuncinc.bestplayingleather",
+      "activityPairs": [
+        {
+          "from": "com.yuncinc.bestplayingleather.ui.activity.MainBestplayingActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {
@@ -99207,6 +100734,24 @@
       "splitRatio": 0.5,
       "minWidthDp": 600,
       "minSmallestWidthDp": 600,
+      "middle": true
+    },
+    {
+      "name": "com.zhilehuo.sqertongshizi",
+      "activityPairs": [
+        {
+          "from": "com.zhilehuo.sqertongshizi.QDMainActivity",
+          "to": "*"
+        }
+      ],
+      "showEmbeddingDivider": false,
+      "dividerDraggingToFullscreenAllowed": true,
+      "splitRatio": 0.5,
+      "minWidthDp": 600,
+      "minSmallestWidthDp": 600,
+      "clearTop": true,
+      "finishPrimaryWithSecondary": 0,
+      "finishSecondaryWithPrimary": 2,
       "middle": true
     },
     {

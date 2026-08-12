@@ -212,7 +212,205 @@ def _new_audit() -> dict[str, Any]:
         "unmappedSettingAttributes": [],
         "orphanSettingRows": [],
         "unmappedFlagDirectives": [],
+        # The local layer. Everything below this line describes rows that did NOT come from
+        # 3.01.48 -- see _merge_local_additions and local_source_lock.json.
+        "localAdditions": [],
+        "localOverrides": [],
+        "localSkippedAlreadyImported": [],
+        "localUnmappedAttributes": [],
+        "localDividerDefaulted": [],
+        "localTypoRecoveries": [],
+        "localIgnoredScalarKeys": [],
     }
+
+
+# ── the local layer ──────────────────────────────────────────────────────────────────────────
+#
+# Keys Lenovo's corpus uses that this schema also has. Everything else in one of its rows is
+# recorded in localUnmappedAttributes rather than guessed at.
+ZUI_MAPPED_KEYS = {
+    "name",
+    "activityPairs",
+    "transActivities",
+    "forceFullscreenPages",
+    "showEmbeddingDivider",
+}
+# Lenovo spells this with a capital S in three of its 288 rows. The README already recorded the
+# typo as costing those packages their rule; here it is simply mapped, and audited.
+ZUI_FORCE_FULLSCREEN_TYPO = "forceFullScreenPages"
+# `mainPage` without `defaultRelate` is a no-op for this parser -- the pair only exists when both
+# are present. Verified across all 77 imported rows: every mainPage is also an activityPairs
+# source, so dropping it loses nothing. `defaultRelate` appears in none of them.
+ZUI_SCALAR_KEYS = {"mainPage", "defaultRelate"}
+
+
+def _convert_zui_entry(
+    package: str, row: dict[str, Any], audit: dict[str, Any],
+) -> dict[str, Any]:
+    """Convert one row of Lenovo's own corpus into this schema, auditing every departure."""
+    converted: dict[str, Any] = {"name": package}
+
+    pairs: list[dict[str, str]] = []
+    for item in row.get("activityPairs", []):
+        source = item.get("from")
+        if not isinstance(source, str) or not source:
+            raise EntryError("activityPairs", json.dumps(item), "no string from")
+        target = item.get("to")
+        # A missing "to" is the wildcard, exactly as the runtime parser reads it.
+        pairs.append({
+            "from": source,
+            "to": target if isinstance(target, str) and target else "*",
+        })
+    if pairs:
+        converted["activityPairs"] = pairs
+
+    for key in ("transActivities", "forceFullscreenPages"):
+        values = row.get(key)
+        if values:
+            converted[key] = list(values)
+
+    typo = row.get(ZUI_FORCE_FULLSCREEN_TYPO)
+    if typo is not None:
+        audit["localTypoRecoveries"].append({
+            "package": package,
+            "attribute": ZUI_FORCE_FULLSCREEN_TYPO,
+            "value": typo,
+            "mappedTo": "forceFullscreenPages",
+            "reason": "Lenovo capitalizes the S; the runtime parser reads only the lowercase key",
+        })
+        if typo:
+            merged = converted.get("forceFullscreenPages", []) + [
+                item for item in typo
+                if item not in converted.get("forceFullscreenPages", [])
+            ]
+            converted["forceFullscreenPages"] = merged
+
+    # ★ The divider is the one presentation value Lenovo's silence cannot settle. Across its 288
+    # rows it is absent 183 times, an explicit "false" 92 times and an explicit "true" 13 times,
+    # so neither reading of the absence is redundant-free and the corpus does not tell us. Note
+    # also that Lenovo's engine predates AOSP's draggable divider entirely -- it hand-built its
+    # own in framework-res -- so its "false" is not evidence that a divider is unwanted here.
+    # Rule: honour Lenovo where Lenovo spoke, use this parser's own documented default where it
+    # did not, and materialize both so nothing depends on a default at load time.
+    divider = row.get("showEmbeddingDivider")
+    if divider is None:
+        converted["showEmbeddingDivider"] = True
+        audit["localDividerDefaulted"].append({
+            "package": package,
+            "value": True,
+            "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default",
+        })
+    else:
+        converted["showEmbeddingDivider"] = _strict_bool(
+            divider, "showEmbeddingDivider")
+
+    for key in sorted(row):
+        if key in ZUI_MAPPED_KEYS or key == ZUI_FORCE_FULLSCREEN_TYPO:
+            continue
+        if key in ZUI_SCALAR_KEYS:
+            audit["localIgnoredScalarKeys"].append({
+                "package": package, "attribute": key, "value": row[key],
+                "reason": "no counterpart without its partner key; verified to lose nothing",
+            })
+            continue
+        audit["localUnmappedAttributes"].append({
+            "package": package, "attribute": key, "value": row[key],
+        })
+
+    # Lenovo carries no counterpart for any of these, so they are this port's values and not a
+    # conversion. They are written out for the same reason the 3.01.48 rows write them out: the
+    # runtime parser's fallbacks are the LEGACY five-rule ones (0.35 / 840 / 600 / FINISH_ALWAYS
+    # / middle=false), so a row that omitted them would not behave like its neighbours.
+    converted["dividerDraggingToFullscreenAllowed"] = True
+    converted["splitRatio"] = DEFAULT_SPLIT_RATIO
+    converted["minWidthDp"] = DEFAULT_MIN_WIDTH_DP
+    converted["minSmallestWidthDp"] = DEFAULT_MIN_SMALLEST_WIDTH_DP
+    converted["clearTop"] = DEFAULT_CLEAR_TOP
+    converted["finishPrimaryWithSecondary"] = DEFAULT_FINISH_PRIMARY_WITH_SECONDARY
+    converted["finishSecondaryWithPrimary"] = DEFAULT_FINISH_SECONDARY_WITH_PRIMARY
+    converted["middle"] = True
+    return converted
+
+
+def _merge_local_additions(
+    packages: list[dict[str, Any]],
+    local_path: Path,
+    zui_path: Path,
+    lock_path: Path,
+    audit: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Merge the declared local layer into the converted 3.01.48 product.
+
+    Runs last and is the only thing in this tool that is not a function of the 3.01.48 release.
+    It exists because the corpus swap deleted a hand-verified com.sina.weibo rule and nothing
+    could have noticed: a layer a re-import has to walk past is the only way to make that
+    impossible. Every row it adds is recorded in ``localAdditions`` with where it came from.
+    """
+    lock = _read_json(lock_path)
+    zui_data = _verify_hash(zui_path, lock, "zui_corpus")
+    local = _read_json(local_path)
+
+    zui_rows: dict[str, dict[str, Any]] = {}
+    for row in json.loads(zui_data.decode("utf-8")).get("packages", []):
+        name = row.get("name")
+        if isinstance(name, str) and name:
+            # Lenovo's own file has no duplicate names; last one would win as it does upstream.
+            zui_rows[name] = row
+
+    imported = {entry["name"] for entry in packages}
+    handwritten = {
+        entry["name"]: entry
+        for entry in local.get("packages", [])
+        if isinstance(entry.get("name"), str)
+    }
+    added: dict[str, dict[str, Any]] = {}
+
+    for package in local.get("fromZuiCorpus", {}).get("packages", []):
+        if package in handwritten:
+            # The hand-authored row replaces the conversion; recorded under localOverrides below.
+            continue
+        row = zui_rows.get(package)
+        if row is None:
+            raise ValueError(
+                f"{local_path}: {package} is not in {zui_path.name}")
+        if package in imported:
+            audit["localSkippedAlreadyImported"].append({
+                "package": package,
+                "reason": "already converted from 3.01.48; that conversion wins",
+            })
+            continue
+        converted = _convert_zui_entry(package, row, audit)
+        added[package] = converted
+        audit["localAdditions"].append({
+            "package": package,
+            "source": "zui-18.0.10.335",
+            "activityPairs": len(converted.get("activityPairs", [])),
+        })
+
+    for package, entry in sorted(handwritten.items()):
+        row = {key: value for key, value in entry.items()
+               if not key.startswith("_")}
+        added[package] = row
+        record = {
+            "package": package,
+            "source": "hand-authored",
+            "testedVersionName": entry.get("_testedVersionName"),
+            "testedVersionCode": entry.get("_testedVersionCode"),
+            "testedApkSha256": entry.get("_testedApkSha256"),
+        }
+        if package in imported:
+            audit["localOverrides"].append({
+                **record, "replaces": "3.01.48 conversion"})
+        elif package in zui_rows:
+            audit["localOverrides"].append({
+                **record, "replaces": "zui-18.0.10.335 conversion"})
+        else:
+            audit["localAdditions"].append(record)
+
+    merged = [entry for entry in packages if entry["name"] not in added]
+    merged.extend(added.values())
+    merged.sort(key=lambda entry: entry["name"])
+    return merged
 
 
 def _normalization_event(
@@ -885,6 +1083,9 @@ def generate(
     source_path: Path,
     settings_path: Path,
     lock_path: Path,
+    local_path: Path | None = None,
+    zui_path: Path | None = None,
+    local_lock_path: Path | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return a deterministic product document and exhaustive conversion audit."""
     lock = _read_json(lock_path)
@@ -972,6 +1173,9 @@ def generate(
         _merge_conversion_audit(audit, conversion_audit)
         packages.append(converted)
 
+    # ★ Counted BEFORE the local layer is merged, deliberately. Every one of these ~60 numbers is
+    # a literal pin on what the 3.01.48 conversion produced, and a second source diluting them
+    # would quietly turn them from evidence into arithmetic. `imported` stays 6,968 forever.
     _finalize_counts(
         audit,
         rule_root=source_root,
@@ -980,6 +1184,15 @@ def generate(
         final_settings=final_settings,
         packages=packages,
     )
+
+    if local_path is not None:
+        packages = _merge_local_additions(
+            packages, local_path, zui_path, local_lock_path, audit)
+        audit["counts"]["local_additions"] = len(audit["localAdditions"])
+        audit["counts"]["local_overrides"] = len(audit["localOverrides"])
+        audit["counts"]["local_divider_defaulted"] = len(
+            audit["localDividerDefaulted"])
+        audit["counts"]["shipped"] = len(packages)
 
     upstream = lock.get("upstream", {})
     document = {
@@ -992,6 +1205,9 @@ def generate(
             "renderedSettingsSha256": lock["rendered_settings_xml"]["sha256"],
             "policy": "official release last row wins; fullRule mode excluded",
             "authorization": "See parallelwindow/AUTHORIZATION.md",
+            "localLayer": (
+                "local_additions.json, merged last; see local_source_lock.json"
+                if local_path is not None else None),
         },
         "EmbeddingConfigVersion": "1.0.0",
         "blocklist": [],
@@ -1032,10 +1248,21 @@ def main() -> None:
     parser.add_argument(
         "--audit-output", type=Path,
         default=parallel_dir / "hyperos_import_audit.json")
+    parser.add_argument(
+        "--local", type=Path, default=parallel_dir / "local_additions.json")
+    parser.add_argument(
+        "--zui", type=Path,
+        default=parallel_dir / "upstream" / "zui-18.0.10.335"
+        / "embedding_config.json")
+    parser.add_argument(
+        "--local-lock", type=Path,
+        default=parallel_dir / "local_source_lock.json")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
 
-    document, audit = generate(args.source, args.settings, args.lock)
+    document, audit = generate(
+        args.source, args.settings, args.lock,
+        args.local, args.zui, args.local_lock)
     _write_or_check(args.output, _serialized(document), args.check)
     _write_or_check(args.audit_output, _serialized(audit), args.check)
 

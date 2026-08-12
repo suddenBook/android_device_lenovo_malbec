@@ -58,7 +58,11 @@
     "divider_dragging_to_fullscreen_disallowed": 365,
     "shown_divider_dragging_to_fullscreen_allowed": 5480,
     "shown_divider_dragging_to_fullscreen_disallowed": 24,
-    "output_packages": 6968
+    "output_packages": 6968,
+    "local_additions": 76,
+    "local_overrides": 1,
+    "local_divider_defaulted": 39,
+    "shipped": 7045
   },
   "duplicateRuleRows": [
     {
@@ -112991,6 +112995,1112 @@
       "directive": "reusePreContainer:com.bilibili.bplus.followinglist.page.browser.ui.LightBrowserActivityV2",
       "name": "reusePreContainer",
       "payload": "com.bilibili.bplus.followinglist.page.browser.ui.LightBrowserActivityV2"
+    }
+  ],
+  "localAdditions": [
+    {
+      "package": "cn.coldlake.stellarmobile",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.alibaba.ailabs.tg",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.almighty.calculators",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.app.jianying.xs",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.arivoc.ky",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.baidu.browser.apps",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.baidu.searchbox.lite",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 2
+    },
+    {
+      "package": "com.baitao.btbz",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.benqu.wuta",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.bilibili.studio",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.cat.readall",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.changba",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.cnki.client",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.codemao.lunarb2c",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.dongao.kaoqian.phone",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.duohappy.skin",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.duowan.mobile",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.dw.btime",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.dyxc.banxue",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.edrawsoft.mindmaster",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.everyday.collection",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.galaxy.metawp",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.gkid.crazyrope",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.glodon.drawingexplorer",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.ihuman.classstudent",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.intsig.camscanner",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.ioowow.vod",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.jianpian.xiaoxigua",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.jjwxc.reader",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.jym.mall",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.kkys.video",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.koolearn.android",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.koolearn.android.cg",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.koudai.weidian.buyer",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.kwai.videoeditor",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 3
+    },
+    {
+      "package": "com.lofter.android",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.lwby.breader.ad",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.microsoft.translator",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.moji.mjweather",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.networkspeed.master",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.ophone.reader.ui",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.peopledailychina.activity",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.pleasure.hlbz",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.pocket.drawing",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.puddingchildren2.NewConceptEnglish",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.qihoo.browser",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 2
+    },
+    {
+      "package": "com.rockets.chang",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.santi.sinology",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 9
+    },
+    {
+      "package": "com.sgsp.video.xs",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.shanbay.news",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.strawberry.cmbz",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.sup.android.superb",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.superclear.fqkj",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.szy.gamemorphvox",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.tal.kaoyan",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.tal.tiku",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.taobao.litetao",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.tencent.android.qqdownloader",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.tencent.qqpim",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.tencent.qqpimsecure",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.tencent.tim",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.tencent.tv.qie",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.tencent.weishi",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.tencent.wetype",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.thorough.ttbz",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.tianyancha.skyeye",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.ttule.picture",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.walixiwa.flash.player",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.xiaomi.gamecenter",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.xiaomi.hm.health",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.ximalaya.ting.lite",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.xtuone.android.syllabus",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.yiche.autoeasy",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.youdao.course",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.yuncinc.bestplayingleather",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    },
+    {
+      "package": "com.zhilehuo.sqertongshizi",
+      "source": "zui-18.0.10.335",
+      "activityPairs": 1
+    }
+  ],
+  "localOverrides": [
+    {
+      "package": "com.sina.weibo",
+      "source": "hand-authored",
+      "testedVersionName": "16.8.0",
+      "testedVersionCode": 8105,
+      "testedApkSha256": "77ecb1d7918367c8f8d9543e9526d6c1e5718ce351a63177b932c78525ee1023",
+      "replaces": "zui-18.0.10.335 conversion"
+    }
+  ],
+  "localSkippedAlreadyImported": [],
+  "localUnmappedAttributes": [
+    {
+      "package": "com.baidu.searchbox.lite",
+      "attribute": "skipMultiWindowMode",
+      "value": "true"
+    },
+    {
+      "package": "com.cat.readall",
+      "attribute": "dimOnTaskFragment",
+      "value": "true"
+    },
+    {
+      "package": "com.cat.readall",
+      "attribute": "shouldPausePrimaryActivity",
+      "value": "true"
+    },
+    {
+      "package": "com.cat.readall",
+      "attribute": "skipMultiWindowMode",
+      "value": "true"
+    },
+    {
+      "package": "com.jianpian.xiaoxigua",
+      "attribute": "showSurfaceViewBackground",
+      "value": "false"
+    },
+    {
+      "package": "com.jianpian.xiaoxigua",
+      "attribute": "skipMultiWindowMode",
+      "value": "true"
+    },
+    {
+      "package": "com.sup.android.superb",
+      "attribute": "skipMultiWindowMode",
+      "value": "true"
+    },
+    {
+      "package": "com.tencent.tim",
+      "attribute": "skipMultiWindowMode",
+      "value": "true"
+    }
+  ],
+  "localDividerDefaulted": [
+    {
+      "package": "com.alibaba.ailabs.tg",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.almighty.calculators",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.arivoc.ky",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.benqu.wuta",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.cat.readall",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.changba",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.cnki.client",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.dongao.kaoqian.phone",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.duowan.mobile",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.dw.btime",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.edrawsoft.mindmaster",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.gkid.crazyrope",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.glodon.drawingexplorer",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.jjwxc.reader",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.jym.mall",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.koolearn.android.cg",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.koudai.weidian.buyer",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.kwai.videoeditor",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.lwby.breader.ad",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.microsoft.translator",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.moji.mjweather",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.networkspeed.master",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.ophone.reader.ui",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.puddingchildren2.NewConceptEnglish",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.qihoo.browser",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.rockets.chang",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.santi.sinology",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.shanbay.news",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.sup.android.superb",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.szy.gamemorphvox",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.tal.kaoyan",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.tal.tiku",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.tencent.android.qqdownloader",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.tencent.tim",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.tencent.wetype",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.xiaomi.hm.health",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.xtuone.android.syllabus",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.yiche.autoeasy",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    },
+    {
+      "package": "com.youdao.course",
+      "value": true,
+      "reason": "absent in the ZUI corpus; ParallelWindowRuleParser's own default"
+    }
+  ],
+  "localTypoRecoveries": [
+    {
+      "package": "com.arivoc.ky",
+      "attribute": "forceFullScreenPages",
+      "value": [],
+      "mappedTo": "forceFullscreenPages",
+      "reason": "Lenovo capitalizes the S; the runtime parser reads only the lowercase key"
+    },
+    {
+      "package": "com.tal.tiku",
+      "attribute": "forceFullScreenPages",
+      "value": [],
+      "mappedTo": "forceFullscreenPages",
+      "reason": "Lenovo capitalizes the S; the runtime parser reads only the lowercase key"
+    }
+  ],
+  "localIgnoredScalarKeys": [
+    {
+      "package": "cn.coldlake.stellarmobile",
+      "attribute": "mainPage",
+      "value": "cn.coldlake.university.lib.launch.home.HomeActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.alibaba.ailabs.tg",
+      "attribute": "mainPage",
+      "value": "com.alibaba.ailabs.tg.activity.HomeActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.almighty.calculators",
+      "attribute": "mainPage",
+      "value": "com.ibox.calculators.CalculatorActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.app.jianying.xs",
+      "attribute": "mainPage",
+      "value": "com.xs.app.jy.app.activity.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.arivoc.ky",
+      "attribute": "mainPage",
+      "value": "com.arivoc.accentz2.HomeActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.baidu.browser.apps",
+      "attribute": "mainPage",
+      "value": "com.baidu.searchbox.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.baidu.searchbox.lite",
+      "attribute": "mainPage",
+      "value": "com.baidu.searchbox.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.baitao.btbz",
+      "attribute": "mainPage",
+      "value": "com.zfxm.pipi.wallpaper.main.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.benqu.wuta",
+      "attribute": "mainPage",
+      "value": "com.benqu.wuta.activities.home.HomeActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.bilibili.studio",
+      "attribute": "mainPage",
+      "value": "com.bcut.homepage.widget.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.cat.readall",
+      "attribute": "mainPage",
+      "value": "com.cat.readall.activity.BrowserMainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.changba",
+      "attribute": "mainPage",
+      "value": "com.changba.activity.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.cnki.client",
+      "attribute": "mainPage",
+      "value": "com.cnki.client.core.navigator.main.HomeActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.codemao.lunarb2c",
+      "attribute": "mainPage",
+      "value": "com.codemao.lunar.MainActivityV2",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.dongao.kaoqian.phone",
+      "attribute": "mainPage",
+      "value": "com.dongao.kaoqian.module.home.main.HomeMainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.duohappy.skin",
+      "attribute": "mainPage",
+      "value": "vip.qufenqian.app_skin.activity.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.duowan.mobile",
+      "attribute": "mainPage",
+      "value": "com.yy.mobile.plugin.homepage.ui.home.HomeActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.dw.btime",
+      "attribute": "mainPage",
+      "value": "com.dw.btime.MainHomeTabActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.dyxc.banxue",
+      "attribute": "mainPage",
+      "value": "com.dyxc.banxue.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.edrawsoft.mindmaster",
+      "attribute": "mainPage",
+      "value": "com.edrawsoft.mindmaster.view.app_view.main.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.everyday.collection",
+      "attribute": "mainPage",
+      "value": "com.everyday.collection.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.galaxy.metawp",
+      "attribute": "mainPage",
+      "value": "com.galaxy.metawp.ui.activity.HomeActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.gkid.crazyrope",
+      "attribute": "mainPage",
+      "value": "com.gkid.crazyrope.ui.home.HomeActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.glodon.drawingexplorer",
+      "attribute": "mainPage",
+      "value": "com.glodon.drawingexplorer.activity.DefaultActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.ihuman.classstudent",
+      "attribute": "mainPage",
+      "value": "com.ihumand.classstudent.main.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.intsig.camscanner",
+      "attribute": "mainPage",
+      "value": "com.intsig.camscanner.mainmenu.mainactivity.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.ioowow.vod",
+      "attribute": "mainPage",
+      "value": "com.ayctech.mky.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.jianpian.xiaoxigua",
+      "attribute": "mainPage",
+      "value": "com.xiaoxigua.media.ui.main.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.jjwxc.reader",
+      "attribute": "mainPage",
+      "value": "com.example.jinjiangshucheng.ui.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.jym.mall",
+      "attribute": "mainPage",
+      "value": "com.jym.mall.activity.MainHostActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.kkys.video",
+      "attribute": "mainPage",
+      "value": "com.lxr.video_player.ui.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.koolearn.android",
+      "attribute": "mainPage",
+      "value": "com.koolearn.android.home.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.koolearn.android.cg",
+      "attribute": "mainPage",
+      "value": "com.koolearn.android.home.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.koudai.weidian.buyer",
+      "attribute": "mainPage",
+      "value": "com.vdian.android.wdb.main.ui.activity.MainTabsActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.kwai.videoeditor",
+      "attribute": "mainPage",
+      "value": "com.kwai.videoeditor.activity.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.lofter.android",
+      "attribute": "mainPage",
+      "value": "com.lofter.android.global.home.TabHomeActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.lwby.breader.ad",
+      "attribute": "mainPage",
+      "value": "com.lwby.breader.view.BKHomeActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.microsoft.translator",
+      "attribute": "mainPage",
+      "value": "com.microsoft.translator.activity.LandingActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.moji.mjweather",
+      "attribute": "mainPage",
+      "value": "com.moji.mjweather.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.networkspeed.master",
+      "attribute": "mainPage",
+      "value": "com.aso114.cyp.speed.act.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.ophone.reader.ui",
+      "attribute": "mainPage",
+      "value": "com.cmread.bplusc.bookshelf.LocalMainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.peopledailychina.activity",
+      "attribute": "mainPage",
+      "value": "com.peopledailychina.activity.activity.AppMainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.pleasure.hlbz",
+      "attribute": "mainPage",
+      "value": "com.zfxm.pipi.wallpaper.main.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.pocket.drawing",
+      "attribute": "mainPage",
+      "value": "com.fenghuajueli.module_host.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.puddingchildren2.NewConceptEnglish",
+      "attribute": "mainPage",
+      "value": "com.puddingchildren2.NewConceptEnglish.activity.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.qihoo.browser",
+      "attribute": "mainPage",
+      "value": "com.qihoo.browser.BrowserActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.rockets.chang",
+      "attribute": "mainPage",
+      "value": "com.rockets.chang.main.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.santi.sinology",
+      "attribute": "mainPage",
+      "value": "com.santi.sinology.ui.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.sgsp.video.xs",
+      "attribute": "mainPage",
+      "value": "com.xs.video.bayi.activity.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.shanbay.news",
+      "attribute": "mainPage",
+      "value": "com.shanbay.news.home.thiz.activity.HomeActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.strawberry.cmbz",
+      "attribute": "mainPage",
+      "value": "com.zfxm.pipi.wallpaper.main.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.sup.android.superb",
+      "attribute": "mainPage",
+      "value": "com.sup.android.base.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.superclear.fqkj",
+      "attribute": "mainPage",
+      "value": "com.xiaoniu.cleanking.ui.main.activity.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.szy.gamemorphvox",
+      "attribute": "mainPage",
+      "value": "com.szy.gamemorphvox.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.tal.kaoyan",
+      "attribute": "mainPage",
+      "value": "com.tal.kaoyan.ui.activity.HomeTabActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.tal.tiku",
+      "attribute": "mainPage",
+      "value": "com.tal.tiku.main.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.taobao.litetao",
+      "attribute": "mainPage",
+      "value": "com.taobao.ltao.maintab.MainFrameActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.tencent.android.qqdownloader",
+      "attribute": "mainPage",
+      "value": "com.tencent.assistantv2.activity.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.tencent.qqpim",
+      "attribute": "mainPage",
+      "value": "com.tencent.qqpim.ui.home.QQPimHomeActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.tencent.qqpimsecure",
+      "attribute": "mainPage",
+      "value": "com.tencent.server.fore.QuickLoadActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.tencent.tim",
+      "attribute": "mainPage",
+      "value": "com.tencent.mobileqq.activity.SplashActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.tencent.tv.qie",
+      "attribute": "mainPage",
+      "value": "com.tencent.tv.qie.main.activity.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.tencent.weishi",
+      "attribute": "mainPage",
+      "value": "com.tencent.oscar.module.main.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.tencent.wetype",
+      "attribute": "mainPage",
+      "value": "com.tencent.wetype.plugin.hld.reactnative.activity.FeedbackChatActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.thorough.ttbz",
+      "attribute": "mainPage",
+      "value": "com.zfxm.pipi.wallpaper.main.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.tianyancha.skyeye",
+      "attribute": "mainPage",
+      "value": "com.tianyancha.skyeye.DefaultMainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.ttule.picture",
+      "attribute": "mainPage",
+      "value": "com.ttule.picture.activity.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.walixiwa.flash.player",
+      "attribute": "mainPage",
+      "value": "com.jason.videocat.ui.activity.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.xiaomi.gamecenter",
+      "attribute": "mainPage",
+      "value": "com.xiaomi.gamecenter.ui.MainTabActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.xiaomi.hm.health",
+      "attribute": "mainPage",
+      "value": "com.xiaomi.hm.health.activity.ChannelMainTabActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.ximalaya.ting.lite",
+      "attribute": "mainPage",
+      "value": "com.ximalaya.ting.android.host.activity.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.xtuone.android.syllabus",
+      "attribute": "mainPage",
+      "value": "com.xtuone.android.friday.MainFragmentActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.yiche.autoeasy",
+      "attribute": "mainPage",
+      "value": "com.yiche.autoeasy.MainActivity3",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.youdao.course",
+      "attribute": "mainPage",
+      "value": "com.youdao.course.activity.MainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.yuncinc.bestplayingleather",
+      "attribute": "mainPage",
+      "value": "com.yuncinc.bestplayingleather.ui.activity.MainBestplayingActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
+    },
+    {
+      "package": "com.zhilehuo.sqertongshizi",
+      "attribute": "mainPage",
+      "value": "com.zhilehuo.sqertongshizi.QDMainActivity",
+      "reason": "no counterpart without its partner key; verified to lose nothing"
     }
   ]
 }
