@@ -7,7 +7,9 @@
   "upstream": {
     "repository": "https://github.com/sothx/mipad-magic-window",
     "tag": "3.01.48",
-    "commit": "a1c197a3d95b99d8aac9b387e8eeeb95472e50df"
+    "commit": "a1c197a3d95b99d8aac9b387e8eeeb95472e50df",
+    "kind": "community compatibility module, NOT a HyperOS firmware dump",
+    "notComparableTo": "/product/etc/embedded_rules_list.xml on a HyperOS device: firmware has 1,946 rows and 89 splitPairRule, this release has 8,046 rows and 2,040. Measured 2026-08-12; see work/notes/parallel-window-corpus-provenance.md"
   },
   "release_asset": {
     "url": "https://github.com/sothx/mipad-magic-window/releases/download/3.01.48/pad-hyperos3-based-on-vanillaIceCream-3.01.48.zip",

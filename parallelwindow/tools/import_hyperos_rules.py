@@ -3,9 +3,19 @@
 # Copyright (C) 2026 The LineageOS Project
 # SPDX-License-Identifier: Apache-2.0
 
-"""Convert the pinned HyperOS 3.01.48 release corpus into Malbec rules.
+"""Convert the pinned sothx/mipad-magic-window 3.01.48 corpus into Malbec rules.
 
-The two deployed XML inputs are vendored because the owner's cross-licensing
+⚠️ THAT IS A COMMUNITY COMPATIBILITY MODULE, NOT A HYPEROS FIRMWARE DUMP. This
+docstring used to say "the pinned HyperOS release corpus", which overstated it.
+A real /product/etc/embedded_rules_list.xml (HyperOS 3.1, Xiaomi Pad 8) has
+1,946 rows and 89 splitPairRule; this release has 8,046 and 2,040, and carries
+skipSelfAdaptive on every row where the firmware carries it once. It IS a
+faithful superset of the firmware's package list (1,942 of 1,946) and keeps
+1,686 of its splitPairRule values verbatim, so it is defensible to ship -- it is
+just not Xiaomi's file, and the firmware is newer. Measurements:
+work/notes/parallel-window-corpus-provenance.md.
+
+The two XML inputs are vendored because the owner's cross-licensing
 agreement permits AI-assisted processing and ROM redistribution.  Every run
 verifies both files against ``hyperos_source_lock.json`` before parsing them.
 

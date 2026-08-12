@@ -42,12 +42,34 @@ The format is the one Lenovo ships in this tablet's own stock firmware
 (`framework-res.apk` → `res/raw/embedding_config.json`), which is in turn the
 Huawei `easygo` lineage that OPPO's `activityPairs` / `transActivities` also
 descends from. Picking it means a rule file lifted from stock loads verbatim.
-The product file is now a deterministic conversion of the official HyperOS
-`3.01.48` Activity Embedding release corpus. The owner confirmed a signed
-cross-licensing agreement covering AI-assisted processing and ROM
-redistribution; the private agreement is not copied here. See
-`AUTHORIZATION.md`, `hyperos_source_lock.json`, and the exact vendored inputs in
-`upstream/3.01.48/`.
+The product file is a deterministic conversion of the `sothx/mipad-magic-window`
+`3.01.48` release corpus. The owner confirmed a signed cross-licensing agreement
+covering AI-assisted processing and ROM redistribution; the private agreement is
+not copied here. See `AUTHORIZATION.md`, `hyperos_source_lock.json`, and the
+exact vendored inputs in `upstream/3.01.48/`.
+
+⚠️ **That is a community compatibility module, NOT the ruleset a HyperOS device
+ships.** This file used to call it "the official HyperOS release corpus", which
+was wrong and is corrected here. Measured against a real
+`/product/etc/embedded_rules_list.xml` unpacked from HyperOS 3.1 on a Xiaomi
+Pad 8:
+
+| | firmware | what we vendor |
+|---|---:|---:|
+| rows | 1,946 | 8,046 |
+| `splitPairRule` | 89 | 2,040 |
+| rows with only `name` | 1,305 | 0 |
+| `skipSelfAdaptive` | 1 | **8,046 — every row** |
+
+As a *package list* ours is a near-perfect superset (1,942 of the firmware's
+1,946, plus 6,082 more). As a *rule set* it is genuinely enhanced rather than
+invented: of the shared packages, 1,686 `splitPairRule` values are identical to
+the firmware's, 207 were added by the community, 26 changed, 23 dropped. So it
+is a defensible thing to ship — it is just not Xiaomi's, and four packages the
+firmware has (`com.coze.space` among them) are missing from it, which means the
+firmware is also *newer*.
+
+Full comparison and method: `work/notes/parallel-window-corpus-provenance.md`.
 
 ```jsonc
 {
@@ -254,8 +276,11 @@ testing from the shell, force-stop and relaunch the affected package explicitly.
 
 ## Provenance and deterministic regeneration
 
-`embedding_config.json` is official-only: there is no local curated prefix and
-no special priority for Taobao, Weibo, Contacts, Etar, or Glimpse. The release's
+`embedding_config.json` is **release-only**: every row comes from the pinned
+`3.01.48` release, there is no local curated prefix, and no special priority for
+Taobao, Weibo, Contacts, Etar, or Glimpse. ("Official-only" was the old wording
+and overstated it — see the provenance warning above; the release is a community
+module's, not Xiaomi's.) The release's
 last package row is authoritative.
 
 The locked source has 8,046 rows / 8,024 unique packages. Exactly 1,056 final
