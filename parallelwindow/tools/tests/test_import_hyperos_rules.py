@@ -280,13 +280,14 @@ class HyperOsRuleImporterTest(unittest.TestCase):
         self.assertEqual(0, overrides["finishSecondaryWithPrimary"])
 
     def test_rule_default_is_fallback_only_when_no_setting_row_exists(self):
-        # Every fixture carries an explicit splitPairRule so that the
-        # unguarded-autoPrimary gate does not apply to any of them. Without it
-        # these rows would have no splitPairRule, be given a synthesised
-        # autoPrimary, and be default-disabled by that gate instead of by the
-        # defaultSettings/embeddedEnable resolution this test is about -- which
-        # is exactly what happened when the gate landed. The subject here is
-        # WHERE the default comes from, and it should stay that.
+        # Every fixture carries an explicit splitPairRule. That was once load-
+        # bearing: while the unguarded-autoPrimary gate existed (#81), a bare
+        # row would have been default-disabled by the gate instead of by the
+        # defaultSettings/embeddedEnable resolution this test is about, which is
+        # exactly what happened when the gate landed. The gate is gone with
+        # autoPrimary (#87), so the splitPairRule is now only keeping the
+        # fixtures realistic. The subject here is WHERE the default comes from,
+        # and it should stay that.
         document, audit = self.generate([
             xml_element(
                 "package", name="com.example.fallback_off",
@@ -326,80 +327,52 @@ class HyperOsRuleImporterTest(unittest.TestCase):
         self.assertEqual(2, len(audit["ruleDefaultFallbacks"]))
         self.assertEqual(3, len(audit["ignoredRuleDefaults"]))
 
-    def test_unguarded_auto_primary_is_default_disabled_and_audited(self):
-        """#81. A synthesised primary must not inherit upstream's finish rule.
+    def test_row_without_split_pair_rule_gets_no_routing_and_keeps_its_default(
+            self):
+        """#87. A bare row means "on the list", not "split with defaults".
 
-        A row with no splitPairRule gets an invented autoPrimary -- "the first
-        activity the process creates is the primary, forever". Combined with the
-        materialized finishSecondaryWithPrimary=2 (FINISH_ADJACENT) that every
-        row carries, a splash that finishes itself takes the real main activity
-        down with it and the app exits. transActivities and forceFullscreenPages
-        are the two things that keep a splash out of contention, so a row with
-        neither is the dangerous shape. It stays importable and enableable; it
-        just stops being ON by default.
+        HyperOS's split predicate requires a splitPairRule and 1,305 of the
+        firmware's 1,946 rows carry only a package name, so there are no engine
+        defaults for a bare row to inherit. This importer used to synthesise
+        `autoPrimary` for exactly these rows and then default-disable the
+        dangerous ones (#81); both the synthesis and the gate are gone, and a
+        bare row now converts to presentation attributes and nothing else.
         """
         document, audit = self.generate([
-            # dangerous: invented primary, nothing guards it, secondary can die
-            xml_element("package", name="com.example.unguarded"),
-            # guarded by a declared trampoline
+            xml_element("package", name="com.example.bare"),
             xml_element(
                 "package", name="com.example.trans",
                 transitionRules=".Splash"),
-            # guarded by a forced-fullscreen page
-            xml_element(
-                "package", name="com.example.fullscreen",
-                activityRule=".Splash"),
-            # not synthesised at all -- upstream said how to split
             xml_element(
                 "package", name="com.example.explicit",
                 splitPairRule=".First:*"),
-            # synthesised, but the secondary cannot be finished with the
-            # primary, so the same wrong guess is inert and needs no switch
-            xml_element(
-                "package", name="com.example.finish_never",
-                finishSecondaryWithPrimary="0"),
-        ], [])
-
-        by_name = {rule["name"]: rule for rule in document["packages"]}
-        self.assertIs(
-            False, by_name["com.example.unguarded"]["defaultEnabled"])
-        for untouched in (
-            "com.example.trans",
-            "com.example.fullscreen",
-            "com.example.explicit",
-            "com.example.finish_never",
-        ):
-            self.assertNotIn(
-                "defaultEnabled", by_name[untouched],
-                f"{untouched} must keep upstream's default")
-
-        gated = audit["unguardedAutoPrimaryDefaultDisabled"]
-        self.assertEqual(["com.example.unguarded"],
-                         [row["package"] for row in gated])
-        self.assertEqual(2, gated[0]["finishSecondaryWithPrimary"])
-        self.assertIs(True, gated[0]["resolvedDefaultEnabled"])
-        self.assertEqual(
-            1, audit["counts"]["imported_auto_primary_default_disabled"])
-
-    def test_unguarded_auto_primary_gate_does_not_double_report(self):
-        """A row upstream already disabled is not re-disabled or re-audited.
-
-        Six real packages are in both sets, which is why the shipped audit list
-        is 4,834 and not 4,840. Getting this wrong would inflate the count and
-        make the two numbers impossible to reconcile.
-        """
-        document, audit = self.generate([
             xml_element(
                 "package", name="com.example.already_off",
                 defaultSettings="false"),
         ], [])
 
         by_name = {rule["name"]: rule for rule in document["packages"]}
+        for bare in ("com.example.bare", "com.example.trans"):
+            self.assertNotIn("activityPairs", by_name[bare], bare)
+            self.assertNotIn("autoPrimary", by_name[bare], bare)
+        self.assertEqual(
+            [{"from": ".First", "to": "*"}],
+            by_name["com.example.explicit"]["activityPairs"])
+
+        # Nothing in the conversion decides a default any more; only upstream's
+        # own defaultSettings/embeddedEnable resolution does.
+        for untouched in (
+            "com.example.bare",
+            "com.example.trans",
+            "com.example.explicit",
+        ):
+            self.assertNotIn(
+                "defaultEnabled", by_name[untouched],
+                f"{untouched} must keep upstream's default")
         self.assertIs(
             False, by_name["com.example.already_off"]["defaultEnabled"])
-        self.assertEqual([], audit["unguardedAutoPrimaryDefaultDisabled"])
-        self.assertEqual(
-            0, audit["counts"]["imported_auto_primary_default_disabled"])
+        self.assertEqual(3, audit["counts"]["default_enabled"])
+        self.assertEqual(1, audit["counts"]["default_disabled"])
 
     def test_malformed_and_unmapped_values_are_auditable_not_just_counted(self):
         document, audit = self.generate([

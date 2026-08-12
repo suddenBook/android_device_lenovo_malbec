@@ -133,36 +133,38 @@ Full comparison and method: `work/notes/parallel-window-corpus-provenance.md`.
 }
 ```
 
-For a HyperOS row without `splitPairRule`, the generated entry contains
-`"autoPrimary": true` instead of `activityPairs`. The process latches its first
-eligible activity as primary and routes later launches from it. Generated rules
-never carry both forms.
+## A row without `splitPairRule` gets no routing at all
 
-⚠️ **`autoPrimary` is this importer's invention, not upstream's, and where
-nothing guards it the entry ships default-disabled (#81).** A HyperOS row with
-no `splitPairRule` says the package is embeddable and says *nothing* about how;
-HyperOS covers that with engine defaults recorded below as unsupported. "The
-first activity the process creates is the primary, forever" is our substitute
-for those defaults — and it then inherits `finishSecondaryWithPrimary = 2`
-(`FINISH_ADJACENT`), which really is upstream's, materialized onto every row.
-Composed, on the very common shape of a splash that finishes itself:
+4,917 of the 6,968 generated rows carry presentation attributes and **nothing
+else**. That is upstream's shape, reproduced exactly, and it is the single most
+important thing to understand about this corpus.
+
+⚠️ **This file used to describe an `"autoPrimary": true` key here. It is gone
+(#87), and so is the gate that shipped 4,834 of those rows default-disabled
+(#81).** The history is worth keeping because the mistake is an easy one to make
+again:
+
+`autoPrimary` meant "the first activity the process creates is the primary,
+forever", and this tree described it as *our substitute for HyperOS engine
+defaults*. Unpacking a real HyperOS firmware settled that there are no such
+defaults to substitute for. Their split predicate **requires** a `splitPairRule`,
+and 1,305 of the firmware's 1,946 rows carry only a package name. A bare row says
+the package is on the list. It says nothing whatsoever about how to split it.
+
+The invention then inherited `finishSecondaryWithPrimary = 2` (`FINISH_ADJACENT`),
+which really is upstream's, materialized onto every row. Composed, on the very
+common shape of a splash that finishes itself:
 
     splash is the first activity   -> becomes the permanent primary
     splash starts the real main    -> pair matches, split forms
     splash finishes itself         -> FINISH_ADJACENT finishes the secondary
                                       with it, and the app exits
 
-`transActivities` and `forceFullscreenPages` are the two things that keep a
-splash out of contention. A row with `autoPrimary`, neither of those, and a
-finish behaviour that can take the secondary down is therefore **imported in
-full, enableable from `wm parallel-window` or the MalbecParts row, and off until
-someone asks for it.** 4,834 rows are gated this way; six more were already
-disabled upstream and are left alone.
-
-★ **This is not a precaution any more — it was reproduced.** `cn.com.sina.finance`
-is a gated row with exactly this shape. Enabled by hand on the 2026-08-12 build,
-it closes itself **1.07 s** after launch: 29 activity references at t+1s, **0 at
-t+2s**, launcher back on top, no FATAL and no ANR — it does not crash, it exits.
+★ **That was reproduced on hardware, which is why the fix is removal and not
+tuning.** `cn.com.sina.finance` is one of those rows. Enabled by hand on the
+2026-08-12 build, it closed itself **1.07 s** after launch: 29 activity
+references at t+1s, **0 at t+2s**, launcher back on top, no FATAL and no ANR —
+it did not crash, it exited.
 
     04.875  ParallelWindow: pair? from=LoadingActivity to=MainActivity2 -> MATCH
     05.530  Remove task fragment: removeLastChild LoadingActivity t-1 f
@@ -172,16 +174,16 @@ t+2s**, launcher back on top, no FATAL and no ANR — it does not crash, it exit
 `LoadingActivity`. Trace:
 `work/session-30-build-repair-20260812/evidence/81-confirmed-sina-finance.txt`.
 
-The distinction this draws is the one the data draws: the 2,028 packages where
-upstream said how to split are automatic, and the ones where we guessed are
-opt-in. Rows whose `finishSecondaryWithPrimary` is `0` are deliberately *not*
-gated — there the same wrong guess is inert, because the splash finishes, the
-secondary survives, and `autoPrimary` is simply left pointing at a dead class.
+So the importer now materializes exactly what upstream released, with no
+departure anywhere: 2,028 packages carry `activityPairs`, 23 more carry only
+`placeholderPairs`, and the remaining **4,917 are known and inert** —
+`hasSplitRouting()` is false, and `ParallelWindowService` classifies them
+`disabled`. Defaults are once again upstream's own, **6,952 enabled and 16
+disabled**, because nothing in the conversion decides a default any more.
 
-This is the only place the importer departs from materializing exactly what
-upstream released. It changes the DEFAULT only — never whether a rule exists,
-never a routing value — and every package it touches is listed in
-`hyperos_import_audit.json` under `unguardedAutoPrimaryDefaultDisabled`.
+⚠️ **Inert is not the end state.** Those 4,917 rows are what MiddleRule exists
+for — single-pane centred presentation, the third mode AOSP lacks — and until it
+lands they contribute nothing but their own size. See `work/OPEN-ISSUES.md` #87.
 
 An item in `placeholderPairs` may carry `"waitForContent": true`. It delays the
 placeholder until the primary activity has attached content. The importer emits
@@ -290,12 +292,9 @@ not Activity Embedding, so they are recorded and excluded. The separate
 `fixedOrientationEnable=true` value in the settings file does **not** erase an
 existing non-full embedding row: the five such packages remain eligible but
 default-disabled, so the user can explicitly enable them. The resulting product
-contains 6,968 embedding packages. **Upstream's own defaults are 6,952 enabled
-and 16 disabled**; after the unguarded-`autoPrimary` gate described above
-default-disables 4,834 more, the shipped product is **2,118 enabled and 4,850
-disabled by default**. Both numbers stay pinned by the golden test, and the
-release figure remains recoverable as
-`default_disabled - imported_auto_primary_default_disabled = 4850 - 4834 = 16`.
+contains 6,968 embedding packages, **6,952 enabled and 16 disabled by default —
+which are upstream's own numbers**, because after #87 nothing in the conversion
+decides a default. Both stay pinned by the golden test.
 HyperOS supplies missing presentation fields in its app-side extension jar as
 `clearTop=true`, `finishPrimaryWithSecondary=0`, and
 `finishSecondaryWithPrimary=2`. The importer writes those effective values into

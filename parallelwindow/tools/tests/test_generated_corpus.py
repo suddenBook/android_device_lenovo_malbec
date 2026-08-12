@@ -17,11 +17,14 @@ RELEASE_SHA256 = "cf01225b777ce67e44bfc88a54e6adf46f7a7326c6cb5d5e2c1508cea43f4e
 RULES_SHA256 = "fa8caafac66c17d4786175e7dbd2b6c9514419a88499adb277dc12002beddf7a"
 SETTINGS_SHA256 = "d50e462dfd7e62711b27cb87440e28560cf7ab6c699f9fe96cc8988b8e87144c"
 # ⚠️ The three hashes ABOVE pin the INPUT and must never move without a new
-# source-lock review. The two BELOW pin the OUTPUT and moved once, deliberately,
-# when the unguarded-autoPrimary gate landed (#81). If a change moves an input
-# hash, stop -- that is a different upstream release, not a conversion change.
-PRODUCT_SHA256 = "08fedbdc94943fd34074a574ec8712fd70bff571db3de0379a36562cb8526c2b"
-AUDIT_SHA256 = "0827d284420b702fc916dc911ad4a6d3557ecc22ea39ab71d92331e9fb7db0ea"
+# source-lock review. The two BELOW pin the OUTPUT and have moved twice, both
+# times deliberately: once when the unguarded-autoPrimary gate landed (#81), and
+# again when autoPrimary itself was deleted (#87) and a bare row went back to
+# meaning what upstream released -- presentation attributes and no routing.
+# If a change moves an INPUT hash, stop: that is a different upstream release,
+# not a conversion change.
+PRODUCT_SHA256 = "5571c3187350f30bf92fb0706cf8b8bcfc7ac896f2ec2c93fc89f4714b067bbf"
+AUDIT_SHA256 = "8f75d6d225324ddfca246b5632b23e3a4c40dbf8688d29c300b290d95d72a642"
 MAX_DEVICE_RULE_BYTES = 8 * 1024 * 1024
 
 
@@ -75,7 +78,6 @@ class GeneratedCorpusTest(unittest.TestCase):
             "setting_duplicate_rows": 0,
             "source_final_full_rule": 1_056,
             "imported": 6_968,
-            "imported_auto_primary": 4_940,
             "imported_explicit_pair_packages": 2_028,
             "imported_pair_relationships": 3_750,
             "imported_placeholder_packages": 184,
@@ -99,21 +101,14 @@ class GeneratedCorpusTest(unittest.TestCase):
             "unmapped_setting_attribute_values": 4_700,
             "orphan_setting_rows": 452,
             "unmapped_flag_directives": 48,
-            # ★ THESE TWO ARE THE PRODUCT'S NUMBERS, AND SINCE #81 THEY ARE NO
-            # LONGER THE RELEASE'S. The release ships 6,952 enabled / 16
-            # disabled. The unguarded-autoPrimary gate default-disables 4,834
-            # more -- rows where upstream declared a package embeddable and
-            # said nothing about how, so the primary is this importer's
-            # invention and must not also inherit upstream's FINISH_ADJACENT.
-            #
-            # The release numbers stay recoverable and therefore still pinned:
-            #   default_disabled - imported_auto_primary_default_disabled
-            #     = 4850 - 4834 = 16
-            # and the gate count below is asserted independently, so neither
-            # number can drift without the other being wrong too.
-            "default_enabled": 2_118,
-            "default_disabled": 4_850,
-            "imported_auto_primary_default_disabled": 4_834,
+            # ★ THESE TWO ARE THE RELEASE'S NUMBERS AGAIN. Between #81 and #87
+            # they were the product's: the unguarded-autoPrimary gate
+            # default-disabled 4,834 rows on top of upstream's own 16, giving
+            # 2,118 / 4,850. Deleting autoPrimary (#87) removed the reason for
+            # the gate, so the importer is back to materialising exactly what
+            # upstream released and nothing else decides a default.
+            "default_enabled": 6_952,
+            "default_disabled": 16,
             "split_ratio_0_3": 275,
             "split_ratio_0_4": 8,
             "split_ratio_0_42": 3,
@@ -155,13 +150,19 @@ class GeneratedCorpusTest(unittest.TestCase):
             "org.lineageos.glimpse",
         ):
             self.assertNotIn(removed_seed, names)
+        # ⚠️ THIS USED TO ASSERT THAT EVERY SHIPPED ROW CAN DO SOMETHING, via
+        # "autoPrimary or activityPairs or placeholderPairs". Deleting
+        # autoPrimary (#87) makes that false for 4,917 rows, and the honest
+        # replacement is to pin the split rather than drop the guard: those rows
+        # carry presentation attributes and no routing, exactly as upstream
+        # released them, and the framework parser classifies them `disabled`.
+        # They are on the list for MiddleRule, which is the next change; when it
+        # lands the inert count goes to zero and this pins that instead.
+        routable = [rule for rule in packages
+                    if rule.get("activityPairs") or rule.get("placeholderPairs")]
+        self.assertEqual(2_051, len(routable))
+        self.assertEqual(4_917, len(packages) - len(routable))
         for rule in packages:
-            self.assertTrue(
-                rule.get("autoPrimary") is True
-                or bool(rule.get("activityPairs"))
-                or bool(rule.get("placeholderPairs")),
-                rule["name"],
-            )
             self.assertFalse(any(key.startswith("_tested") for key in rule))
 
     def test_official_taobao_rule_preserves_both_placeholders_and_default(self):

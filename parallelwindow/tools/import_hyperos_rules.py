@@ -47,11 +47,6 @@ DEFAULT_CLEAR_TOP = True
 DEFAULT_FINISH_PRIMARY_WITH_SECONDARY = 0
 DEFAULT_FINISH_SECONDARY_WITH_PRIMARY = 2
 VALID_FINISH_BEHAVIORS = {0, 1, 2}
-# AOSP androidx.window.extensions.embedding.SplitRule.FINISH_NEVER. The one
-# finish behaviour under which a primary that finishes itself cannot take the
-# secondary with it -- see the unguarded-autoPrimary gate near the end of
-# _convert_entry().
-FINISH_BEHAVIOR_NEVER = 0
 WAIT_FOR_CONTENT_PLACEHOLDER = (
     "com.taobao.taobao",
     "com.taobao.tao.welcome.Welcome",
@@ -217,7 +212,6 @@ def _new_audit() -> dict[str, Any]:
         "unmappedSettingAttributes": [],
         "orphanSettingRows": [],
         "unmappedFlagDirectives": [],
-        "unguardedAutoPrimaryDefaultDisabled": [],
     }
 
 
@@ -540,7 +534,6 @@ def _merge_conversion_audit(
         "ruleDefaultFallbacks",
         "unmappedAttributes",
         "unmappedFlagDirectives",
-        "unguardedAutoPrimaryDefaultDisabled",
     ):
         destination[key].extend(source[key])
 
@@ -595,10 +588,26 @@ def _convert_entry(
         "minSmallestWidthDp": DEFAULT_MIN_SMALLEST_WIDTH_DP,
     }
 
+    # ★ A ROW WITH NO `splitPairRule` GETS NO ROUTING RULE. (#87)
+    #
+    # This importer used to emit `autoPrimary: true` here -- "the first activity
+    # the process creates is the primary, forever" -- described in the tree as
+    # our substitute for HyperOS engine defaults. Unpacking a real HyperOS
+    # firmware settled that there are no such defaults to substitute for: their
+    # split predicate REQUIRES a splitPairRule, and 1,305 of the firmware's
+    # 1,946 rows carry only a package name. A bare row says the package is on
+    # the list. It says nothing whatsoever about how to split it.
+    #
+    # The invention cost #81, measured on hardware: cn.com.sina.finance is a
+    # bare row whose splash was latched as the permanent primary, and with the
+    # FINISH_ADJACENT every row materialises, finishing the splash finished the
+    # secondary with it -- the app closed itself 1.07 s after launch. Shipping
+    # those rows default-off treated the symptom.
+    #
+    # So a bare row now produces presentation attributes and nothing else,
+    # exactly as upstream released it.
     pair_value = attributes.get("splitPairRule")
-    if pair_value is None:
-        output["autoPrimary"] = True
-    else:
+    if pair_value is not None:
         pairs = _parse_relations(
             pair_value, package=package, row=row, attribute="splitPairRule",
             audit_key="malformedPairTokens", audit=audit)
@@ -716,80 +725,6 @@ def _convert_entry(
                     "semantics unsupported")
             audit["unmappedAttributes"].append(item)
 
-    # ★ A SYNTHESISED PRIMARY DOES NOT GET TO INHERIT UPSTREAM'S FINISH SEMANTICS
-    #   BY DEFAULT. (#81)
-    #
-    # `autoPrimary` is emitted above whenever the source row has no
-    # `splitPairRule`, i.e. whenever HyperOS declared that a package is
-    # embeddable and then said NOTHING about how. 4,848 of 6,968 rows are like
-    # that -- `<package name="InternetRadio.all" isShowDivider="true"
-    # supportFullSize="true" supportCameraPreview="true" skipSelfAdaptive="true" />`
-    # and nothing else. HyperOS covers those with engine defaults this importer's
-    # README records as unsupported, so `autoPrimary` -- "the first activity the
-    # process creates is the primary, forever" -- is OUR INVENTION, not theirs.
-    #
-    # It then inherits `finishSecondaryWithPrimary = 2` (FINISH_ADJACENT), which
-    # IS theirs, materialized onto every row from their app-side jar. Applied to
-    # a primary upstream never declared, that composes into:
-    #
-    #   splash is the first activity  -> becomes the permanent primary
-    #   splash starts the real main   -> pair matches, split forms
-    #   splash finishes itself        -> FINISH_ADJACENT finishes the secondary
-    #                                    with it -> THE APP EXITS
-    #
-    # which is a very ordinary shape for the population this corpus describes.
-    # `transActivities` is exactly the mechanism that prevents it, and these rows
-    # have none; `forceFullscreenPages` would also have kept the splash out of
-    # contention, and they have none of that either.
-    #
-    # So: still imported, still enabled by `wm parallel-window` or the MalbecParts
-    # row, but NOT ON BY DEFAULT. The distinction this draws is the one the data
-    # itself draws -- 2,028 packages where upstream said how to split are
-    # automatic; the ones where we guessed are opt-in.
-    #
-    # Deliberately NOT applied when the secondary cannot be taken down with the
-    # primary (finishSecondaryWithPrimary == 0). There the same wrong guess is
-    # inert: the splash finishes, the secondary survives, `autoPrimary` is left
-    # pointing at a dead class and nothing else ever splits. A wrong guess that
-    # costs nothing does not need a switch.
-    #
-    # ⚠️ This is the ONE place this importer departs from "materialize exactly
-    # what upstream released". It is recorded in the audit for every package it
-    # touches, and it changes only the DEFAULT -- never whether the rule exists,
-    # and never any routing value.
-    #
-    # ★ REPRODUCED ON HARDWARE, 2026-08-12. cn.com.sina.finance is a gated row
-    # with exactly this shape. Enabled by hand, it closes itself 1.07 s after
-    # launch -- 29 activity references at t+1s, 0 at t+2s, launcher back on top,
-    # no FATAL and no ANR:
-    #
-    #     04.875  ParallelWindow: pair? from=LoadingActivity
-    #                             to=...home.MainActivity2 -> MATCH
-    #     05.530  Remove task fragment: removeLastChild LoadingActivity t-1 f
-    #     05.552  Remove task fragment: removeLastChild MainActivity2   t-1 f
-    #
-    # 22 ms between the two removals. The splash is literally named
-    # LoadingActivity. So this gate is not a precaution and it is not
-    # over-cautious: without it, 4,834 packages would each do that on first
-    # launch. Do not relax it without a replacement for the synthesis itself.
-    if (output.get("autoPrimary") is True
-            and not output.get("transActivities")
-            and not output.get("forceFullscreenPages")
-            and output.get("finishSecondaryWithPrimary")
-                != FINISH_BEHAVIOR_NEVER
-            and output.get("defaultEnabled") is not False):
-        output["defaultEnabled"] = False
-        audit["unguardedAutoPrimaryDefaultDisabled"].append({
-            "package": package,
-            "row": row,
-            "finishSecondaryWithPrimary": output["finishSecondaryWithPrimary"],
-            "resolvedDefaultEnabled": default_enabled,
-            "reason": (
-                "synthesised autoPrimary with no transActivities and no "
-                "forceFullscreenPages, combined with a finish behaviour that "
-                "can finish the secondary with the primary"),
-        })
-
     return output
 
 
@@ -817,10 +752,6 @@ def _finalize_counts(
         "setting_duplicate_rows": len(audit["duplicateSettingRows"]),
         "source_final_full_rule": len(full_rule_names),
         "imported": len(packages),
-        "imported_auto_primary": sum(
-            rule.get("autoPrimary") is True for rule in packages),
-        "imported_auto_primary_default_disabled": len(
-            audit["unguardedAutoPrimaryDefaultDisabled"]),
         "imported_explicit_pair_packages": len(explicit),
         "imported_pair_relationships": sum(
             len(rule["activityPairs"]) for rule in explicit),
