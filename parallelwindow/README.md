@@ -48,7 +48,7 @@ The rest of the product file is a deterministic conversion of the
 `sothx/mipad-magic-window` `3.01.48` release corpus. The owner confirmed a signed cross-licensing agreement
 covering AI-assisted processing and ROM redistribution; the private agreement is
 not copied here. See `AUTHORIZATION.md`, `hyperos_source_lock.json`, and the
-exact vendored inputs in `upstream/3.01.48/`.
+exact vendored inputs in `upstream/hyperos/`.
 
 ⚠️ **That is a community compatibility module, NOT the ruleset a HyperOS device
 ships.** This file used to call it "the official HyperOS release corpus", which
@@ -91,7 +91,9 @@ this device's own OEM.**
 
 The ZUI file is first-party for this exact hardware, and it is the file this
 schema was copied from, so its rows need no translation of shape — only of
-meaning, in the three places recorded below. It is dark on retail units because
+meaning, in the three places recorded below. Its provenance, digest and the
+owner's redistribution position are in `AUTHORIZATION.md` §2 and
+`local_source_lock.json`. It is dark on retail units because
 `ro.config.lgsi.region=row` makes `ActivityThread#injectEmbeddingRules` return
 early; the corpus, the patched extensions jar and the Settings page are all
 present. `work/notes/parallel-window/20-zui-teardown.md` has the teardown.
@@ -107,7 +109,7 @@ release counts in the golden test are pins on the release.
 ```jsonc
 {
   "LocalAdditionsVersion": "1.0.0",
-  // Package names read from upstream/zui-18.0.10.335/ and converted by the importer.
+  // Package names read from upstream/zui/ and converted by the importer.
   "fromZuiCorpus": { "packages": [ "com.tencent.tim", … ] },
   // Rows authored here, which replace whatever either source says.
   "packages": [ { "name": "com.sina.weibo", … } ]

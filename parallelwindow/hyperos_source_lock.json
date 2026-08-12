@@ -19,13 +19,13 @@
   },
   "rendered_xml": {
     "releaseMember": "common/source/embedded_rules_list.xml",
-    "vendoredPath": "upstream/3.01.48/embedded_rules_list.xml",
+    "vendoredPath": "upstream/hyperos/embedded_rules_list.xml",
     "sizeBytes": 1331074,
     "sha256": "fa8caafac66c17d4786175e7dbd2b6c9514419a88499adb277dc12002beddf7a"
   },
   "rendered_settings_xml": {
     "releaseMember": "common/source/embedded_setting_config.xml",
-    "vendoredPath": "upstream/3.01.48/embedded_setting_config.xml",
+    "vendoredPath": "upstream/hyperos/embedded_setting_config.xml",
     "sizeBytes": 629445,
     "sha256": "d50e462dfd7e62711b27cb87440e28560cf7ab6c699f9fe96cc8988b8e87144c"
   },

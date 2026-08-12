@@ -16,7 +16,7 @@
     "reason": "First-party rules written by this device's OEM for this device, in the exact schema this port already parses."
   },
   "zui_corpus": {
-    "vendoredPath": "upstream/zui-18.0.10.335/embedding_config.json",
+    "vendoredPath": "upstream/zui/embedding_config.json",
     "sizeBytes": 122150,
     "sha256": "a4f0a66b95a8adbc1ac9e530e8d3194b7f77c9847b2bd3c889bcf65614eb9a6c",
     "packages": 288

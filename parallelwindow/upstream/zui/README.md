@@ -14,7 +14,7 @@ understands. That is not a coincidence and it is why this file is a better
 input than a re-derivation would be.
 
 ⚠️ **And it is first-party for this exact hardware.** Everything else in
-`../3.01.48/` is a community compatibility module written for Xiaomi tablets.
+`../hyperos/` is a community compatibility module written for Xiaomi tablets.
 This is Lenovo's own ruleset, shipped on this model, for this panel. It is dark
 on retail units only because `product/etc/build.prop` sets
 `ro.config.lgsi.region=row` and `ActivityThread#injectEmbeddingRules` returns

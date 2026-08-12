@@ -1231,7 +1231,7 @@ def _write_or_check(path: Path, content: str, check: bool) -> None:
 
 def main() -> None:
     parallel_dir = Path(__file__).resolve().parent.parent
-    upstream_dir = parallel_dir / "upstream" / "3.01.48"
+    upstream_dir = parallel_dir / "upstream" / "hyperos"
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--source", type=Path,
@@ -1252,8 +1252,7 @@ def main() -> None:
         "--local", type=Path, default=parallel_dir / "local_additions.json")
     parser.add_argument(
         "--zui", type=Path,
-        default=parallel_dir / "upstream" / "zui-18.0.10.335"
-        / "embedding_config.json")
+        default=parallel_dir / "upstream" / "zui" / "embedding_config.json")
     parser.add_argument(
         "--local-lock", type=Path,
         default=parallel_dir / "local_source_lock.json")
