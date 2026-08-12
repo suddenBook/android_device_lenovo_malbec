@@ -23,6 +23,22 @@
     <uses-permission android:name="android.permission.BLUETOOTH_PRIVILEGED" />
     <!-- peak_refresh_rate / min_refresh_rate live in Settings.System. -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <!-- match_content_frame_rate lives in Settings.SECURE, which WRITE_SETTINGS
+         does not cover. It is the third value PenModeController pins, and
+         without it an app can still pull the panel off the chosen rate through
+         the app-request range.
+
+         ⚠️ Declared rather than inherited. uid 1000 already holds this by way of
+         the `android` package sharing android.uid.system, so the write would
+         succeed with nothing here — which is exactly the shape
+         privapp-permissions-org.lineageos.malbec.parts.xml warns about for
+         VIBRATE. A permission this app depends on belongs in this app's
+         manifest.
+
+         signature|privileged|development|role|installer
+         (core/res/AndroidManifest.xml:5292-5293). The `privileged` flag is why
+         it is ALSO in the allowlist. -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <!-- The anti-loss alert: optionally wake the panel, then notify.
          PowerManager#wakeUp enforces DEVICE_POWER (signature|role) — not
          TURN_SCREEN_ON, which gates Activity#setTurnScreenOn and which this app
@@ -40,6 +56,24 @@
          set. The service derives the user from this process's Binder uid;
          MalbecParts never asks for cross-user access. -->
     <uses-permission android:name="android.permission.MANAGE_PARALLEL_WINDOW" />
+    <!-- Closing an app after its parallel-window rule changed, so its next start
+         reads the new one. A running process cannot: the rule is latched per
+         process on both sides of the Binder.
+
+         protectionLevel is `normal` (core/res/AndroidManifest.xml:4508-4511), so
+         it is auto-granted and MUST NOT be added to
+         privapp-permissions-org.lineageos.malbec.parts.xml — that file's header
+         forbids listing anything that is not `privileged`.
+
+         ⚠️ Declared for the lint and for the record rather than out of
+         necessity: killBackgroundProcesses also reaches a cross-appId check
+         wanting KILL_ALL_BACKGROUND_PROCESSES, and this app clears BOTH by being
+         appId 1000 (ActivityManager.canAccessUnexportedComponents). Do not read
+         "it works" as "this line is what makes it work".
+
+         Deliberately NOT FORCE_STOP_PACKAGES — see ParallelWindowBackend for the
+         bill that one comes with. -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
 
     <application
         android:allowBackup="false"
@@ -132,82 +166,93 @@
                 android:resource="@string/device_settings_summary" />
         </activity>
 
-        <!-- The same page, second door: Settings > Connected devices >
-             "Stylus and keyboard". The pen and the folio ARE connected devices
-             and that is where someone goes looking for them, so promoting the
-             page to the top level is a reason to add an entry point, not to
-             remove one.
+        <!-- ⚠️ THIS ALIAS LOOKS DEAD AND IS NOT. DELETING IT BREAKS A PAGE
+             SILENTLY — no error, no log, no build failure.
 
-             An alias rather than a second activity because TileUtils keys its
-             cache on (packageName, componentInfo.name) — TileUtils.java:400-402 —
-             and for an alias that name is the ALIAS, so the two produce two
-             distinct tiles from one implementation. queryIntentActivitiesAsUser
-             resolves aliases and carries their own meta-data, and resolved.system
-             (:338) holds because this is a system_ext priv-app.
-
-             Settings > System > Keyboard > Physical keyboard > "Advanced keyboard
-             settings" lands here too. That hook is already in AOSP:
+             Settings > System > Keyboard > Physical keyboard > "Advanced
+             keyboard settings" resolves through it. The hook is AOSP's:
              packages/apps/Settings/res/xml/physical_keyboard_settings.xml:83-89
              declares a RemotePreference with
              settings:requiresAction="org.lineageos.settings.device.ADVANCED_KEYBOARD_SETTINGS"
-             and hides itself when nothing answers. It is on the alias rather than
-             on the top-level activity because it is a keyboard-shaped door. -->
+             and HIDES ITSELF when nothing answers. So the failure mode of
+             removing this alias is a Settings row that quietly stops existing.
+
+             It also supplies the heading for that door — the page titles itself
+             from the label of whichever alias was used
+             (StylusSettingsActivity.kt:19-23), so "Stylus and keyboard" is the
+             heading a keyboard-shaped entry point should produce, and
+             @string/stylus_title has to stay on the alias for that reason.
+
+             ── SESSION 33: the Connected devices door was removed ─────────────
+             This alias used to ALSO inject a tile into
+             com.android.settings.category.ia.connect, giving Settings >
+             Connected devices a "Stylus and keyboard" row. The owner asked for
+             that row to go.
+
+             It is a pure deletion of one door, not a relocation, and that is
+             what makes it safe against HANDOFF.md §2's WONTFIX ("MalbecParts'
+             Device mode stays"): Device mode is res/xml/stylus_settings.xml's
+             touch_mode row, and it is still reachable through the top-level
+             Device settings tile, the QS tile, and the home-screen widget. Three
+             doors remain; one closed.
+
+             ⚠️ Do not "finish the job" by deleting the alias. The IA_SETTINGS
+             intent-filter and the category/icon/summary meta-data were the tile;
+             everything left here belongs to the keyboard door. An alias is what
+             makes one page produce two independently-configurable entry points
+             at all — TileUtils keys its cache on (packageName,
+             componentInfo.name), TileUtils.java:400-402, and for an alias that
+             name is the alias. -->
         <activity-alias
             android:name=".stylus.StylusSettingsConnectedDevicesAlias"
             android:targetActivity=".stylus.StylusSettingsActivity"
             android:label="@string/stylus_title"
             android:exported="true">
             <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
-            </intent-filter>
-            <intent-filter>
                 <action android:name="org.lineageos.settings.device.ADVANCED_KEYBOARD_SETTINGS" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <meta-data
-                android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.connect" />
-            <meta-data
-                android:name="com.android.settings.icon"
-                android:resource="@drawable/ic_stylus" />
-            <meta-data
-                android:name="com.android.settings.summary"
-                android:resource="@string/stylus_summary" />
         </activity-alias>
 
-        <!-- Settings > Apps > Parallel windows.
+        <!-- A row INSIDE Device settings, not a tile Settings injects anywhere.
 
-             all_profiles is deliberate. Settings presents its standard profile
-             chooser when a work profile exists and launches this activity as
-             the selected user. IActivityTaskManager then derives that user from
-             the caller uid, so personal and work settings cannot bleed into
-             one another. -->
+             ⚠️ SESSION 33. This used to inject itself into
+             com.android.settings.category.ia.apps — Settings > Apps — with an
+             icon and a summary. The owner asked for it under Device settings
+             with no icon, and those two halves of the request point at the same
+             answer rather than at two changes:
+
+               · Every row on the Settings HOMEPAGE carries an icon, and the
+                 Expressive homepage draws a rounded background behind it
+                 (DashboardFeatureProviderImpl.java:556-570), so an icon-less
+                 homepage tile would be the one text-only row in a column of
+                 them. Rows inside a page carry no icon at all.
+               · So "under Device settings, without an icon" is a row in
+                 res/xml/stylus_settings.xml, not a second homepage tile.
+
+             It was also the only row on Settings > Apps with an icon — nothing
+             in packages/apps/Settings/res/xml/apps.xml has one — which is what
+             made it look wrong.
+
+             The activity is now reached only through that row, so it is
+             exported="false": androidx starts it from the <intent> child in our
+             own PreferenceScreen, in this process, and an activity nothing
+             outside the package needs to start should not be exported.
+
+             ⚠️ STATED LOSS. com.android.settings.profile="all_profiles" went
+             with the tile. That is what made Settings show its profile chooser
+             and start this activity AS the chosen user; ParallelWindowBackend
+             derives the user from the Binder caller, so launching from our own
+             page always means the current user, and on a device with a work
+             profile the work-profile rules become unreachable from the UI. This
+             device is single-user and config_showUserSwitcherByDefault is now
+             false, so the cost is zero here — but it IS a cost, and if a work
+             profile is ever wanted the fix belongs in this app, not in a
+             restored tile. -->
         <activity
             android:name=".parallelwindow.ParallelWindowSettingsActivity"
             android:label="@string/parallel_window_title"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.android.settings.action.IA_SETTINGS" />
-            </intent-filter>
-            <meta-data
-                android:name="com.android.settings.category"
-                android:value="com.android.settings.category.ia.apps" />
-            <meta-data
-                android:name="com.android.settings.order"
-                android:value="-10" />
-            <meta-data
-                android:name="com.android.settings.icon"
-                android:resource="@drawable/ic_parallel_window" />
-            <meta-data
-                android:name="com.android.settings.icon_tintable"
-                android:value="true" />
-            <meta-data
-                android:name="com.android.settings.summary"
-                android:resource="@string/parallel_window_tile_summary" />
-            <meta-data
-                android:name="com.android.settings.profile"
-                android:value="all_profiles" />
-        </activity>
+            android:exported="false" />
 
         <!-- ⚠️ There is no PLAY_AUTO_INSTALL marker receiver here any more, and
              that is deliberate rather than an omission. This package used to

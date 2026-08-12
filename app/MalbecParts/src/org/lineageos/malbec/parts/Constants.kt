@@ -82,7 +82,7 @@ object Constants {
      * see. OPEN-ISSUES #24 correctly diagnosed that the key's native
      * KEYCODE_FULLSCREEN reaches gesture 82, that 82 is registered only by
      * DesktopModeKeyGestureHandler, and that this device never constructs it —
-     * and remapped the key to F24 in keylayout/Vendor_17ef_Product_62b2.kl:680,
+     * and remapped the key to F24 in keylayout/Vendor_17ef_Product_62b2.kl:718,
      * whose comment says "the key now goes through MalbecParts' picker like every
      * other ZUI key". It did not: there was no F24 anywhere in this app, so the
      * key went from "does nothing via a dead gesture" to "does nothing via an

@@ -86,12 +86,24 @@
 
          ── What the user is left with ───────────────────────────────────────
          No refresh-rate control in Settings at all. The rate is owned by
-         MalbecParts (Stylus and keyboard > Device mode), which pins
+         MalbecParts (Device settings > Device mode), which pins
          peak_refresh_rate to 120 in both modes; config_defaultPeakRefreshRate is
-         120 as well, so an un-provisioned device agrees. AOSP's own idle and
+         120 as well, so an un-provisioned device agrees.
+
+         ⚠️ SESSION 33. This paragraph used to end *"AOSP's own idle and
          content-driven switching still runs underneath — measured 30 Hz idle,
          120 Hz while scrolling — so nothing is lost by dropping the manual 60 Hz
-         entry.
+         entry."* The measurement was right and the conclusion was wrong: 30 Hz
+         visibly FLICKERS on this LCD, and SurfaceFlinger's residency counters
+         had the tablet there for 38m49s against 120 Hz's 20m11s in one session.
+         MalbecParts now pins min_refresh_rate to the same ceiling and sets
+         Settings.Secure.match_content_frame_rate to MATCH_CONTENT_FRAMERATE_NEVER,
+         so there is no idle drop and no content-driven switching left to lose.
+
+         That STRENGTHENS the case for hiding the pickers rather than weakening
+         it: with switching off, a stray 144 in peak_refresh_rate is no longer a
+         rate the panel visits occasionally, it is the rate it sits at — and the
+         digitizer cannot see the pen there at all.
 
          MalbecParts keeps its ContentObserver on peak_refresh_rate and
          min_refresh_rate anyway. This removes the UI, not the setting: `settings
@@ -101,4 +113,42 @@
     <bool name="config_show_smooth_display">false</bool>
     <bool name="config_show_peak_refresh_rate_switch">false</bool>
     <bool name="config_show_min_refresh_rate_switch">false</bool>
+
+    <!-- ★ Remove "System update" from Settings > System.
+
+         This port does no OTA (HANDOFF.md §2), and `Updater` is not installed —
+         MalbecParts' Android.bp carries `overrides: ["Updater"]`, and
+         `pm list packages | rg -c updater` reads 0 on the device. The row was
+         still there, which is the whole reason this bool is needed:
+
+         ⚠️ IT IS NOT LINEAGE'S UPDATER. The preference is AOSP's own
+         (packages/apps/Settings/res/xml/system_dashboard_fragment.xml:105-114,
+         key system_update_settings), and it self-removes only when nothing
+         resolves android.settings.SYSTEM_UPDATE_SETTINGS
+         (SystemUpdatePreferenceController.kt:47-58 via SystemUpdateRepository.kt
+         :30-37). On this build **GMS resolves it** —
+         com.google.android.gms.update.SystemUpdateActivity, FLAG_SYSTEM on
+         /product, so MATCH_SYSTEM_ONLY matches — so removing Updater could never
+         have removed the row. LineageOS 23.2's Settings has no updater-specific
+         code path at all; `rg -rl org.lineageos.updater packages/apps/Settings`
+         is empty.
+
+         The bool is checked FIRST (:42-45, `AVAILABLE` iff this and isAdminUser),
+         before the resolver is ever consulted, so this holds with or without GMS
+         and Settings search drops the row too.
+
+         Target resource verified to exist, because an RRO that names a resource
+         the target does not have builds clean and is a SILENT NO-OP — see the
+         session-21 note at the top of this file:
+         packages/apps/Settings/res/values/config.xml:496 declares it, true.
+
+         ⚠️ STATED RESIDUE. GMS ALSO injects itself into Security & privacy
+         (com.android.settings.category.ia.security, keyhint
+         security_status_security_patch_level — a key that exists nowhere in
+         LineageOS 23.2 Settings, so it adds a row rather than replacing one).
+         This bool does not gate that tile and no RRO can reach it: removing it
+         needs `pm disable-user` on a component that also serves the
+         SYSTEM_UPDATE_SETTINGS filter, i.e. a runtime state change rather than a
+         build-time one. Not done; recorded. -->
+    <bool name="config_show_system_update_settings">false</bool>
 </resources>

@@ -7,6 +7,37 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:title="@string/device_settings_title">
 
+    <!-- Parallel windows, as a row rather than a Settings tile.
+
+         It sits OUTSIDE the four categories, and above them, on purpose: this is
+         a door to another page, not a setting on this one, and it belongs to
+         none of "Pen button" / "Folio keyboard keys" / "If you leave the pen
+         behind" / "Screen and touch". Inventing a one-row category to hold it
+         would add a heading with nothing to say.
+
+         ⚠️ No android:icon. That is the request, and it is also what every other
+         row on this page does — icons live on the Settings homepage, not inside
+         a page. See the AndroidManifest comment above the activity for why the
+         "no icon" half of the request is what settles it as a row rather than a
+         second homepage tile.
+
+         The <intent> child is androidx's own mechanism (PreferenceInflater parses
+         it and calls Preference.setIntent), so this needs no code in
+         StylusSettingsFragment. Explicit component, in-process, which is why the
+         activity can be exported="false".
+
+         android:persistent="false" because this row has no value — without it a
+         key in a PreferenceScreen invites the next reader to look for one. -->
+    <Preference
+        android:key="parallel_window"
+        android:title="@string/parallel_window_title"
+        android:summary="@string/parallel_window_tile_summary"
+        android:persistent="false">
+        <intent
+            android:targetPackage="org.lineageos.malbec.parts"
+            android:targetClass="org.lineageos.malbec.parts.parallelwindow.ParallelWindowSettingsActivity" />
+    </Preference>
+
     <PreferenceCategory
         android:key="cat_pen_buttons"
         android:title="@string/pen_buttons_category">

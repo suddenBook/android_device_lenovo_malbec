@@ -13,15 +13,15 @@
 # Remapped, stock's label -> what this file actually emits -> where:
 #
 #   LENOVO_VOLUME_MUTE -> VOLUME_MUTE   scancode 113   :253
-#   SCREEN_LOCK        -> LOCK          usage 0x0c038e :619
-#   TP_MUTE            -> F17           usage 0x0c0392 :653
-#   GLOBAL_SEARCH      -> F23           usage 0x0c0393 :659
-#   FULL_SCREEN        -> F24           usage 0x0c0394 :680
-#   SPLIT_SCREEN       -> F21           usage 0x0c0395 :687
-#   SUPER_CONNECT      -> F22           usage 0x0c0397 :691
-#   APP1               -> F19           usage 0x0c0398 :700
-#   APP2               -> F20           usage 0x0c0399 :701
-#   ZUI_SETTING        -> SETTINGS      usage 0x0c039b :702
+#   SCREEN_LOCK        -> SLEEP         usage 0x0c038e :657  (was LOCK -- see there)
+#   TP_MUTE            -> F17           usage 0x0c0392 :691
+#   GLOBAL_SEARCH      -> F23           usage 0x0c0393 :697
+#   FULL_SCREEN        -> F24           usage 0x0c0394 :718
+#   SPLIT_SCREEN       -> F21           usage 0x0c0395 :725
+#   SUPER_CONNECT      -> F22           usage 0x0c0397 :729
+#   APP1               -> F19           usage 0x0c0398 :738
+#   APP2               -> F20           usage 0x0c0399 :739
+#   ZUI_SETTING        -> SETTINGS      usage 0x0c039b :740
 #
 # ⚠️ REWRITTEN session 25, and it is the third time a table in this file has been
 # found stale. It used to claim GLOBAL_SEARCH -> SEARCH, FULL_SCREEN -> FULLSCREEN
@@ -65,7 +65,7 @@
 #     F21            this keyboard, split-screen key (F10 keycap)
 #     F22            this keyboard, PC-link key (F11 keycap)
 #     F23            this keyboard, Fn + APP1 (search)
-#     F24            this keyboard, full-screen key (F9 keycap) — see :680
+#     F24            this keyboard, full-screen key (F9 keycap) — see :718
 #   (⚠️ this list said "F21..F24 unallocated" for four sessions after they were
 #    allocated. Nothing free remains.)
 #
@@ -615,8 +615,46 @@ key usage 0x0d005a STYLUS_BUTTON_SECONDARY FALLBACK_USAGE_MAPPING
 # STYLUS_BUTTON pair, and none of the labels below is any of those. Flagging them
 # would withdraw capability claims that are true, for no gain.
 
-# Lenovo lapis custom key
-key usage 0x0c038e LOCK
+# Lenovo lapis custom key. The keycap right of F12 — stock calls it SCREEN_LOCK.
+#
+# ★ SLEEP, not LOCK, and the difference is the whole bug.
+#
+# This was LOCK, and it worked exactly as documented: the lock screen appeared
+# and the panel stayed ON. That is not a defect in the mapping, it is what the
+# framework does with the keycode. KEYCODE_LOCK becomes
+# KEY_GESTURE_TYPE_LOCK_SCREEN (KeyGestureController.java:860-869, gated on
+# enableNew25q2Keycodes(), which `aflags list` reports ENABLED here), and
+# PhoneWindowManager.java:4087-4090 handles it with
+#
+#     case KeyGestureEvent.KEY_GESTURE_TYPE_LOCK_SCREEN:
+#         if (complete) { lockNow(null); }
+#
+# lockNow() and nothing else. There is no goToSleep on that path.
+#
+# SLEEP does both halves:
+#   · sleeps — KEYCODE_SLEEP is handled in interceptKeyBeforeQueueing
+#     (PhoneWindowManager.java:5415-5429), pre-dispatch and independent of focus,
+#     and config_shortPressOnSleepBehavior is 0 = SHORT_PRESS_SLEEP_GO_TO_SLEEP
+#     (core/res config.xml:1241, not overridden by this tree or by Lineage), so
+#     it reaches goToSleep(GO_TO_SLEEP_REASON_SLEEP_BUTTON).
+#   · locks — SLEEP_BUTTON falls to the default OFF_BECAUSE_OF_USER branch, and
+#     KeyguardViewMediator.onStartedGoingToSleep takes lockImmediately from
+#     getPowerButtonInstantlyLocks(), which defaults to true
+#     (LockPatternUtils.java:1337) and is unset on this device.
+#
+# ⚠️ No WAKE flag, and that is NOT a regression: the LOCK line here never had one
+# either, so this key could not wake the device before the change and cannot
+# after it. The folio's real wake key is `key 143 WAKEUP WAKE` (:288).
+#
+# Not POWER: that would also bring the long-press power menu and the volume
+# chords (KeyGestureController.java:347-384), which is far more than "the key
+# with a padlock printed on it should turn the screen off".
+#
+# Stock maps this usage to its own private label SCREEN_LOCK, which AOSP's
+# parser rejects with BAD_VALUE for the WHOLE FILE — see the header. Stock's
+# behaviour comes from its own handler and is not reproducible here, so it is a
+# reference and not the answer.
+key usage 0x0c038e SLEEP
 key usage 0x0c0391 MUTE
 # F7, printed as the touchpad on/off key. Routed to a spare F-key so it is
 # assignable, but with NO default action, because "turn the touchpad off" cannot

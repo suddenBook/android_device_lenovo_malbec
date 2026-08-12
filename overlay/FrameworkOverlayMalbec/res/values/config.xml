@@ -144,11 +144,41 @@
          then throttled the render rate back to 120 anyway: half a mode change,
          which is worse than either state. Setting it to 0 removes the global vote
          entirely; the ceiling in each mode then comes only from
-         PEAK_REFRESH_RATE, which MalbecParts owns. Daily mode (peak 120) is
-         unaffected - it still gets physical (0,120) render (0,120).
+         PEAK_REFRESH_RATE, which MalbecParts owns.
 
          The "both are 0" error branch at :1223-1229 cannot trigger: peak falls
          back to config_defaultPeakRefreshRate = 120 when the setting is unset.
+
+         ★ SESSION 33 - THESE TWO VALUES ARE NO LONGER THE WHOLE STORY.
+
+         Everything above is about the CEILING, and a ceiling is only half a
+         policy. The floor was 0, so SurfaceFlinger was free to take the panel to
+         the lowest mode it has whenever nothing was animating: measured 30 Hz,
+         with a residency of 38m49s against 120 Hz's 20m11s in a single session.
+         30 Hz visibly flickers on this LCD.
+
+         The floor CANNOT be set from this file, and that is worth stating so
+         nobody looks for the resource. Settings.System.MIN_REFRESH_RATE has a
+         hardcoded 0f default (DisplayModeDirector.java:1169) - no config_*, no
+         def_ in SettingsProvider - so the only lever is a write, and
+         MalbecParts.PenModeController now pins min to the same ceiling as peak
+         and sets Settings.Secure.match_content_frame_rate to
+         MATCH_CONTENT_FRAMERATE_NEVER. The row above therefore reads differently
+         now:
+
+             peak=120 + min=120  physical (120,120) render (120,120) mode 3, pinned
+                                 appRequest (120,120) once switching is NEVER
+
+         ⚠️ Which makes config_defaultPeakRefreshRate MORE load-bearing than the
+         text above implies, not less. Before the pin, a stray 144 was a rate the
+         panel visited; now it is the rate the panel SITS at, and the digitizer
+         cannot see the pen there at all. Do not raise this value.
+
+         ⚠️ And do not read the floor out of `dumpsys display`. mActiveModeId
+         there is the DESIRED mode and reported 120 for the entire time the panel
+         was physically at 30. `dumpsys SurfaceFlinger` is the only source, and
+         its per-mode residency counters are the instrument - a single sample
+         cannot see a device that spends most of its awake life somewhere else.
 
          Note also that 144 Hz remains in Display > Refresh rate, because that
          list is built at runtime from Display.getSupportedModes()
@@ -161,7 +191,8 @@
          the peak setting sits at 9, so it bounds them. A human choosing 144 in
          Settings can do it, and MalbecParts turns that into a full, coherent
          switch to game mode rather than letting the pen fail silently: it watches
-         both PEAK_REFRESH_RATE and MIN_REFRESH_RATE and toasts what happened. -->
+         PEAK_REFRESH_RATE, MIN_REFRESH_RATE and (since session 33)
+         Settings.Secure.match_content_frame_rate, and toasts what happened. -->
     <!-- Default to LIGHT, not dark.
 
          AOSP's own default is already 1 / MODE_NIGHT_NO (config.xml:898). Dark
@@ -783,14 +814,69 @@
          `android` with aapt2 and diffing against the built framework-res.apk
          (which already includes the PixelOS/LineageOS static overlays). -->
 
-    <!-- ★ Device owner's decision, settled: no user switcher on the lock screen.
-         Stock ships true (product/overlay/LgsiFrameworksOverlay.apk) and an
-         earlier round matched stock on the reasoning that multi-user is a
-         headline tablet feature; the owner does not use multi-user and prefers
-         the cleaner lock screen. AOSP's own default is false, so this is also
-         the upstream value. Consumer is SystemUI
-         KeyguardStatusBarRepository.kt:71. Do not flip it back. -->
+    <!-- ⚠️ SESSION 33 — THIS LINE DOES NOT DO WHAT THE COMMENT SAID, AND THE
+         COMMENT SAID THE OPPOSITE OF WHAT THE VALUE MEANS.
+
+         It used to read *"Device owner's decision, settled: no user switcher on
+         the lock screen … Do not flip it back."* Both halves were wrong:
+
+           · It changes NOTHING. AOSP already ships false in BOTH
+             core/res/res/values/config.xml and values-sw600dp/config.xml, and
+             LineageOS repeats it. Measured:
+             `cmd overlay lookup android android:bool/config_keyguardUserSwitcher`
+             returns false with or without this line.
+           · false is the value that SELECTS the avatar, not the value that
+             removes it. SystemUI's own flags.xml says the icon "is only shown if
+             config_keyguardUserSwitcher=false"; true swaps the small avatar for a
+             full on-keyguard user LIST. So "flipping it back" would have made the
+             lock screen busier, not cleaner.
+
+         The line stays, because restating a device requirement rather than
+         depending on an upstream default is this tree's convention — the same
+         argument the refresh-rate overlay makes for its three bools. What is
+         removed is the claim that it implements the owner's decision. The thing
+         that implements it is the next resource down. -->
     <bool name="config_keyguardUserSwitcher">false</bool>
+
+    <!-- ★ Device owner's decision, settled: no user-switcher avatar in the
+         top-right of the lock screen.
+
+         THIS is the resource that does it. The view is @+id/multi_user_avatar
+         (SystemUI res/layout/keyguard_status_bar.xml:62-66), and the chain that
+         made it visible is entirely a screen-size accident:
+
+           this device reports sw1095dp, so every -sw600dp qualifier applies
+             -> core/res/res/values-sw600dp/config.xml:53 sets
+                config_showUserSwitcherByDefault = TRUE
+                (values/config.xml:6357 is false; symbols.xml:4916)
+             -> that is the DEFAULT behind Settings.Global.USER_SWITCHER_ENABLED,
+                which is unset here
+             -> UserManagerService.isUserSwitcherEnabled() -> true
+             -> KeyguardStatusBarView.updateVisibilities() -> VISIBLE
+
+         A bare values/ entry here overrides the target's -sw600dp variant, which
+         is how every other size-qualified value in this file is overridden.
+
+         ★ VERIFIED ON THE DEVICE, and the first measurement looked like a
+         refutation: writing `settings put global user_switcher_enabled 0` changed
+         nothing in the view hierarchy. That is because the controller reads the
+         value when it is constructed rather than observing it. After
+         `killall com.android.systemui` the same dump reads
+             ImageView{… G.ED… 0,0-0,0 … app:id/multi_user_avatar}
+         — GONE. The gate is real; only the instrument was wrong. (HANDOFF lesson
+         7: before believing an experiment failed, check the thing you measured
+         could have changed.)
+
+         ⚠️ This is a DEFAULT, not a removal, and that is deliberate. Settings >
+         System > Multiple users writes USER_SWITCHER_ENABLED directly
+         (MultiUserMainSwitchPreferenceController.java:63), and its toggle is
+         still shown because config_allowChangeUserSwitcherEnabled is true, so the
+         owner can turn it back on and it will override this.
+
+         ⚠️ Do NOT reach for config_multiuserMaximumUsers = 1 instead. That makes
+         UserManager.supportsMultipleUsers() false, which deletes the whole
+         Multiple users page and guest mode — far more than was asked for. -->
+    <bool name="config_showUserSwitcherByDefault">false</bool>
 
     <!-- Stock: true, from product/overlay/FrameworksResCommon_Sys.apk.
          AudioManager.java:7054 turns this into
