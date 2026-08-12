@@ -402,7 +402,7 @@ blob_fixups: blob_fixups_user_type = {
     #
     # The consumer list was derived by reading DT_NEEDED off the FACTORY files,
     # not off proprietary/ -- the latter has already been rewritten by fixups,
-    # so scanning it under-reports (PROGRESS.md section 3).
+    # so scanning it under-reports.
     (
         'vendor/lib64/libVoiceSdk.so',
         'vendor/lib64/libcapiv2uvvendor.so',

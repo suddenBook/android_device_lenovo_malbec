@@ -333,7 +333,7 @@ it did not crash, it exited.
 
 22 ms between the two removals, and the splash is literally named
 `LoadingActivity`. Trace:
-`work/session-30-build-repair-20260812/evidence/81-confirmed-sina-finance.txt`.
+`work/evidence/81-confirmed-sina-finance.txt`.
 
 So the importer materializes exactly what upstream released, with no departure
 anywhere: 2,028 packages carry `activityPairs`, 23 more carry only
