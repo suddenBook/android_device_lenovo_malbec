@@ -51,7 +51,32 @@ debug.sf.ignore_hwc_physical_display_orientation=true
 debug.sf.auto_latch_unsignaled=1
 
 ro.vendor.display.cabl=2
-ro.vendor.display.idle_time=0
+# ⚠️ ro.vendor.display.idle_time WAS HERE AND IS GONE. It has no reader, under
+# that name, anywhere. The display HAL builds the key WITHOUT the `ro.` prefix:
+#
+#     display_properties.h:40  #define DISP_PROP_PREFIX  "vendor.display."
+#     display_properties.h:51  #define IDLE_TIME_PROP    DISPLAY_PROP("idle_time")
+#
+# read at core/sdm/libs/utils/debug.cpp:77 and core/sdmclient/sdm_debugger.cpp:290.
+# Measured both directions: the string `vendor.display.idle_time` IS present in
+# the shipped libsdmutils.so, libsdmclient.so and init.qti.display_boot.sh, and
+# `ro.vendor.display.idle_time` is present in NO binary at all. On the device the
+# `ro.` key read 0 and the real key was unset entirely.
+#
+# ⚠️ The correct key is deliberately NOT set in its place. Setting
+# vendor.display.idle_time=0 disables SDM's idle fallback, and whether that is
+# wanted on this panel was never established — the old line expressed an
+# intention that has never once taken effect, so there is no "restore the
+# behaviour" to do here, only a new decision to make. Stock has the identical
+# typo in its own vendor/build.prop, so stock does not get idle fallback
+# disabled either, and the panel this port ships behaves the way the panel stock
+# ships behaves.
+#
+# To settle it, someone has to measure rather than assume: set the real key at
+# runtime, restart the composer, then compare `Received Idle Timeout` frequency
+# and screen-on-idle power against the current state. QTI's own script sets it
+# only for niobe (init.qti.display_boot.sh:115-116); the sun/soc-694 branch this
+# device takes never does.
 ro.vendor.display.paneltype=1
 ro.vendor.display.sensortype=2
 ro.vendor.display.svi=1
@@ -264,6 +289,32 @@ vendor.qc2audio.suspend.enabled=true
 ro.bluetooth.a2dp_offload.supported=true
 persist.bluetooth.a2dp_offload.cap=sbc-aac-aptx-aptxhd-ldac
 persist.bluetooth.a2dp_offload.disabled=false
+# ★ THE LE AUDIO OFFLOAD PAIR, COMPLETED. Owner's decision, session 34.
+#
+# `persist.bluetooth.leaudio_offload.disabled=false` has been here for many
+# sessions saying "do not disable offload", while nothing ever declared offload
+# SUPPORTED — so it could not happen. Measured before the change:
+#
+#     dumpsys bluetooth_manager | grep 'Codec location'  ->  HOST     (ours)
+#                                                        ->  ADSP     (stock)
+#
+# i.e. LC3 encode and decode ran on the application processor. Both properties
+# are read by our own /apex/com.android.bt/lib64/libbluetooth_jni.so; the vendor
+# side was already complete (vendor/etc/aidl/le_audio/aidl_audio_set_configurations.bfbs
+# and aidl_audio_set_scenarios.bfbs both ship). Stock sets this line in its own
+# vendor/build.prop.
+#
+# ⚠️ This adjusts a recorded decision rather than contradicting it. OPEN-ISSUES
+# #46 and HANDOFF §2 say "all three or none, and there is no LC3 peer to test
+# with" — and the tree was NEITHER: this file already set the `disabled` half and
+# product.prop already set le_audio_connection_by_default. The half-set state was
+# the thing nobody chose. The owner chose to complete it.
+#
+# ⚠️ Still untested end to end, honestly: no LC3 peer has ever been attached to
+# this tablet (DEVICE-FACTS.md, Bluetooth). What is verifiable without one is the
+# codec location above, and that is the acceptance test. A2DP/AAC is unaffected —
+# it has its own offload pair three lines up and is proven working.
+ro.bluetooth.leaudio_offload.supported=true
 persist.bluetooth.leaudio_offload.disabled=false
 # ⚠️ persist.vendor.bt.a2dp_offload_cap was here. Removed in session 12: it has
 # NO reader. `grep -rlaF` over every partition of both the built image and the

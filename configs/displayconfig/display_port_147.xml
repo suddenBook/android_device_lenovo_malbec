@@ -126,11 +126,39 @@
      sdrHdrRatioMap has to live HERE rather than being inherited: getSdrHdrRatioSpline
      (:212-219) falls back to the HBM block's map, and there is no HBM block, so
      without this element the spline is null and the headroom is 1.0 — i.e. no
-     boost, which is the state being fixed. The two points are Lenovo's own,
-     lifted from the sdrHdrRatioMap inside the highBrightnessMode block of their
-     display_id_*.xml: 8.0x headroom when SDR is at 2 nits, falling to 1.5x at
-     500 nits. That is product tuning for this panel family rather than an
-     invention, and it is the one part of those files worth keeping.
+     boost, which is the state being fixed.
+
+     ★ THE 120 POINTS BELOW ARE LENOVO'S MEASURED CURVE FOR THIS PANEL, AND THE
+     TWO THEY REPLACE WERE THE WRONG PANEL'S. Corrected session 34.
+
+     This element used to carry two points, 2 nits at 8.0x falling to 500 nits at
+     1.5x, described here as "Lenovo's own, lifted from the sdrHdrRatioMap inside
+     the highBrightnessMode block of their display_id_*.xml". ⚠️ And the section
+     below this one proves, correctly and at length, that display_id_*.xml is
+     keyed to panel models this unit does not have. The file diagnosed its own
+     source as wrong and took two numbers out of it anyway.
+
+     ★ The file that stock actually used was never examined, because it is on
+     /system and every search for panel data went to /vendor:
+
+         work/unpacked/parts/system/system/etc/display_hdr.xml   14,060 B, 120 points
+
+     Stock's live dumpsys matches it exactly (minLux 10000.0, transition 1.0,
+     1800/300/60 timings, minimumHdrPercentOfScreen 0.1, a 120-point spline).
+     What the two curves actually differed by, computed rather than argued:
+
+         SDR nits      Lenovo measured      the two points
+             50            4.00x               7.37x
+            100            3.26x               6.72x
+            150            2.52x               6.07x
+            300            1.79x               4.11x
+            500            1.62x               1.50x
+
+     At the brightness a 13 inch tablet sits at indoors we were granting roughly
+     double the headroom Lenovo measured, so HDR highlights drove the panel about
+     twice as hard as it was tuned for. The old curve even started at 8.0x where
+     Lenovo's starts at 4.0x, which is the clearest sign the two points were not
+     this panel's to begin with.
 
      allowInLowPowerMode is false: Battery Saver should not be spending its
      savings on HDR highlights.
@@ -146,6 +174,45 @@
      unit is model 0x446d48e02993. So none of them matched on stock ZUI either,
      which means the 650-nit ladder IS the stock behaviour of this unit and
      raising it would be a change, not a restoration.
+
+     ★★ AND NEITHER CAN display_hdr.xml's <highBrightnessMode> BLOCK BE ADOPTED,
+     for a reason that is structural rather than a preference. Established
+     session 34, before writing anything, and it would otherwise have cost a
+     build, a flash and a boot.
+
+     Session 34 set out to adopt that block whole, on the reasoning that its
+     <transitionPoint> is 1 rather than display_id_*.xml's 0.85, so it would give
+     the sunlight HBM trigger (minimumLux 10000) without moving the SDR ceiling.
+     The premise is right and the conclusion is wrong, because AOSP will not
+     accept the value at all — DisplayDeviceConfig.java:1896-1903:
+
+         float transitionPointBacklightScale = hbm.getTransitionPoint_all().floatValue();
+         if (transitionPointBacklightScale >= mBacklightMaximum) {
+             throw new IllegalArgumentException("HBM transition point invalid. "
+                 + transitionPointBacklightScale + " is not less than " + mBacklightMaximum);
+         }
+
+     mBacklightMaximum is PowerManager.BRIGHTNESS_MAX, i.e. 1.0, whenever there
+     is no <screenBrightnessMap> (:1972) — which is this file's case. So
+     transitionPoint 1 is `1 >= 1.0`, and the block throws inside
+     DisplayDeviceConfig while the display is being configured.
+
+     ★ Stock gets away with it because ZUI's framework reads
+     /system/etc/display_hdr.xml through Lenovo's own loader, not through AOSP's
+     DisplayDeviceConfig. The file is valid for the parser that was written for
+     it and invalid for ours.
+
+     ★★ And the generalisation is the part worth keeping: ANY transitionPoint
+     AOSP accepts is strictly less than 1.0, and
+     HighBrightnessModeController.java:195 returns mHbmData.transitionPoint from
+     getCurrentBrightnessMax() whenever HBM is not currently engaged. So an
+     accepted HBM block necessarily LOWERS the everyday SDR ceiling to the
+     transition point. HBM and "do not move the SDR ceiling" are mutually
+     exclusive in AOSP, whatever the value. The owner's constraint therefore
+     rules out the whole element, not merely one number in it, and the sunlight
+     trigger cannot be had on this framework without giving up SDR headroom.
+
+     What was adoptable was the curve, and it is adopted above.
 
      Whether this panel can actually do 782 nits is unsettled. The composer
      reports HdrCapabilities mMaxLuminance=800.0, which is suggestive and is not
@@ -186,12 +253,484 @@
         <allowInLowPowerMode>false</allowInLowPowerMode>
         <sdrHdrRatioMap>
             <point>
-                <first>2.0</first>
-                <second>8.0</second>
+                <first>2.000</first>
+                <second>4.000</second>
             </point>
             <point>
-                <first>500.0</first>
-                <second>1.5</second>
+                <first>75.000</first>
+                <second>3.995</second>
+            </point>
+            <point>
+                <first>78.859</first>
+                <second>3.851</second>
+            </point>
+            <point>
+                <first>82.717</first>
+                <second>3.721</second>
+            </point>
+            <point>
+                <first>86.576</first>
+                <second>3.602</second>
+            </point>
+            <point>
+                <first>90.434</first>
+                <second>3.493</second>
+            </point>
+            <point>
+                <first>94.293</first>
+                <second>3.393</second>
+            </point>
+            <point>
+                <first>98.152</first>
+                <second>3.301</second>
+            </point>
+            <point>
+                <first>102.01</first>
+                <second>3.216</second>
+            </point>
+            <point>
+                <first>105.869</first>
+                <second>3.137</second>
+            </point>
+            <point>
+                <first>109.727</first>
+                <second>3.064</second>
+            </point>
+            <point>
+                <first>113.586</first>
+                <second>2.996</second>
+            </point>
+            <point>
+                <first>117.444</first>
+                <second>2.932</second>
+            </point>
+            <point>
+                <first>121.303</first>
+                <second>2.872</second>
+            </point>
+            <point>
+                <first>125.162</first>
+                <second>2.816</second>
+            </point>
+            <point>
+                <first>129.02</first>
+                <second>2.763</second>
+            </point>
+            <point>
+                <first>132.879</first>
+                <second>2.714</second>
+            </point>
+            <point>
+                <first>136.737</first>
+                <second>2.667</second>
+            </point>
+            <point>
+                <first>140.596</first>
+                <second>2.622</second>
+            </point>
+            <point>
+                <first>144.455</first>
+                <second>2.581</second>
+            </point>
+            <point>
+                <first>148.313</first>
+                <second>2.541</second>
+            </point>
+            <point>
+                <first>152.172</first>
+                <second>2.503</second>
+            </point>
+            <point>
+                <first>156.03</first>
+                <second>2.467</second>
+            </point>
+            <point>
+                <first>159.889</first>
+                <second>2.433</second>
+            </point>
+            <point>
+                <first>163.747</first>
+                <second>2.4</second>
+            </point>
+            <point>
+                <first>167.606</first>
+                <second>2.37</second>
+            </point>
+            <point>
+                <first>171.465</first>
+                <second>2.34</second>
+            </point>
+            <point>
+                <first>175.323</first>
+                <second>2.312</second>
+            </point>
+            <point>
+                <first>179.182</first>
+                <second>2.284</second>
+            </point>
+            <point>
+                <first>183.04</first>
+                <second>2.259</second>
+            </point>
+            <point>
+                <first>186.899</first>
+                <second>2.234</second>
+            </point>
+            <point>
+                <first>190.758</first>
+                <second>2.21</second>
+            </point>
+            <point>
+                <first>194.616</first>
+                <second>2.187</second>
+            </point>
+            <point>
+                <first>198.475</first>
+                <second>2.165</second>
+            </point>
+            <point>
+                <first>202.333</first>
+                <second>2.143</second>
+            </point>
+            <point>
+                <first>206.192</first>
+                <second>2.123</second>
+            </point>
+            <point>
+                <first>210.051</first>
+                <second>2.104</second>
+            </point>
+            <point>
+                <first>213.909</first>
+                <second>2.084</second>
+            </point>
+            <point>
+                <first>217.768</first>
+                <second>2.066</second>
+            </point>
+            <point>
+                <first>221.626</first>
+                <second>2.049</second>
+            </point>
+            <point>
+                <first>225.485</first>
+                <second>2.031</second>
+            </point>
+            <point>
+                <first>229.343</first>
+                <second>2.015</second>
+            </point>
+            <point>
+                <first>233.202</first>
+                <second>1.999</second>
+            </point>
+            <point>
+                <first>237.061</first>
+                <second>1.984</second>
+            </point>
+            <point>
+                <first>240.919</first>
+                <second>1.969</second>
+            </point>
+            <point>
+                <first>244.778</first>
+                <second>1.954</second>
+            </point>
+            <point>
+                <first>248.636</first>
+                <second>1.94</second>
+            </point>
+            <point>
+                <first>252.495</first>
+                <second>1.927</second>
+            </point>
+            <point>
+                <first>256.354</first>
+                <second>1.914</second>
+            </point>
+            <point>
+                <first>260.212</first>
+                <second>1.901</second>
+            </point>
+            <point>
+                <first>264.071</first>
+                <second>1.888</second>
+            </point>
+            <point>
+                <first>267.929</first>
+                <second>1.877</second>
+            </point>
+            <point>
+                <first>271.788</first>
+                <second>1.865</second>
+            </point>
+            <point>
+                <first>275.646</first>
+                <second>1.853</second>
+            </point>
+            <point>
+                <first>279.505</first>
+                <second>1.842</second>
+            </point>
+            <point>
+                <first>283.364</first>
+                <second>1.832</second>
+            </point>
+            <point>
+                <first>287.222</first>
+                <second>1.821</second>
+            </point>
+            <point>
+                <first>291.081</first>
+                <second>1.811</second>
+            </point>
+            <point>
+                <first>294.939</first>
+                <second>1.801</second>
+            </point>
+            <point>
+                <first>298.798</first>
+                <second>1.792</second>
+            </point>
+            <point>
+                <first>302.657</first>
+                <second>1.782</second>
+            </point>
+            <point>
+                <first>306.515</first>
+                <second>1.773</second>
+            </point>
+            <point>
+                <first>310.374</first>
+                <second>1.764</second>
+            </point>
+            <point>
+                <first>314.232</first>
+                <second>1.755</second>
+            </point>
+            <point>
+                <first>318.091</first>
+                <second>1.747</second>
+            </point>
+            <point>
+                <first>321.949</first>
+                <second>1.738</second>
+            </point>
+            <point>
+                <first>325.808</first>
+                <second>1.73</second>
+            </point>
+            <point>
+                <first>329.667</first>
+                <second>1.722</second>
+            </point>
+            <point>
+                <first>333.525</first>
+                <second>1.715</second>
+            </point>
+            <point>
+                <first>337.384</first>
+                <second>1.707</second>
+            </point>
+            <point>
+                <first>341.242</first>
+                <second>1.699</second>
+            </point>
+            <point>
+                <first>345.101</first>
+                <second>1.692</second>
+            </point>
+            <point>
+                <first>348.96</first>
+                <second>1.685</second>
+            </point>
+            <point>
+                <first>352.818</first>
+                <second>1.678</second>
+            </point>
+            <point>
+                <first>356.677</first>
+                <second>1.671</second>
+            </point>
+            <point>
+                <first>360.535</first>
+                <second>1.665</second>
+            </point>
+            <point>
+                <first>364.394</first>
+                <second>1.659</second>
+            </point>
+            <point>
+                <first>368.253</first>
+                <second>1.652</second>
+            </point>
+            <point>
+                <first>372.111</first>
+                <second>1.646</second>
+            </point>
+            <point>
+                <first>375.97</first>
+                <second>1.64</second>
+            </point>
+            <point>
+                <first>379.828</first>
+                <second>1.634</second>
+            </point>
+            <point>
+                <first>383.687</first>
+                <second>1.628</second>
+            </point>
+            <point>
+                <first>387.545</first>
+                <second>1.622</second>
+            </point>
+            <point>
+                <first>391.404</first>
+                <second>1.617</second>
+            </point>
+            <point>
+                <first>395.263</first>
+                <second>1.611</second>
+            </point>
+            <point>
+                <first>399.121</first>
+                <second>1.606</second>
+            </point>
+            <point>
+                <first>402.98</first>
+                <second>1.6</second>
+            </point>
+            <point>
+                <first>406.838</first>
+                <second>1.595</second>
+            </point>
+            <point>
+                <first>410.697</first>
+                <second>1.59</second>
+            </point>
+            <point>
+                <first>414.556</first>
+                <second>1.585</second>
+            </point>
+            <point>
+                <first>418.414</first>
+                <second>1.58</second>
+            </point>
+            <point>
+                <first>422.273</first>
+                <second>1.576</second>
+            </point>
+            <point>
+                <first>426.131</first>
+                <second>1.571</second>
+            </point>
+            <point>
+                <first>429.99</first>
+                <second>1.566</second>
+            </point>
+            <point>
+                <first>433.848</first>
+                <second>1.562</second>
+            </point>
+            <point>
+                <first>437.707</first>
+                <second>1.557</second>
+            </point>
+            <point>
+                <first>441.566</first>
+                <second>1.553</second>
+            </point>
+            <point>
+                <first>445.424</first>
+                <second>1.548</second>
+            </point>
+            <point>
+                <first>449.283</first>
+                <second>1.544</second>
+            </point>
+            <point>
+                <first>453.141</first>
+                <second>1.54</second>
+            </point>
+            <point>
+                <first>457</first>
+                <second>1.536</second>
+            </point>
+            <point>
+                <first>464.526</first>
+                <second>1.545</second>
+            </point>
+            <point>
+                <first>472.053</first>
+                <second>1.553</second>
+            </point>
+            <point>
+                <first>479.579</first>
+                <second>1.562</second>
+            </point>
+            <point>
+                <first>487.105</first>
+                <second>1.62</second>
+            </point>
+            <point>
+                <first>494.632</first>
+                <second>1.62</second>
+            </point>
+            <point>
+                <first>502.158</first>
+                <second>1.62</second>
+            </point>
+            <point>
+                <first>509.684</first>
+                <second>1.6</second>
+            </point>
+            <point>
+                <first>517.211</first>
+                <second>1.6</second>
+            </point>
+            <point>
+                <first>524.737</first>
+                <second>1.607</second>
+            </point>
+            <point>
+                <first>532.263</first>
+                <second>1.614</second>
+            </point>
+            <point>
+                <first>539.789</first>
+                <second>1.62</second>
+            </point>
+            <point>
+                <first>547.316</first>
+                <second>1.626</second>
+            </point>
+            <point>
+                <first>554.842</first>
+                <second>1.633</second>
+            </point>
+            <point>
+                <first>562.368</first>
+                <second>1.639</second>
+            </point>
+            <point>
+                <first>569.895</first>
+                <second>1.645</second>
+            </point>
+            <point>
+                <first>577.421</first>
+                <second>1.65</second>
+            </point>
+            <point>
+                <first>584.947</first>
+                <second>1.656</second>
+            </point>
+            <point>
+                <first>592.474</first>
+                <second>1.661</second>
+            </point>
+            <point>
+                <first>600</first>
+                <second>1.667</second>
             </point>
         </sdrHdrRatioMap>
     </hdrBrightnessConfig>

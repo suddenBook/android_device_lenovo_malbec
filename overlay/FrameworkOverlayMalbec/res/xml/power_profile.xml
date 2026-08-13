@@ -107,6 +107,56 @@
     </array>
     <item name="wifi.controller.voltage">3700</item>
 
+    <!-- ★ The same defect as the Wi-Fi group above, in the same file, one radio
+         over. Found session 34; the session-25 fix was never generalised.
+
+         `bluetooth.active` and `bluetooth.on` at the top of this file are
+         pre-Android-8 keys. PowerProfile.java:143,151 still declares them and
+         the ONLY thing that reads either is the proto dumper at :1123-1130 —
+         they feed no calculator. What Android 16 actually reads is this group,
+         PowerProfile.java:111-115, via BluetoothPowerStatsProcessor.
+
+         Measured before the change, with `dumpsys batterystats` in checkin mode
+         (the flag is not written out here for the reason the Wi-Fi block gives
+         two paragraphs up): there was no `^9,0,l,pwi,bluetooth` row at all,
+         where the Wi-Fi row exists. Bluetooth drain was attributed as
+         exactly nothing, permanently, on a tablet whose only headphone output
+         is Bluetooth.
+
+         The AOSP fallback cannot rescue it either: PowerProfile.java:463-490
+         reads config_bluetooth_{idle,rx,tx}_cur_ma and
+         config_bluetooth_operating_voltage_mv, all of which AOSP defaults to 0
+         (core/res/res/values/config.xml:2321-2336) and the loop installs a value
+         only when it is greater than zero.
+
+         ⚠️ THESE FOUR NUMBERS ARE ESTIMATES, NOT MEASUREMENTS, AND MUST NOT BE
+         CITED AS THIS UNIT'S. Owner's decision, session 34: an approximate
+         attribution beats one that is exactly and permanently wrong. Unlike the
+         Wi-Fi five there was nothing to copy — stock ZUI's own framework-res.apk
+         carries only the two dead legacy keys, verified with aapt2 over every
+         partition and every RRO in the factory image, so ZUI has this defect too
+         and there is no vendor number to recover.
+
+         Provenance, stated so the next reader can improve them honestly:
+         idle/rx/tx are AOSP's own reference values, the same ones its power-model
+         fixtures ship (frameworks/base/tools/powermodel/test-resource/
+         power_profile.xml). The voltage is NOT AOSP's 3300 — it is 3700, the
+         value already established for wifi.controller.voltage above, because
+         WCN7750 is one die carrying both radios off the same rail and two
+         different voltages for it would be incoherent.
+
+         What would replace them: a rail measurement per Bluetooth state, or a
+         datasheet. Until then they are a shape, not a claim.
+
+         ⚠️ The Long.MAX_VALUE hazard documented for wifi.controller.voltage does
+         NOT apply here — BatteryStatsImpl.java:12665 guards the Bluetooth divide
+         with a non-zero voltage test. So the pre-change symptom was a silent zero
+         rather than a corrupted history, which is why nothing ever surfaced it. -->
+    <item name="bluetooth.controller.idle">0.02</item>
+    <item name="bluetooth.controller.rx">3</item>
+    <item name="bluetooth.controller.tx">5</item>
+    <item name="bluetooth.controller.voltage">3700</item>
+
     <item name="audio">48</item>
     <item name="video">70</item>
     <item name="camera.flashlight">147</item>

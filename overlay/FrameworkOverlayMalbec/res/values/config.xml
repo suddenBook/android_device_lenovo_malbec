@@ -1057,4 +1057,133 @@
     <bool name="config_isDesktopModeSupported">false</bool>
     <bool name="config_canInternalDisplayHostDesktops">false</bool>
 
+    <!-- ★ The trusted certificate for downloadable font updates.
+         WITHOUT THIS, GMS FONT UPDATES HAVE NEVER WORKED AND NEVER COULD.
+
+         Every boot, GMS pushes three families and all three are rejected:
+
+             E FontManagerService: SystemFontException: Font validation failed.
+               Fs-verity is not enabled: /data/fonts/files/…/GoogleSans-Regular.ttf
+                                         …/GoogleSansFlex-Regular.ttf
+                                         …/GoogleSansText-Regular.ttf
+
+         ⚠️ The message names the wrong cause and the first diagnosis followed
+         it. UpdatableFontDir.java:570 throws that string when
+         isFromTrustedProvider() returns false, and that method has TWO failure
+         paths (FontManagerService.java:189-205): a null fs-verity digest, or a
+         PKCS#7 signature matching no trusted cert. It is not the digest:
+
+           * CONFIG_FS_VERITY=y in this kernel and /proc/sys/fs/verity/ exists
+           * /data is f2fs with the `verity` feature (/sys/fs/f2fs/dm-45/features)
+           * `grep -c "Failed to get fs-verity digest"` over a whole 16 hour
+             buffer is 0, and that warning is logged unconditionally on the
+             digest path
+
+         ★ So the signature check is what fails, and the reason is upstream:
+         AOSP ships config_fontManagerServiceCerts as an EMPTY string-array
+         (core/res/res/values/config.xml:7358). mDerCertPaths is therefore empty,
+         the `for (String certPath : mDerCertPaths)` loop at :195 never executes,
+         and isFromTrustedProvider returns false unconditionally. The check
+         cannot pass on any build that does not override this resource. That is
+         an unfalsifiable check one layer up, in AOSP.
+
+         ★★ And the certificate was already on the device, referenced by nothing.
+         MindTheGapps installs it
+         (vendor/gapps/common/proprietary/product/etc/security/fsverity/):
+
+             /product/etc/security/fsverity/gms_fsverity_cert.der   1484 B
+             C=US, O=Google Inc., OU=Android, CN=Android
+             notBefore 2021-02-23   notAfter 2051-02-23
+
+         Stock ZUI ships the identical cert at the identical path and wires it
+         up. This is one of the few places stock is simply right and we were not.
+
+         ⚠️ Verify with `cmd overlay lookup android android:array/
+         config_fontManagerServiceCerts` and require the "Overlaid:" line, not
+         just "Found initial:". Acceptance: the three FontManagerService errors
+         stop, and `cmd font dump` reports the updated families.
+
+         ⚠️ Stock also ships product/etc/security/fsverity/play_store_fsi_cert.der
+         (Google Android Integrity Signing Certificate), which MindTheGapps does
+         not. No consumer for it was found in this tree. It is NOT part of this
+         fix and must not be added on symmetry alone. -->
+    <string-array name="config_fontManagerServiceCerts" translatable="false">
+        <item>/product/etc/security/fsverity/gms_fsverity_cert.der</item>
+    </string-array>
+
+    <!-- ★ Emergency SOS, off. Owner's decision, session 34.
+
+         Five presses of the power button arm an emergency countdown. On this
+         tablet that countdown can never place a call, and the user cannot turn
+         it off. All four halves measured on the running device:
+
+             config_emergencyGestureEnabled          true   (feature active)
+             config_defaultEmergencyGestureEnabled   true   (default ON)
+             Settings.Secure.EMERGENCY_GESTURE_ENABLED  unset, so the default wins
+             the Settings page that would disable it     GONE
+
+         GestureLauncherService.java:614-620 reads the first two, and :626-635
+         keeps the whole service alive on the strength of them.
+
+         ★ The page is gone because LineageOS itself removed it for every
+         Wi-Fi-only product: vendor/lineage/overlay/wifionly/packages/apps/
+         Settings/res/values/config.xml:25 sets config_show_emergency_gesture_settings
+         false. Measured: `am start -a com.android.settings.action.EMERGENCY_GESTURE_SETTINGS`
+         returns "unable to resolve Intent".
+
+         So upstream decided the SETTING makes no sense without a modem and hid
+         it, and nothing turned the FEATURE off. The port inherited an armed
+         gesture with its own off switch removed, which is a state nobody chose.
+
+         ⚠️ The trade, stated: the gesture can still sound an alarm and share
+         location without placing a call. The owner weighed that against a
+         countdown a user cannot stop reaching and chose off. This device has no
+         android.hardware.telephony feature of any kind (device.mk omits them
+         all) and no carrier_config service. -->
+    <bool name="config_emergencyGestureEnabled">false</bool>
+
+    <!-- ★ Face-down screen off, off. Owner's decision, session 34.
+
+         A phone laid face down on a desk is a deliberate "be quiet" gesture. A
+         13 inch tablet lying flat in a folio is how tablets sit.
+
+         This resource is the ONLY brake. FaceDownDetector.java:345-349 reads it;
+         the DeviceConfig gate defaults on (:74,:77) and mEnabledOverride
+         defaults true (:81), so nothing else stops it. Measured before the
+         change: `dumpsys power` reported FaceDownDetector mActive=true, i.e. the
+         accelerometer listener was genuinely running, not merely compiled in.
+
+         Acceptance is the same dump reading mActive=false, plus laying the
+         tablet flat and watching the screen stay on. -->
+    <bool name="config_flipToScreenOffEnabled">false</bool>
+
+    <!-- ★ Letterbox reachability, on. Owner's decision, session 34.
+
+         A portrait only app on a 1752 dp wide screen is pillarboxed with very
+         wide dead margins and, by AOSP default, welded to the centre of them.
+         All three reachability resources read false on this build, measured with
+         `cmd overlay lookup`: horizontal, vertical, and the education overlay
+         that teaches the gesture. Pixel Tablet ships horizontal on; stock ZUI
+         ships none of it.
+
+         AppCompatConfiguration.java:365-366 reads the horizontal bool;
+         AppCompatReachabilityOverrides.java:269-288 gates the behaviour on
+         fullscreen plus horizontally pillarboxed; AppCompatReachabilityPolicy.java:138
+         consumes it. Double tapping either side then moves the app to that edge.
+
+         config_letterboxIsEducationEnabled ships with it deliberately
+         (AppCompatConfiguration.java:376). Without the one time overlay the
+         gesture is undiscoverable, and an invisible feature is not a feature.
+
+         ⚠️ Vertical reachability is deliberately NOT enabled. It applies to
+         landscape only apps in portrait, which on a landscape primary tablet is
+         the rarer case, and each of these is a distinct behaviour to verify.
+
+         ⚠️ Scope, so this is not mis-costed later: the parallel window engine
+         already gives about 4,900 packages a centred MiddleRule presentation, so
+         the population this reaches is the non embedded remainder, not every
+         portrait app. -->
+    <bool name="config_letterboxIsHorizontalReachabilityEnabled">true</bool>
+    <bool name="config_letterboxIsEducationEnabled">true</bool>
+
 </resources>
