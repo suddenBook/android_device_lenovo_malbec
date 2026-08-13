@@ -52,10 +52,28 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- The action picker lists every launchable app. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-    <!-- Signature-only framework control surface for the parallel-window rule
-         set. The service derives the user from this process's Binder uid;
-         MalbecParts never asks for cross-user access. -->
-    <uses-permission android:name="android.permission.MANAGE_PARALLEL_WINDOW" />
+    <!-- The framework control surface for the parallel-window rule set. The
+         service derives the user from this process's Binder uid; MalbecParts
+         never asks for cross-user access.
+
+         ★ SESSION 36: this used to be a CUSTOM permission,
+         android.permission.MANAGE_PARALLEL_WINDOW, declared `signature` in
+         frameworks/base/core/res/AndroidManifest.xml — and declaring it was one
+         of only two SEVERE entries in OPEN-ISSUES #84's rebase-conflict table,
+         because a custom permission means a permanent diff against upstream's
+         manifest.
+
+         It was never needed. MANAGE_ACTIVITY_TASKS sits TWO LINES ABOVE where
+         the custom one was declared, is `signature|recents`, and gates exactly
+         this class of API. This app is `certificate: "platform"` (Android.bp),
+         so it satisfies the `signature` half outright — the `recents` flag is
+         an additional door for the recents component, not a restriction on us.
+
+         So the whole SEVERE was removed by a DELETION: four @EnforcePermission
+         sites and one <uses-permission> changed name, and upstream's manifest
+         went back to being untouched. Nothing about the enforcement weakened —
+         `signature|recents` is strictly harder to hold than `signature`. -->
+    <uses-permission android:name="android.permission.MANAGE_ACTIVITY_TASKS" />
     <!-- Closing an app after its parallel-window rule changed, so its next start
          reads the new one. A running process cannot: the rule is latched per
          process on both sides of the Binder.

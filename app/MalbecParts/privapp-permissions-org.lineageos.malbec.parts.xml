@@ -20,7 +20,7 @@
      Only permissions with the "privileged" protection flag belong here. The
      app's other declared permissions are normal (RECEIVE_BOOT_COMPLETED,
      QUERY_ALL_PACKAGES), dangerous (BLUETOOTH_CONNECT, POST_NOTIFICATIONS),
-     signature (MANAGE_KEY_GESTURES, MANAGE_PARALLEL_WINDOW, INJECT_EVENTS), signature|role
+     signature (MANAGE_KEY_GESTURES, MANAGE_ACTIVITY_TASKS, INJECT_EVENTS), signature|role
      (DEVICE_POWER) or signature|preinstalled|appop|pre23|role (WRITE_SETTINGS),
      and must NOT be listed — an entry naming a non-privileged permission is dead
      weight that later readers will mistake for a requirement.
