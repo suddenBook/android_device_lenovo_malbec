@@ -429,7 +429,6 @@ vendor/firmware/gen80000_sqe.fw
 vendor/firmware/gen80000_zap.mbn
 vendor/firmware/gen80600_gmu.bin
 vendor/firmware/vpu30_2v.mbn
-vendor/firmware/vpu30_2v_unsigned.mbn
 vendor/gpu/kbc/sequence_manifest.bin
 vendor/gpu/kbc/unified_kbcs_32.bin
 vendor/gpu/kbc/unified_kbcs_64.bin
@@ -465,7 +464,6 @@ vendor/etc/init/init.spdaemon.rc
 vendor/etc/init/init.time_daemon.rc
 vendor/etc/init/init.vendor.sensors.rc
 vendor/etc/init/init.vendor.wlan.rc|cf8dbc3a20454932cc79d0270689fc4926401449|e259d8165dd082960aee377511abd2aeadfa4410
-vendor/etc/init/init_fan_service.rc
 vendor/etc/init/init_thermal-engine-v2.rc|3ebe0e867707876cea6cfcd51d34626d775107be|6e7fda5c7471a567460f91d8104ecd300dbaf12c
 vendor/etc/init/memtrack_qti.rc
 vendor/etc/init/prop_init.rc
@@ -867,14 +865,70 @@ vendor/etc/acdbdata/nn_ns_models/fai__4.8.4_0.0__3.0.0_0.0__3.1.2_0.0__3.2.0_0.1
 vendor/etc/acdbdata/nn_ns_models/fai__8.0.2_0.0__3.0.0_0.0__3.1.2_0.0__3.2.0_0.1__eai_4.2_enpuv5.pmd
 vendor/etc/acdbdata/nn_ns_models/fai__8.0.2_0.0__3.0.0_0.0__3.1.2_0.0__3.2.0_0.1__eai_4.6_enpuv5.pmd
 vendor/etc/acdbdata/nn_vad_models/fai__3.0.0_0.0__eai_4.6_enpuv5.pmd
+# ⚠️ FOURTEEN ENTRIES ARE DELIBERATELY ABSENT, removed session 34, reclaiming
+# 11,478,645 bytes. ★ /vendor was 100% full with 3.3 MB free, so this stopped
+# being tidiness and became the difference between having headroom and not: the
+# next blob this port needs would not have fitted.
+#
+# Every one is hardware this unit does not have, from the shared vendor image
+# Lenovo builds across several SKUs. Each was measured, not inferred:
+#
+#   acdbdata/tuna_qrd_2418{hs,yc}/*                        8,319,804 B
+#       0x2418 is the AW88470 amplifier. All four amps on i2c bus 5 report
+#       0x2308 (AW88461) -- 5-0034 YC_0x2308, 5-0035/6/7 HS_0x2308 -- and the
+#       live selector reads vendor.audio.device.switch = YC_0x2308_AW88461, so
+#       libagm opens tuna_qrd_2308yc. The 2418 pair could never be selected.
+#       ⚠️ tuna_qrd_2308hs is KEPT: the selector is per unit and reading it once
+#       does not prove the hs set is unreachable on every unit or every boot.
+#
+#   vendor/firmware/vpu30_2v_unsigned.mbn                  2,328,584 B
+#       The UNFUSED-silicon video firmware; PIL authentication rejects it on a
+#       production part. msm_video.ko builds its request from the constant
+#       "vpu30_2v" + "%s.mbn", i.e. it asks for vpu30_2v.mbn, which also ships
+#       and is the one that loads. The string "vpu30_2v_unsigned" appears in no
+#       kernel module, no blob and no /vendor/etc file on either image.
+#
+#   vendor/etc/display/qdcm_calib_data_csot_af_nt36536_144hz_vid.json  498,677 B
+#       A third panel name. This unit is ro.boot.lcd_info =
+#       csot_nt36536_144hz_vid; the two documented sources are BOE nt36536e and
+#       CSOT nt36536. "csot_af_" is neither.
+#
+#   vendor/lib64/hw/vendor.qti.hardware.bluetooth_audio@2.{0,1}-impl.so  253,504 B
+#       HIDL passthrough implementations. There is no hwservicemanager in this
+#       ROM by design, so nothing can register or dlopen them.
+#       ⚠️ NOT the same as vendor.qti.hardware.bluetooth_audio@2.{0,1}, the
+#       generated INTERFACE libraries, which stay: libbluetooth_audio_session_qti*.so
+#       link them for their type definitions.
+#
+#   vendor/bin/fan_service + vendor/etc/init/init_fan_service.rc  52,136 B
+#       There is no fan. max31760_fan has refcount 0, none of the 119 thermal
+#       entries is a fan-* type, and both init stanzas are `disabled` with
+#       nothing issuing ctl.start.
+#
+#   vendor/etc/sensors/config/bonito_{icm4x6xx_0,icm4x6xx_0_factory,stk6b9x_0}.json  19,597 B
+#       Second-source parts. dumpsys sensorservice reports an STMicro lsm6dsv
+#       and a goodix gs6155; ICM4x6xx and STK6B9x are neither. These slipped
+#       past the bonito_qrd_*/bonito_mtp_* patterns the earlier sweep used.
+#
+#   vendor/etc/media_sun/video_system_specs.json           6,343 B
+#       init.qti.media.sh:59-71 puts soc_id 694 in the _tuna_v0 arm; the _sun
+#       arm is unreachable on this silicon.
+#
+# ⚠️ Two things that LOOK like the same class and must NOT be removed, checked
+# against the live camera provider's /proc/<pid>/maps rather than by name:
+# com.qti.feature2.generic.so is mapped ALONGSIDE generic.sm8750.so, and 7 of
+# the 12 depth/iToF libraries are mapped. CamX builds its node list from the
+# component directory wholesale.
+#
+# A further ~43 MB is plausible (the duplicate second-source camera modules, the
+# com.qti.feature2.* fallbacks superseded by .sm8750 twins) and is NOT taken
+# here: each needs one reading of that maps file after exercising night mode,
+# high zoom and video, and a blob removed on a guess is a camera that fails to
+# open.
 vendor/etc/acdbdata/tuna_qrd_2308hs/QRD_tuna1_acdb_cal.acdb
 vendor/etc/acdbdata/tuna_qrd_2308hs/QRD_tuna1_workspaceFileXml.qwsp
 vendor/etc/acdbdata/tuna_qrd_2308yc/QRD_tuna2_acdb_cal.acdb
 vendor/etc/acdbdata/tuna_qrd_2308yc/QRD_tuna2_workspaceFileXml.qwsp
-vendor/etc/acdbdata/tuna_qrd_2418hs/QRD_tuna3_acdb_cal.acdb
-vendor/etc/acdbdata/tuna_qrd_2418hs/QRD_tuna3_workspaceFileXml.qwsp
-vendor/etc/acdbdata/tuna_qrd_2418yc/QRD_tuna4_acdb_cal.acdb
-vendor/etc/acdbdata/tuna_qrd_2418yc/QRD_tuna4_workspaceFileXml.qwsp
 vendor/etc/aidl/le_audio/aidl_audio_set_configurations.json
 vendor/etc/aidl/le_audio/aidl_audio_set_scenarios.json
 vendor/etc/audio/audio_module_config_primary.xml
@@ -949,8 +1003,6 @@ vendor/lib64/hw/audio.bluetooth_qti.default.so;DISABLE_DEPS
 vendor/lib64/hw/audio/libQnnHtp.so;MODULE_SUFFIX=_audio
 vendor/lib64/hw/libaudiocorehal.default.so;DISABLE_DEPS
 vendor/lib64/hw/libaudiocorehal.qti.so;DISABLE_DEPS
-vendor/lib64/hw/vendor.qti.hardware.bluetooth_audio@2.0-impl.so
-vendor/lib64/hw/vendor.qti.hardware.bluetooth_audio@2.1-impl.so
 vendor/lib64/libadsp_default_listener.so
 vendor/lib64/libadsprpc.so
 vendor/lib64/libagm.so
@@ -1315,7 +1367,6 @@ vendor/etc/display/moto_stc_profile.xml
 # Same reason as the touch firmware above: colour calibration for both
 # suppliers of this one panel. SDM picks the file by panel name.
 vendor/etc/display/qdcm_calib_data_boe_nt36536e_144hz_vid.json
-vendor/etc/display/qdcm_calib_data_csot_af_nt36536_144hz_vid.json
 vendor/etc/display/qdcm_calib_data_csot_nt36536_144hz_vid.json
 vendor/etc/display/sdm_display_resolution_extn.xml
 vendor/etc/display/thermallevel_to_fps.xml
@@ -1567,14 +1618,11 @@ vendor/etc/sensors/config/bonito_default_sensors.json
 vendor/etc/sensors/config/bonito_dynamic_sensors.json
 vendor/etc/sensors/config/bonito_dynamic_sensors_template.json
 vendor/etc/sensors/config/bonito_gs6155.json
-vendor/etc/sensors/config/bonito_icm4x6xx_0.json
-vendor/etc/sensors/config/bonito_icm4x6xx_0_factory.json
 vendor/etc/sensors/config/bonito_irq.json
 vendor/etc/sensors/config/bonito_lsm6dsv_0.json
 vendor/etc/sensors/config/bonito_lsm6dsv_0_factory.json
 vendor/etc/sensors/config/bonito_qrd_default_sensors.json
 vendor/etc/sensors/config/bonito_qsh_ble_0.json
-vendor/etc/sensors/config/bonito_stk6b9x_0.json
 vendor/etc/sensors/config/json.lst
 vendor/etc/sensors/config/qsh_ble.json
 vendor/etc/sensors/config/sns_amd.json
@@ -1802,7 +1850,6 @@ vendor/bin/cnss-daemon
 vendor/bin/cnss_diag
 vendor/bin/diag-router
 vendor/bin/dspservice
-vendor/bin/fan_service
 vendor/bin/feature_enabler_client
 vendor/bin/hexlpservice
 vendor/bin/hlosminkdaemon
@@ -1946,7 +1993,6 @@ vendor/etc/media_profiles.xml
 vendor/etc/media_profiles_V1_0.xml
 vendor/etc/media_profiles_tuna_v0.xml|24ed6c193fde931ec01cd1834eb421a096d35449|58c915e0f8c75028943f81a8df5d600d3d0f3309
 vendor/etc/media_profiles_tuna_v1.xml
-vendor/etc/media_sun/video_system_specs.json
 vendor/etc/media_tuna_v0/video_system_specs.json
 vendor/etc/media_tuna_v1/video_system_specs.json
 vendor/etc/mem_logger_config.xml

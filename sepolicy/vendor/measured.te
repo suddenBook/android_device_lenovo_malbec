@@ -326,14 +326,41 @@ dontaudit vendor_qti_init_shell default_prop:file { getattr open map read };
 # 3. Debug and config properties that nothing needs.
 #
 #   hal_lenovobattery_default -> persist_debug_prop   a persist.debug.* toggle
-#   hal_camera_default        -> usb_uvc_config_prop  UVC (USB webcam) config
 #
-# Neither is a feature. The battery HAL logs less; the camera HAL reads an empty
-# value for a USB-camera path this tablet does not have. Both are denied on stock
-# too, so nothing regresses relative to the shipping image — the difference is
-# only that ours stops saying so eight times a boot.
+# Not a feature: the battery HAL logs less. Denied on stock too, so nothing
+# regresses relative to the shipping image — the difference is only that ours
+# stops saying so eight times a boot.
 dontaudit hal_lenovobattery_default persist_debug_prop:file { getattr open map read };
-dontaudit hal_camera_default usb_uvc_config_prop:file { getattr open map read };
+
+# ★ THE UVC RULE IS NOW AN ALLOW, AND ITS OLD COMMENT WAS FACTUALLY WRONG.
+# Corrected session 34.
+#
+# It read `dontaudit hal_camera_default usb_uvc_config_prop:file { getattr open
+# map read };` and justified itself as "a USB-camera path this tablet does not
+# have". The tablet has it, and it is offered to the user:
+#
+#   * ro.usb.uvc.enabled=true — and THIS TREE sets it, properties/vendor.prop:358
+#   * /config/usb_gadget/g1/functions/uvc.0 exists on the running device
+#   * com.android.DeviceAsWebcam is installed
+#   * UsbManager.isUvcSupportEnabled() (UsbManager.java:1726-1727) reads exactly
+#     that property, and UsbBackend.java:236 gates the Settings row on it
+#   * ★ Settings > USB shows a live "Webcam" option — work/evidence/s34-usb.png
+#
+# So the rule silenced a camera HAL reading UVC tuning parameters on a device
+# that really does UVC. `usb_uvc_config_prop` is a LineageOS type covering
+# ro.usb.uvc.disable_video_encode_flag and vendor.usb.uvc.payload_transfer_size
+# (device/lineage/sepolicy/common/public/property.te) — a payload size the camera
+# HAL has a legitimate claim to read.
+#
+# Three of the four permissions were redundant anyway: usb_uvc_config_prop is a
+# property_type, so getattr/open/map were already covered by the zygote and
+# camera property_type dontaudits above. Only `read` ever added anything, and the
+# right answer for a read the HAL should have is a grant, not silence.
+#
+# ⚠️ Whether webcam mode actually STREAMS is untested — switching the USB
+# function drops adb, so it needs hands on the tablet. This makes the property
+# readable either way; it does not make the feature verified.
+get_prop(hal_camera_default, usb_uvc_config_prop)
 
 # 4. The composer's stat of /mnt/vendor.
 #
@@ -364,8 +391,25 @@ allow hal_graphics_composer_default mnt_vendor_file:dir getattr;
 #     a power hint that is not delivered — on stock either.
 # So: silence, do not widen. If any of these ever turns out to cost a measurable
 # feature, the fix is a narrower TYPE, not a broader rule.
-dontaudit surfaceflinger vendor_hal_qspmhal_default:binder call;
-dontaudit bootanim vendor_hal_qspmhal_default:binder call;
+# ⚠️ The surfaceflinger and bootanim rules WERE HERE AND ARE GONE, session 34:
+# they were DEAD, and dead in a way that says something about where they came
+# from. Neither domain is a member of the `vendor_hal_qspmhal_client` attribute,
+# and the only grants of `vendor_hal_qspmhal_service:service_manager find` in the
+# built policy are to that attribute and to `_server`. So under enforcing the
+# `find` is refused first, no binder handle is ever obtained, and the `binder
+# call` these rules suppress CANNOT OCCUR.
+#
+# ★ They were written from a PERMISSIVE boot, where the failed `find` is logged
+# and execution continues to the call anyway. That is the general trap: a
+# permissive log contains denials for accesses an enforcing system never reaches,
+# so a rule harvested from one can be permanently unreachable. The upstream QTI
+# policy already carries the `find` half as its own dontaudit
+# (surfaceflinger.te:48-49), which is the rule that actually fires.
+#
+# The servicemanager one stays: unlike those two it IS reachable under enforcing,
+# because servicemanager holds the reference from addService() rather than having
+# to look it up. No allow exists in either policy, and the stated loss is service
+# callbacks and death notifications to the composer.
 dontaudit servicemanager hal_graphics_composer_default:binder call;
 # ⚠️ `dontaudit system_server vendor_file:file { getattr open read map };` was
 # here and has been REMOVED, because it was the one rule in this block that hid

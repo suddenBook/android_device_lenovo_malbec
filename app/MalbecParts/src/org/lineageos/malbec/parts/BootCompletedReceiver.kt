@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.hardware.input.InputSettings
+import android.os.Vibrator
 import android.provider.Settings
 import android.util.Log
 import org.lineageos.malbec.parts.display.PenModeController
@@ -38,6 +39,8 @@ class BootCompletedReceiver : BroadcastReceiver() {
         PenModeController.reassert(context)
 
         materialiseTouchpadScrollDefault(context)
+
+        materialiseVolumeHushDefault(context)
 
         // The service reconciles the gesture table itself in onCreate.
         MalbecPartsService.sync(context)
@@ -110,5 +113,64 @@ class BootCompletedReceiver : BroadcastReceiver() {
         val effective = InputSettings.useTouchpadNaturalScrolling(context)
         Log.i(Constants.TAG, "seeding touchpad_natural_scrolling=$effective (was unset)")
         InputSettings.setTouchpadNaturalScrolling(context, effective)
+    }
+
+    /**
+     * ★ Point the power-button hush shortcut at Mute, because this tablet has no
+     * vibrator and upstream never checks.
+     *
+     * Settings > Sound reads "Shortcut to prevent ringing — **Vibrate**" out of
+     * the box, and `dumpsys vibrator_manager` on this device reads
+     * **"No vibrator found"**. So the one gesture whose entire purpose is to
+     * silence the device is pointed at a feedback channel the hardware does not
+     * have.
+     *
+     * ⚠️ It is not merely unset. `settings get secure volume_hush_gesture`
+     * returned **1** on a freshly provisioned device, and unset would read the
+     * same way regardless: `PreventRingingGesturePreferenceController.java:115`
+     * passes `VOLUME_HUSH_VIBRATE` as its own *default argument*, so absence and
+     * Vibrate are indistinguishable. That controller contains no `hasVibrator()`
+     * call at all — checked, the whole file.
+     *
+     * AOSP does gate the volume paths on the same fact
+     * (`RingerModeAffectedVolumePreferenceController:56`,
+     * `NotificationVolumePreference.kt:192` both map VIBRATE to SILENT when there
+     * is no vibrator); the gesture path was simply missed. That makes it an
+     * upstream defect on every vibrator-less device, not something this port
+     * caused — worth sending to AOSP, and worth not shipping meanwhile.
+     *
+     * ⚠️ There is no `def_` resource for it, so `SettingsProviderOverlayMalbec`
+     * cannot reach this one the way it reaches `def_user_rotation`. A grep of
+     * `packages/SettingsProvider/res/values/defaults.xml` for "hush" is empty.
+     * Seeding here is the only mechanism the device tree has, which is why this
+     * sits next to the touchpad seed rather than in an overlay.
+     *
+     * Written only when the key is absent, so the moment the owner touches the
+     * control it owns the value; a `--wipe` clears it and the next boot restores
+     * it. Same contract as [materialiseTouchpadScrollDefault].
+     *
+     * The constants are `Settings.Secure.VOLUME_HUSH_{OFF,VIBRATE,MUTE}` = 0/1/2
+     * (`Settings.java:12645,12648,12651`) and the key is @hide, so both are
+     * spelled out here for the reason [PenModeController] gives for the refresh
+     * rate keys.
+     */
+    private fun materialiseVolumeHushDefault(context: Context) {
+        if (Settings.Secure.getString(context.contentResolver, VOLUME_HUSH_GESTURE) != null) {
+            return
+        }
+        val vibrator = context.getSystemService(Vibrator::class.java)
+        if (vibrator?.hasVibrator() == true) {
+            // Defensive rather than expected: if a future variant of this chassis
+            // does have a motor, upstream's default is the right one and this
+            // should stay out of the way.
+            return
+        }
+        Log.i(Constants.TAG, "seeding $VOLUME_HUSH_GESTURE=$VOLUME_HUSH_MUTE (no vibrator)")
+        Settings.Secure.putInt(context.contentResolver, VOLUME_HUSH_GESTURE, VOLUME_HUSH_MUTE)
+    }
+
+    private companion object {
+        const val VOLUME_HUSH_GESTURE = "volume_hush_gesture"
+        const val VOLUME_HUSH_MUTE = 2
     }
 }

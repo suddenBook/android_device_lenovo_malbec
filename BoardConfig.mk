@@ -860,7 +860,59 @@ TARGET_USERIMAGES_USE_F2FS := true
 # a power/ directory with a powerhint.json and a mode-extension library, none of
 # which exist yet.
 include device/qcom/sepolicy_vndr/SEPolicy.mk
+
+# ★ MALBEC_NO_DONTAUDIT — a DIAGNOSTIC build that answers "what are we hiding?"
+#
+# `dontaudit` removes the audit message and leaves the denial, so a suppressed
+# access that mattered looks exactly like one that did not. Reading the rules
+# cannot tell them apart; only running without them can.
+#
+# Session 34 built that answer for the STEADY STATE with no build at all, by
+# compiling the live policy with `secilc -D` on the device and loading it — the
+# method, its two traps and its positive control are in
+# work/notes/dontaudit-probe.md, and the result was clean. ⚠️ But a policy loaded
+# at runtime arrives AFTER init has finished, so every rule that only fires
+# during boot is structurally invisible to it: vendor_init, prop_init, vold,
+# bootanim, early surfaceflinger, vendor_qti_init_shell. `setprop ctl.restart`
+# re-triggers a HAL's own start-up and covers the HAL domains; nothing re-runs
+# init.
+#
+# Covering those needs this tree's own dontaudit rules ABSENT FROM A BUILD THAT
+# THEN BOOTS, which is what this does. Upstream's rules stay — the question is
+# what THIS PORT suppresses, and stripping AOSP's as well would bury the answer
+# in tens of thousands of lines of universal noise (`noatsecure` alone).
+#
+#     MALBEC_NO_DONTAUDIT=true MALBEC_BRINGUP=1 bash work/scripts/40-build.sh
+#     ... flash, boot, then:
+#     adb shell "logcat -d -b all" | grep 'avc: *denied' | grep -v 'u:r:su:s0'
+#
+# ⚠️ Filtering out `u:r:su:s0` is not optional. `su` is permissive with
+# essentially no rules, so every adb command you type becomes a denial the moment
+# dontaudit is off; the first runtime probe produced 80 lines, 76 of them yours.
+#
+# ⚠️ NEVER SHIP THIS. It changes only auditing, not enforcement, so a device
+# built this way is as secure as any other — but it is very noisy, and the whole
+# point is to read the noise once and then go back.
+#
+# The mechanism is a stripped mirror rather than an edit in place, so the real
+# .te files keep saying `dontaudit` and stay greppable. The sed only touches
+# lines whose first token is `dontaudit`; every rule in sepolicy/vendor is on one
+# line, checked.
+MALBEC_NO_DONTAUDIT ?= false
+ifeq ($(MALBEC_NO_DONTAUDIT),true)
+MALBEC_SEPOLICY_MIRROR := $(OUT_DIR)/malbec-sepolicy-no-dontaudit
+BOARD_VENDOR_SEPOLICY_DIRS += $(shell \
+    rm -rf $(MALBEC_SEPOLICY_MIRROR) && \
+    mkdir -p $(MALBEC_SEPOLICY_MIRROR) && \
+    cp -a $(DEVICE_PATH)/sepolicy/vendor/. $(MALBEC_SEPOLICY_MIRROR)/ && \
+    sed -i -E 's/^([[:space:]]*)dontaudit /\1# MALBEC_NO_DONTAUDIT stripped: dontaudit /' \
+        $(MALBEC_SEPOLICY_MIRROR)/*.te && \
+    echo $(MALBEC_SEPOLICY_MIRROR))
+$(warning MALBEC_NO_DONTAUDIT=true: DIAGNOSTIC BUILD, this port's own dontaudit \
+rules are stripped. Do not ship. See BoardConfig.mk and work/notes/dontaudit-probe.md)
+else
 BOARD_VENDOR_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/vendor
+endif
 # No SYSTEM_EXT_{PUBLIC,PRIVATE}_SEPOLICY_DIRS: nothing in this port adds
 # platform-side policy, so sepolicy/public and sepolicy/private do not exist.
 # Git does not track empty directories, which means a fresh clone would have had

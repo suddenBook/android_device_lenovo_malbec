@@ -323,9 +323,22 @@ object Constants {
      * ⚠️ Ceiling, not setpoint, and the distinction is the whole reason the
      * refresh-rate choice below can exist. peak_refresh_rate becomes
      * Vote.forPhysicalRefreshRates(0, peak) — an UPPER BOUND
-     * (DisplayModeDirector.java:1202-1209). min_refresh_rate stays 0, so AOSP's
-     * own idle and content-driven switching still runs underneath: measured 30 Hz
-     * idle, 120 Hz while scrolling. Nothing here pins the panel to one rate.
+     * (DisplayModeDirector.java:1202-1209).
+     *
+     * ⚠️ THE SENTENCE THAT USED TO FOLLOW IS NO LONGER TRUE, and it survived one
+     * session past the change that falsified it. It said min_refresh_rate stays
+     * 0, so AOSP's idle and content-driven switching still runs underneath, and
+     * that nothing here pins the panel to one rate. Session 33 reversed exactly
+     * that: [PenModeController.applyCeiling] now writes min_refresh_rate EQUAL to
+     * peak and sets Settings.Secure.match_content_frame_rate to NEVER, because
+     * the panel flickers visibly at 30 Hz and residency showed it sitting there
+     * 38m49s against 120 Hz's 20m11s. Verified on the running build:
+     * peak=120.0, min=120.0, match_content_frame_rate=0, and the SurfaceFlinger
+     * mode-residency table has no 30 Hz row at all.
+     *
+     * So this IS a setpoint in practice today: the value is still a ceiling in
+     * the framework's sense, and the port then pins the floor to it. The cost is
+     * standby power and it was accepted knowingly.
      */
     const val REFRESH_RATE_MAX = 120f
 

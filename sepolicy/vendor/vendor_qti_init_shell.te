@@ -37,34 +37,50 @@
 # build's platform policy applies.
 allow vendor_qti_init_shell proc_dirty:file { open write };
 
-# The same script's other half, found once the rule above stopped hiding it.
+# ⚠️ `allow vendor_qti_init_shell sysfs:file rw_file_perms;` WAS HERE AND IS
+# GONE, session 34. It was the single broadest grant in this port's policy and it
+# reached nothing.
 #
-#     avc: denied { write } for comm="sh" name="rq_affinity" dev="sysfs"
-#          scontext=u:r:vendor_qti_init_shell:s0 tcontext=u:object_r:sysfs:s0
+# ★ It was the ONLY rule in the whole 30,634-line built vendor policy granting
+# write to plain `sysfs:file`. Measured:
 #
-# tn_vendor_performance.sh writes a set of tunables, not one node, and each
-# surfaces only as the kernel ring allows — so this arrived on a later boot than
-# the proc_dirty pair. Read out of the script itself rather than waiting for the
-# rest to appear one denial at a time:
+#     grep -cE '\(allow [a-z_0-9]+ sysfs_202504 \(file \(.*write' \
+#         out/…/vendor/etc/selinux/vendor_sepolicy.cil     ->  1
 #
-#     /sys/block/*/queue/read_ahead_kb        (every dm-* and sd* device)
-#     /sys/block/mmcblk0{,rpmb}/bdi/read_ahead_kb
-#     /sys/class/kgsl/kgsl/page_reclaim_per_call
-#     /sys/class/kgsl/kgsl/max_reclaim_limit
-#     /proc/sys/vm/{compaction_proactiveness,dirty_background_ratio,dirty_ratio,
-#                   swappiness,min_free_kbytes,watermark_scale_factor}
+# It was written for a denial attributed to `tn_vendor_performance.sh`, and four
+# independent measurements say that attribution was wrong and the grant was
+# unnecessary:
 #
-# ★ Parity with the shipping device, not an invention. Diffed the two compiled
-# policies for this domain — 191 rules on stock, 160 here — and stock carries
+#  1. ★ tn_vendor_performance.sh IS NOT IN THIS DOMAIN. On the device it is
+#     `u:object_r:vendor_file:s0`, not `vendor_qti_init_shell_exec`. It never ran
+#     here. The eight scripts that ARE labelled for this domain are the five
+#     `init.qcom.cabl.*`, the two `init.qcom.svi*` and `init.class_main.sh`, and
+#     every one of them is a one-liner: seven call `ppd "cabl:…"` / `ppd "svi:…"`
+#     (a separate binary in its own domain) and the last only reads and sets
+#     properties. Not one writes to sysfs at all.
 #
-#     (allow vendor_qti_init_shell sysfs_202404
-#            (file (ioctl read write getattr lock append map open watch watch_reads)))
+#  2. Every node the rule was justified by carries a SPECIFIC label, so plain
+#     `sysfs` was never the type in play — `/sys/block/sda/queue/read_ahead_kb`
+#     is `vendor_sysfs_sd`, `/sys/class/kgsl/kgsl/*` is `vendor_sysfs_kgsl`,
+#     `/sys/block/dm-*/queue/*` is `sysfs_dm`, and each already had a narrower
+#     QTI rule behind it.
 #
-# where this build has only `relabelfrom`. So the gap is ours.
+#  3. The writes land. Live values are read_ahead_kb 512, page_reclaim_per_call
+#     38400, swappiness 100 — none of them kernel defaults — and `init.qcom.rc`
+#     plus `init.qti.kernel.rc` are what set read_ahead, i.e. init, not a shell.
 #
-# ⚠️ The same diff found 38 rules stock has and this build does not, and they are
-# deliberately NOT copied: nearly all are diagnostics and logging plumbing
-# (mdlog_data_file, vendor_qlogd_exec, vendor_diag_device, vendor_qdss_device,
-# logpersistd_logging_prop, …) for daemons this ROM does not ship. Granting
-# access to things that are not there is how a policy stops meaning anything.
-allow vendor_qti_init_shell sysfs:file rw_file_perms;
+#  4. `/sys/block/mmcblk0` does not exist on this tablet (UFS only, no microSD),
+#     so two of the six paths the rule was costed against are for hardware that
+#     is not here.
+#
+# ★★ And the argument the comment made for keeping it is the one this repo's own
+# lesson 4 exists to refuse: "Parity with the shipping device, not an invention …
+# so the gap is ours." Stock parity is the default, not the goal, and three of
+# session 25's fixes were things stock gets wrong too. The very same comment then
+# refused 38 other stock rules on the grounds that "granting access to things
+# that are not there is how a policy stops meaning anything" — which is exactly
+# what this rule was. The principle was right and was not applied to the line it
+# was written above.
+#
+# If a future Lenovo tuning script does need sysfs, give it its own domain and
+# its own narrow types, which is what the paragraph above this one already says.

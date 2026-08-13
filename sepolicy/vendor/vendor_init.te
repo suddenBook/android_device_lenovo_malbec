@@ -103,12 +103,31 @@ allow vendor_init proc_lenovo_pen:file { open write getattr };
 # i.e. on the shipping ZUI image every uid on the device can WRITE the partition
 # holding the serials and MACs. That is the thing to fix, not to copy.
 #
-# Not granting it makes enforcing do the right thing by itself: the chmod fails,
-# the node keeps ueventd's root-only default, and nothing loses access, because
-# the only reader on this ROM runs as root —
+# Not granting it makes enforcing do the right thing by itself: the chmod fails
+# and the node keeps ueventd's root-only default.
+#
+# ⚠️ THE REASON THIS PARAGRAPH USED TO GIVE WAS WRONG, and it is worth correcting
+# rather than deleting because the wrong version is reusable. It said "nothing
+# loses access, because the only reader on this ROM runs as root", and quoted
 #
 #   $ ps -A -o USER,NAME | grep battery-service
 #   root  vendor.lenovo.hardware.battery-service
+#
+# ★ Running as root does not bypass SELinux. That is a DAC premise supporting a
+# MAC conclusion, and the two are independent: a root process still needs an
+# allow rule for the type. If the battery HAL did read proinfo it would be denied
+# here whatever its uid, and stock grants it explicitly
+# (hal_lenovobattery_default vendor_proinfo_block_device:blk_file, stock cil).
+#
+# The verdict is nonetheless right, for the reason that was never checked and now
+# has been. Measured session 34 with EVERY dontaudit compiled out of the running
+# policy (work/notes/dontaudit-probe.md) and the service restarted inside that
+# window — `servicemanager: Caller(sid=u:r:hal_lenovobattery_default) Found
+# …IBattery/default`, 15:04:36 — and it produced no proinfo denial of any kind.
+# The `/dev/block/by-name/proinfo` and "Failed to open proinfo" strings are in the
+# binary and the code path is not taken on this ROM. Same shape as the vibrator:
+# a string in a shared vendor blob is evidence about Lenovo's build system, not
+# about what runs here.
 #
 # (stock's other reader, tndiag, is deliberately not shipped — see daemons.te).
 # So `dontaudit` rather than `allow`: silence one expected boot denial, and end
