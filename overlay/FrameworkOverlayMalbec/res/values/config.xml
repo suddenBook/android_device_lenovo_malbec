@@ -1296,4 +1296,86 @@
          the change. -->
     <string name="config_deviceConfiguratorPackageName" translatable="false">com.google.android.gms</string>
 
+    <!-- ================================================================== -->
+    <!-- App compatibility: four AOSP PHONE defaults this tablet inherited   -->
+    <!-- ================================================================== -->
+
+    <!-- ★ All four below resolve from AOSP's `values/` with NO competing
+         qualifier — read out of the BUILT framework-res.apk with
+         `aapt2 dump resources`, where the ()/(sw600dp) marker IS the qualifier
+         directory. That is the only instrument that does not fall into fact 37,
+         and it matters: three neighbouring resources checked the same way turned
+         out to come from values-sw600dp/ and be the OPPOSITE of what values/
+         says (config_allowAllRotations true, config_navBarCanMove false,
+         config_dockedStackDividerSnapMode 1). Those three needed no overlay.
+         These four do.
+
+         ⚠️ Six more were considered and DELIBERATELY LEFT OFF, session 36. Not
+         oversights:
+
+           * config_appCompatUserAppAspectRatioSettingsIsEnabled (+ …Fullscreen…)
+             ships a working Settings > Apps > Aspect ratio UI that is currently
+             CONDITIONALLY_UNAVAILABLE. Turning it on invites per-app layout
+             overrides that would fight the parallel-window rules this port
+             exists for. A dead UI is better than two systems arguing about the
+             same window.
+           * config_letterboxIsDisplayAspectRatioForFixedOrientationLetterboxEnabled
+             and config_letterboxIsSplitScreenAspectRatioForUnresizableAppsEnabled
+             change layout for EVERY portrait app, not just embedded ones. Too
+             blunt for what they buy. -->
+
+    <!-- Apps in the UNFOCUSED pane never get synthetic focus without this, and
+         AOSP's own comment on the flag says some game engines wait to get focus
+         before drawing anything at all. This tablet's default presentation for
+         ~4,900 packages is a centred pane with a second app beside it, so the
+         unfocused pane is not an edge case here — it is half the screen. -->
+    <bool name="config_isCompatFakeFocusEnabled">true</bool>
+
+    <!-- Without this, a translucent activity launched BY a centred pane lays out
+         across the full 1752 dp instead of inheriting the parent's box. That is
+         every permission dialog, share sheet and photo picker raised from an
+         embedded app: the dialog appears anchored to the screen while the app
+         that raised it occupies a third of it. -->
+    <bool name="config_letterboxIsEnabledForTranslucentActivities">true</bool>
+
+    <!-- The folio keyboard is a first-class input on this device (its own
+         keylayout, seven bound keys, a whole MalbecParts page). AOSP's phone
+         default means no menu ever shows a keyboard-shortcut label —
+         ViewConfiguration.java:596 gates it and MenuBuilder.java:765-769 reads
+         that gate. Free value the moment a keyboard is attached. -->
+    <bool name="config_showMenuShortcutsWhenKeyboardPresent">true</bool>
+
+    <!-- ★ Camera compatibility. Provably DEAD before this line, and the whole
+         chain was walked rather than assumed:
+           * AppCompatCameraDisplayRotationPolicy.isPolicyEnabled() is
+             !Flags.cameraCompatUnifyCameraPolicies() && …EnabledAtBuildTime()
+             -> true && FALSE
+           * AppCompatCameraPolicy's constructor then takes the else branch and
+             leaves mDisplayRotationPolicy, mSimReqOrientationPolicy,
+             mCameraStateMonitor and mActivityRefresher ALL NULL
+           * SynchedDeviceConfig.java:183 returns
+             mBuildTimeFlagEnabled && mOverrideValue, so NO server-pushed
+             window_manager flag can rescue it. The resource is the only door.
+
+         Why it matters on THIS tablet specifically: universal_resizable_by_default
+         decodes as ENABLED in the built aconfig cache, so DisplayContent.java:6774-6781
+         makes ignoreOrientationRequest true at sw1095dp — portrait-only apps
+         LETTERBOX instead of rotating the display. That makes "portrait-locked
+         app opens a camera on a landscape tablet and the preview is sideways"
+         the NORMAL case, not the edge case. Which is exactly the Chinese app
+         corpus this port ships 7,045 parallel-window rules for.
+
+         ⚠️ Only the DISPLAY-ROTATION half will activate.
+         AppCompatCameraSimReqOrientationPolicy.isPolicyEnabled() additionally
+         requires DesktopModeHelper.canEnterDesktopMode(), and this tree sets
+         config_isDesktopModeSupported=false deliberately (see the desktop
+         windowing block above). That is the right trade and it is not an
+         accident — but do not read this line as enabling both policies.
+
+         ⚠️ The SYMPTOM was never measured on this device: no third-party camera
+         app is installed here. The MECHANISM is proven off. Acceptance is the
+         owner opening a camera inside WeChat / Taobao / Weibo in landscape,
+         before and after — not a log line. -->
+    <bool name="config_isWindowManagerCameraCompatTreatmentEnabled">true</bool>
+
 </resources>

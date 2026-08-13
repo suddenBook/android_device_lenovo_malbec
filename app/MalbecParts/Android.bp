@@ -69,7 +69,56 @@ android_app {
     //
     // Nothing of Updater's function is replaced — that is the point. If OTA is
     // ever revisited, deleting this one line brings it back.
-    overrides: ["Updater"],
+    //
+    // ── AudioFX, added session 36 ───────────────────────────────────────────
+    //
+    // ★ Owner decision: ONLY Lenovo's ACDB tuning touches the sound.
+    //
+    // AudioFX does not ship "off". It WRITES non-neutral defaults on first run,
+    // per output device, from AudioFX/…/service/DevicePreferenceManager.java —
+    // and this was measured on the flashed build, not inferred:
+    //
+    //   speaker.xml   audiofx.global.enable = true
+    //                 audiofx.eq.preset     = 10  ("Small speakers")
+    //                 levels = -1.7;2.7;0.5;-2.2;2.0  dB
+    //                          @ 60 / 230 / 910 / 3600 / 14000 Hz
+    //   headset.xml   audiofx.global.enable        = true
+    //                 audiofx.bass.enable          = true, strength 150
+    //                 audiofx.virtualizer.enable   = true, strength 200
+    //
+    // Session 36 verified the ACDB in use (acdbdata/tuna_qrd_2308yc/) ships
+    // md5-identical to stock and is tuned for these exact four AW88461-driven
+    // JBL drivers. So AudioFX equalises a tablet Lenovo already equalised.
+    //
+    // ⚠️ WHY `overrides:` AND NOT A NARROWER FIX — this was costed, and the
+    // narrow fixes reach only half the problem:
+    //
+    //   * The SPEAKER default can be moved with an RRO over AudioFX's
+    //     R.string.small_speakers (:217, matched via getNonLocalizedString), so
+    //     the synthesised preset is never created and the speaker lands on Flat.
+    //   * The HEADSET block CANNOT. DevicePreferenceManager.java:226-232 writes
+    //     global-enable, bass 150 and virtualizer 200 as literals — no resource,
+    //     no property, no overlayable. And this tablet has NO 3.5 mm jack
+    //     (owner-confirmed, and the spec sheet agrees), so "headset" here means
+    //     every Bluetooth and USB-C headphone — i.e. the louder half.
+    //
+    // The only alternatives were forking packages/apps/AudioFX, which would make
+    // a FIFTH forked repo on a port deliberately going from 17 modified upstream
+    // files to 9 (OPEN-ISSUES #84), or shipping a colouration the owner does not
+    // want. AudioFX arrives from vendor/lineage/config/common_mobile_full.mk:25,
+    // so `filter-out` cannot remove it either — same measured no-op as Updater.
+    //
+    // ⚠️ Removing a PRIVILEGED app needs no privapp-permissions change; only
+    // ADDING one does. This tree has boot-looped once by forgetting that in the
+    // other direction, so it is worth stating which direction is safe.
+    //
+    // What is lost, stated honestly: the equaliser UI, and the "audio effects"
+    // button some media players surface via
+    // DISPLAY_AUDIO_EFFECT_CONTROL_PANEL. Deleting this entry brings it back.
+    overrides: [
+        "AudioFX",
+        "Updater",
+    ],
 
     static_libs: [
         "SettingsLib",

@@ -152,6 +152,30 @@
             <meta-data
                 android:name="com.android.settings.icon"
                 android:resource="@drawable/ic_stylus" />
+            <!-- ★ Without this the tile renders GREY, and it is the only grey
+                 icon on the Settings homepage.
+                 Android 16's Settings uses the expressive theme, so
+                 DashboardFeatureProviderImpl.java:533-536 takes the
+                 isExpressiveTheme branch into getExpressiveHomepageIcon(),
+                 which calls getColorScheme(tile) (:580-591). With no metadata
+                 that logs
+                     W DashboardFeatureImpl: No color scheme found for
+                     org.lineageos.malbec.parts.stylus.StylusSettingsActivity
+                 and returns ColorScheme.grey, which getRoundedIcon() then paints
+                 as the icon's background — while Storage, Battery, System and
+                 About device on either side of us are coloured.
+                 The key is SettingsLib/Tile/…/TileUtils.java:141-142 and the
+                 accepted values are the ColorScheme enum at
+                 DashboardFeatureProviderImpl.java:107-117: blue_variant, blue,
+                 pink, orange, yellow, green, grey, cyan, red, purple.
+                 android:value, not android:resource — ColorScheme.get() matches
+                 the enum's name() against a String (:589).
+                 cyan is the owner's choice (session 36): blue and green are
+                 heavily used by AOSP's own top-level rows and orange/red read as
+                 warnings. -->
+            <meta-data
+                android:name="com.android.settings.icon_color_scheme"
+                android:value="cyan" />
             <!-- ⚠️ android:resource, NOT android:value. With android:value a
                  @string/ reference is coerced to a literal String at PARSE time
                  (ParsingPackageUtils.java:3272-3281 peeks android:resource first

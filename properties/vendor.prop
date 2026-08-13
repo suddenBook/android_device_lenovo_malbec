@@ -251,9 +251,28 @@ vendor.display.enable_rc_support=1
 
 # Audio
 # The whole PAL/AGM/HAL implementation went back to blobs (see the "Audio HAL"
-# section of device.mk); these are the switches those binaries read at runtime.
-# vendor.audio.hal.aidl.enabled matters most: stock takes the AIDL audio HAL
-# path.
+# section of device.mk).
+#
+# ⚠️ THIS HEADER USED TO SAY "these are the switches those binaries read at
+# runtime", and singled out vendor.audio.hal.aidl.enabled as "the one that
+# matters most". BOTH HALVES WERE WRONG, and the correction below at the
+# .flac.sw.decoder.24bit line has claimed since session 34 that this sentence was
+# deleted. It was not — which is the closed-#77 shape, a correction that names a
+# deletion nobody made. Session 36 deleted it for real and measured the rest.
+#
+# ★ What the shipped audio stack actually reads is a CLOSED SET OF 35
+# vendor.audio* names, enumerated with `strings` over every vendor/ and
+# system_ext/ .so plus audiohalservice.qti in the built image. Of the 25 this
+# file sets, **10 are in that set and 15 are not** — and the control that makes
+# that a finding rather than a bad grep is that 4 of the 5
+# vendor.audio.feature.* siblings ARE present while kpi_optimize is not.
+#
+# The 15 are legacy HIDL-era audio_extn switches that the AIDL HAL dropped. They
+# are byte-identical stock parity, which is fact 22's signature exactly: stock
+# sets them too, so comparing with stock is the thing that HIDES this class.
+# They are individually marked below. Setting them costs nothing and proves
+# nothing; they are kept only where parity with the factory build.prop is worth
+# more than the line, and that judgement is per-key.
 aaudio.hw_burst_min_usec=2000
 aaudio.mmap_exclusive_policy=2
 aaudio.mmap_policy=2
@@ -588,12 +607,61 @@ vendor.gatekeeper.is_security_level_spu=0
 # ones with a statable purpose are taken; the rest are listed below as skipped,
 # with the reason, so the next session does not re-litigate the same list.
 #
-# ⚠️ Method note, because it bit me: "grep the built images for the property
-# name" is NOT a valid way to prove a property has no consumer. Most of these
-# are read from dex inside a compressed .apk/.jar, or by native code that
-# assembles the string at runtime. That grep reports "no consumer" even for
-# ro.vendor.qti.va_odm.support, which this tree already ships deliberately.
-# Positive evidence of harm is actionable; absence of a grep hit is not.
+# ★★ METHOD NOTE — CORRECTED IN SESSION 36. The previous version of this
+# paragraph said the opposite, and it was WRONG in a way that mattered: it told
+# every future session that grepping the built image cannot prove a property has
+# no consumer. That is the single most productive method this port has
+# (HANDOFF.md fact 22 / lesson 1), and this paragraph retired it.
+#
+# ⚠️ The counter-example it rested on is a FALSE grep. It claimed the search
+# reports "no consumer" even for ro.vendor.qti.va_odm.support. It does not:
+#
+#     $ strings -a out/target/product/malbec/vendor/lib64/libqti_vndfwk_detect.so \
+#           | /usr/bin/grep '^ro\.vendor\.qti\.va'
+#     ro.vendor.qti.va_aosp.support
+#     ro.vendor.qti.va_odm.support
+#
+# Two shipped blobs carry it as an exact literal. This is HANDOFF.md fact 42 --
+# the host's `grep` is a shell FUNCTION that can return "not found" on a file
+# that contains the string -- except that here the broken instrument produced a
+# wrong RULE rather than a wrong finding, which is worse, because a rule is
+# load-bearing for everyone who comes after. **Use /usr/bin/grep explicitly for
+# any search whose answer is "not found".**
+#
+# Dex inside APKs IS greppable in the built image; verified with four positive
+# controls across four partitions: keyguard.no_require_sim -> SystemUI.apk,
+# ro.oem_unlock_supported -> Settings.apk, persist.sys.fuse.passthrough.enable
+# -> MediaProvider.apk, remote_provisioning.tee.rkp_only -> rkpdapp.apk.
+#
+# ── The method that actually works, and its four real caveats ────────────────
+#
+# Scan `system system_ext product vendor odm apex` under
+# out/target/product/malbec/ for the property as an exact token, then:
+#
+#   1. EXCLUDE *.prop, *property_contexts*, prop.default and *.cil. A setter or
+#      a label is not a reader, and including them makes every property look
+#      consumed.
+#   2. Scan the UNPACKED out/.../apex/ tree, not system/apex/*.capex -- the
+#      shipped APEXes are compressed and the strings are not visible in them.
+#   3. A plain `grep -F` hit can be a SUBSTRING of a longer property.
+#      vendor.audio.compress_capture.aac matched only because
+#      ...aac.cut_off_freq exists. Check the boundary.
+#   4. ⚠️ RUST BINARIES PACK STRING LITERALS WITH NO NUL BETWEEN THEM.
+#      avf.remote_attestation.enabled appears inside
+#      apex/com.android.virt/bin/virtualizationservice as
+#      "avf.remote_attestation.enabledFailed...", so a "must be a whole token"
+#      test produces a FALSE NEGATIVE. This is the only genuine trap in the
+#      method and it cost one wrong candidate.
+#
+# Runtime-CONSTRUCTED names remain a real caveat -- but session 36 found no
+# instance of it in this image outside log.tag.*, having checked every namespace
+# that matters (vendor.display., vendor.audio., vendor.perf.,
+# persist.vendor.qcom.bluetooth.) with `strings` on the owning blobs. They all
+# use full compile-time literals.
+#
+# ⚠️ log.tag.* is the one family where absence really does prove nothing:
+# liblog builds "log.tag.<tag>" at runtime (properties.cpp:123, full tag length,
+# no truncation). Never report those as unread.
 
 # Frame pacing in the QTI perf stack. Factory vendor/build.prop sets it, and
 # this is a 144 Hz panel where pacing is exactly what it is for.

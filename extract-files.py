@@ -567,6 +567,52 @@ blob_fixups: blob_fixups_user_type = {
             r'|qseeproxydaemon|esepmdaemon|chre)\s(?:[^\n]*\\\n)*[^\n]*\n'
             r'(?:[ \t]+[^\n]*\n)*)',
             r'\1    disabled\n',
+        )
+        # ── qti-testscripts: the NINTH dead stanza, session 36 ───────────────
+        #
+        # ★ AND THE ONLY ONE `disabled` CANNOT FIX, which is why the sweep above
+        # missed it and why the fix here is a different shape.
+        #
+        # init.qcom.rc:828 is
+        #     service qti-testscripts /system/bin/sh /product/etc/init.qcom.testscripts.sh
+        # and it ALREADY carries `disabled`. What starts it anyway is an explicit
+        # trigger 24 lines further down:
+        #     :852  on property:sys.boot_completed=1 && property:ro.build.type=userdebug
+        #     :853      start qti-testscripts
+        # and `start <name>` overrides `disabled` — that is the whole point of
+        # `disabled`, it removes a service from class_start and nothing else. So
+        # the TRIGGER is the target, not the stanza. Measured: this really runs,
+        # `ro.boottime.qti-testscripts` reads 11.48 s and `init.svc.…` reads
+        # `stopped` (i.e. sh exited).
+        #
+        # /product/etc/init.qcom.testscripts.sh exists NOWHERE — not in this tree,
+        # not in our blobs, and `find work/unpacked -iname '*testscripts*'` over
+        # the whole factory image is empty. So every userdebug boot forks a shell
+        # to run a file that is not there.
+        #
+        # ★ WHY SESSION 27'S SWEEP MISSED IT, because the lesson generalises:
+        # that sweep tested each service's PROGRAM, and this one's program is
+        # /system/bin/sh, which exists. The missing thing is its ARGUMENT. The
+        # generalised check — every absolute path token in every `service` line,
+        # programs AND arguments, tested on the device and then filtered by which
+        # services init actually started — closes the question with a number
+        # instead of a sample: 184 stanzas, 196 distinct paths, 38 absent, 51
+        # stanzas naming at least one, and exactly ONE of them starts. This.
+        # (The other apparent hit, thermal-switch-engine, is the checker failing
+        # to expand ${vendor.thermal.mode}; all seven mode files exist.)
+        #
+        # Deleting the `start` and not the `on property:` block: the block is
+        # Lenovo's own edit (`# TN modified by ji.yang/860665 20251218
+        # CR/MALBECW-975`) and an empty trigger is harmless, where a malformed
+        # one is not. Keeping the stanza itself means `setprop ctl.start
+        # qti-testscripts` still works if the script ever appears.
+        #
+        # ⚠️ Costs nothing at release either way — the trigger is gated on
+        # ro.build.type=userdebug, so a `user` build never reaches it. This is
+        # tidiness plus one fewer fork per boot on the builds we actually run.
+        .regex_replace(
+            r'(?m)^[ \t]*start qti-testscripts[ \t]*\n',
+            '',
         ),
 
     # wifi_qos_daemon: the eighth of #27's dead stanzas, and the only one that
