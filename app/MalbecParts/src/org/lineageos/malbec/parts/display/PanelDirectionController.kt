@@ -84,9 +84,19 @@ class PanelDirectionController(
 
     private companion object {
         const val TAG = "${Constants.TAG}/PanelDir"
+
+        /** No rotation has been published yet, so the next sync() must write. */
+        const val UNPUBLISHED = -1
     }
 
-    private var published = -1
+    private var published = UNPUBLISHED
+
+    /**
+     * The last display power state seen, so [onDisplayChanged] can tell a
+     * screen-on transition from any other display change. Only ever touched on
+     * the handler this listener is registered with.
+     */
+    private var lastState: Int? = null
 
     fun start() {
         context.getSystemService(DisplayManager::class.java)
@@ -106,7 +116,33 @@ class PanelDirectionController(
     override fun onDisplayRemoved(displayId: Int) = Unit
 
     override fun onDisplayChanged(displayId: Int) {
-        if (displayId == Display.DEFAULT_DISPLAY) sync()
+        if (displayId != Display.DEFAULT_DISPLAY) return
+        // ★ Re-publish on screen-on as well as on rotate, which is what this
+        // class's own KDoc says stock's EdgeInhibitionInputPolicy does and what
+        // the `published` guard below used to prevent.
+        //
+        // onDisplayChanged fires for a state transition too, not only a rotation
+        // — but sync() returned early whenever the rotation was unchanged, so a
+        // screen-on at the same orientation published nothing. That matters
+        // because the property is not the state: init consumes it and writes
+        // /proc/panel_direction, and the touch controller does not necessarily
+        // still hold what was written last. PenModeController's KDoc records
+        // nvt_touch.ko resetting the controller at about 7.3 s with nothing
+        // guaranteeing that is the last write, and the same reset can happen
+        // again. The failure mode is silent: palm-rejection bands on the wrong
+        // edges until the user happens to rotate the device twice.
+        //
+        // Clearing `published` on the ON transition makes the next sync() an
+        // unconditional write, and keeps the guard doing its real job — not
+        // spamming init on every unrelated display change.
+        val state = context.getSystemService(DisplayManager::class.java)
+            ?.getDisplay(Display.DEFAULT_DISPLAY)
+            ?.state
+        if (state == Display.STATE_ON && lastState != Display.STATE_ON) {
+            published = UNPUBLISHED
+        }
+        lastState = state ?: lastState
+        sync()
     }
 
     private fun sync() {

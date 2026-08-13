@@ -14,7 +14,6 @@
     <!-- The same page, reached from Connected devices, where someone looking for
          the pen or the keyboard would look first. -->
     <string name="stylus_title">Stylus and keyboard</string>
-    <string name="stylus_summary">Pen buttons, out-of-range alert, touch mode</string>
     <string name="stylus_default_name">Stylus</string>
 
     <!-- Pen buttons. Names follow the stock labels for the same HID usages, so

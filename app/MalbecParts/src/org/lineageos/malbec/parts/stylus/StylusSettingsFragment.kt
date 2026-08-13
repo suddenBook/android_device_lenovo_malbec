@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.SystemProperties
 import android.text.format.DateUtils
+import android.util.Log
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
@@ -97,10 +98,23 @@ class StylusSettingsFragment : SettingsBasePreferenceFragment() {
         findPreference<SwitchPreferenceCompat>(Constants.PREF_GESTURE_WAKE)?.apply {
             isChecked = SystemProperties.get(Constants.PROP_GESTURE_WAKE, "1") != "0"
             setOnPreferenceChangeListener { _, newValue ->
-                SystemProperties.set(
-                    Constants.PROP_GESTURE_WAKE, if (newValue as Boolean) "1" else "0"
-                )
-                true
+                // ⚠️ SystemProperties.set THROWS rather than returning a failure
+                // (android_os_SystemProperties.cpp:183-198). This was the one
+                // bare call site of the three; PenModeController.publish and
+                // PanelDirectionController.sync both wrap it, for the same
+                // reason. Unwrapped, a property_service refusal takes Settings
+                // down from inside a preference listener.
+                //
+                // Returning the result rather than a bare `true` matters as well:
+                // false leaves the switch where it was, so the control cannot
+                // show "on" for a write that did not happen.
+                runCatching {
+                    SystemProperties.set(
+                        Constants.PROP_GESTURE_WAKE, if (newValue as Boolean) "1" else "0"
+                    )
+                }.onFailure {
+                    Log.e(Constants.TAG, "could not publish ${Constants.PROP_GESTURE_WAKE}", it)
+                }.isSuccess
             }
         }
 
