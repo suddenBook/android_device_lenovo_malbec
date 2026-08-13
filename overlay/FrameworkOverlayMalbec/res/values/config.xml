@@ -1215,7 +1215,7 @@
          identical single package. There is exactly ONE slot.
 
          ⚠️⚠️ THE TRAP, and it cost this session a wrong answer before
-         `cmd overlay lookup --verbose` caught it. AOSP ships this resource EMPTY
+         `cmd overlay lookup` in its verbose form caught it. AOSP ships this resource EMPTY
          (core/res/res/values/config.xml:4029), which reads like an unfilled slot
          and invites the conclusion that naming GMS here costs nothing. It is not
          empty on a LineageOS build. Upstream fills it at
@@ -1224,28 +1224,73 @@
          (/system_ext/priv-app/SimpleDeviceConfig/, installed, permission granted).
          So this line does not fill a slot, it TAKES one. Fact 37 is why that was
          caught: read the value back on the device, never out of AOSP's values/.
+         ⚠️ And the verbose form is required — the plain lookup prints only the
+         winning value, not who lost.
 
-         What it takes, exactly. SimpleDeviceConfig's BootReceiver.java:29-48
-         replays a string-array on every BOOT_COMPLETED with makeDefault=true, and
-         LineageOS's payload for it is 8 flags (privacy indicators x2, the privacy
-         dashboard's app-op list, attention keep_screen_on, the MediaProvider cloud
-         picker allowlist, the autofill browser compat list, and two SeedVault
-         transport timeouts). None of those is free here: three have hardcoded
-         defaults with no resource behind them, autofill falls back to a
-         Settings.Global with no def_ resource, and SeedVault IS installed on this
-         build (com.stevesoltys.seedvault). ⚠️ Every flash here wipes /data, so
-         losing the writer loses the values outright rather than leaving them stale.
+         ★★ WHAT IT COSTS: eight flags, and it took THREE wrong answers to find
+         out which eight and why. The sequence is the useful part.
 
-         ✔ The cost is therefore paid back rather than accepted:
-         work/scripts/55-seed-deviceconfig.sh replays the same 8 as root after a
-         flash. It PARSES upstream's own overlay file rather than copying the
-         values, so the list cannot drift when LineageOS changes it. Root is an
-         accepted writer -- it is the first alternative the denial message itself
-         names, and `device_config put <ns> <key> <value> default` was measured
-         returning 0 on this device before this line was written.
+         The obvious worry is that displacing LineageOS's package silences it.
+         SimpleDeviceConfig's BootReceiver.java:29-48 replays a string-array on
+         every BOOT_COMPLETED with makeDefault=true, and upstream's payload for it
+         is 8 real flags: privacy indicators x2, the privacy dashboard's app-op
+         list, attention keep_screen_on, the MediaProvider cloud-picker allowlist,
+         the autofill browser-compat list, and two SeedVault transport timeouts.
+         None of those is free on this device — three have hardcoded defaults with
+         no resource behind them, autofill falls back to a Settings.Global with no
+         def_ entry, and SeedVault really ships here (com.stevesoltys.seedvault).
 
-         Acceptance: `cmd overlay lookup --verbose android
-         android:string/config_deviceConfiguratorPackageName` shows the "Overlaid:"
+         ⚠️ AND THE WORRY IS WRONG, because the configurator slot was never what
+         granted SimpleDeviceConfig the permission. WRITE_DEVICE_CONFIG is
+         signature|verifier|configurator, three flags, and the incumbent satisfies
+         the FIRST one: measured on the device, SimpleDeviceConfig's signature is
+         b4addb29 and the `android` platform package's signature is b4addb29 — the
+         same key, because LineageOS builds it into /system_ext/priv-app/ with the
+         platform certificate. GMS is not platform-signed, which is exactly why
+         GMS needed the slot and the incumbent never did.
+
+         Proven by control on the flashed build, not inferred: with this line in
+         place, `device_config delete privacy location_indicators_enabled` read
+         back null, a reboot read back true, and the log carried
+         "I SimpleDeviceConfig: Updating device config at boot". All 8 survive.
+
+         ⚠️⚠️ AND THE COST IS REAL ANYWAY, BY A THIRD MECHANISM. The guard written
+         for the second answer fired on the flashed build: SimpleDeviceConfig
+         writes its 8 at boot, and then GMS OVERWRITES them, because GMS now
+         pushes values into those same namespaces. Measured after a checkin,
+         against a capture taken before this line existed:
+
+             privacy/location_indicators_enabled          true    to false
+             privacy/location_indicator_settings_enabled  true    to unset
+             privacy/discrete_history_ops_cslist          42 ops  to unset
+             attention_manager_service/keep_screen_on_enabled false to unset
+             mediaprovider/allowed_cloud_providers        photos  to unset
+             autofill/compat_mode_allowed_packages        21 pkgs to Google's, no Chrome
+             backup_and_restore/…future_timeout_millis    900000  to 600000
+             backup_and_restore/…callback_timeout_millis  900000  to 300000
+
+         ★ OWNER'S DECISION, session 35: do not pin any of them.
+         `device_config override` makes a flag ignore server updates; it was
+         offered and declined. Handing GMS the slot means handing it this table,
+         and the device behaves like any normal GMS device instead of carrying a
+         local special case. **The location privacy indicator is off, knowingly.**
+
+         ★ The lesson, and three wrong answers is what it cost: a protection
+         level with several flags does not tell you WHICH flag is doing the work
+         for an existing holder, and displacing a holder is not the only way to
+         lose its values. Reading AOSP's empty default said "free slot". Reading
+         the device's overlay said "occupied, costs 8". `dumpsys package <pkg> |
+         grep signatures` said "occupied and free". Only running it and measuring
+         afterwards said what was true. **Every one of the first three was a read;
+         the answer needed a flash.**
+
+         ✔ work/scripts/55-seed-deviceconfig.py is the standing report for this:
+         it parses upstream's own overlay (so the list cannot drift when
+         LineageOS edits theirs) and prints upstream's value against the live one.
+         It changes nothing by default. Differences are expected.
+
+         Acceptance: `cmd overlay lookup` with the verbose flag, on
+         android:string/config_deviceConfiguratorPackageName, shows the "Overlaid:"
          line; `grep -c "Permission denial to mutate flag"` over a full boot is 0;
          and `device_config list` gains keys, diffed against a capture taken before
          the change. -->
