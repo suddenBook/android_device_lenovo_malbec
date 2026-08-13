@@ -611,8 +611,10 @@ blob_fixups: blob_fixups_user_type = {
         # ro.build.type=userdebug, so a `user` build never reaches it. This is
         # tidiness plus one fewer fork per boot on the builds we actually run.
         .regex_replace(
-            r'(?m)^[ \t]*start qti-testscripts[ \t]*\n',
-            '',
+            r'(?m)^on property:sys\.boot_completed=1 && '
+            r'property:ro\.build\.type=userdebug\n[ \t]*start qti-testscripts[ \t]*\n',
+            '# (the `start qti-testscripts` this trigger existed for was removed: the\n'
+            '#  script it runs, /product/etc/init.qcom.testscripts.sh, is in no image)\n',
         ),
 
     # wifi_qos_daemon: the eighth of #27's dead stanzas, and the only one that
@@ -985,9 +987,18 @@ blob_fixups: blob_fixups_user_type = {
     # the same change -- same as wifi_qos_daemon's did (see that entry above).
     # Expect proprietary-files.txt:1133 to grow a |<sha1>.
     ('vendor/etc/camera/camxoverridesettings.txt',): blob_fixup()
-        .regex_replace(r'(?m)^enableNCSService=FALSE$', 'enableNCSService=TRUE')
-        .regex_replace(r'(?m)^EISV2Enable=0$', 'EISV2Enable=1')
-        .regex_replace(r'(?m)^EISV3Enable=0$', 'EISV3Enable=1'),
+        # ⚠️ `\r?$`, not `$`. THIS FILE IS CRLF. A bare `$` anchors before the
+        # \n and therefore never matches a line whose last character is \r --
+        # so the obvious spelling silently applied ONE of these three (the last
+        # line, which has no trailing newline) and skipped the other two. Caught
+        # A consuming `\r?$` would fix the matching and then EAT the \r,
+        # rewriting the line ending -- so the anchor has to be a lookahead.
+        # Caught by re-deriving the post-fixup hash from the factory copy and comparing
+        # it against the pin, which is the only check that can see a recipe and
+        # its artefact disagreeing.
+        .regex_replace(r'(?m)^enableNCSService=FALSE(?=\r?$)', 'enableNCSService=TRUE')
+        .regex_replace(r'(?m)^EISV2Enable=0(?=\r?$)', 'EISV2Enable=1')
+        .regex_replace(r'(?m)^EISV3Enable=0(?=\r?$)', 'EISV3Enable=1'),
 
 }  # fmt: skip
 

@@ -450,7 +450,7 @@ vendor/etc/init/dvs-aidl-service.rc
 vendor/etc/init/feature_enabler_client.rc
 vendor/etc/init/hexlpservice.rc
 vendor/etc/init/hlosminkdaemon.rc
-vendor/etc/init/hw/init.qcom.rc|349faf1da7d2694d1d7fbc7729421f9ffffa2b74|f136d8fa068307db57d90110eabfb2049d3a0179
+vendor/etc/init/hw/init.qcom.rc|349faf1da7d2694d1d7fbc7729421f9ffffa2b74|c0c583b30c25fdf0f7a8b5472c21729427b55146
 vendor/etc/init/hw/init.qcom.usb.rc
 vendor/etc/init/hw/init.qti.kernel.rc
 vendor/etc/init/hw/init.qti.kernel.target.rc
@@ -1130,7 +1130,7 @@ vendor/lib64/vendor.qti.hardware.bluetooth.xpanprovider-V1-ndk.so
 
 # Camera
 vendor/bin/hw/vendor.qti.camera.provider-service_64
-vendor/etc/camera/camxoverridesettings.txt
+vendor/etc/camera/camxoverridesettings.txt|8060fef06acf8641a2ab58aa456271f6a292b721|4155dcfd83c5d2bd2532f90ce3fca02b4ac4f76b
 vendor/etc/camera/thirdappsize.json
 vendor/etc/display/camera_alignments.json
 vendor/etc/eva/facedetection/bias.dat
