@@ -831,12 +831,47 @@ vendor/bin/audioadsprpcd
 #
 # The four sysfs nodes that look like the instrument — algo_state, dsp_re,
 # f0_show, cali_re — are compile-time CONSTANTS of this kernel module build.
-# aw882xx_dlkm.ko has no apr_/gpr_/afe_/q6 symbol of any kind, its
-# aw_read_msg_from_dsp_v_1_0_0_0 has an empty transport hook and zero indirect
-# calls, and aw882xx_cali_read_re_from_nvram is a 12-byte `mov w0,wzr; ret`
-# stub. They print "read algo run state failed!" and three zeroes in every
-# state, on stock ZUI included. The full derivation is in
-# work/OPEN-ISSUES.md #13.
+# The reason is one fact, and it is stronger and simpler than what this comment
+# used to claim: **aw882xx_dlkm.ko imports no apr_/gpr_/afe_/q6 symbol of any
+# kind.** Its only sound imports are snd_soc_register_component,
+# snd_soc_add_component_controls, snd_soc_info_volsw/enum_double and
+# misc_register. On an AudioReach/SPF platform the DSP is not reachable from
+# the kernel at all — it is reached from userspace through AGM/GSL — so the
+# whole in-kernel aw882xx_dsp_* family is vestigial code from the legacy
+# ADSP/APR variant of this driver. The message layer exists; there is no
+# transport under it. aw882xx_cali_read_re_from_nvram is a 12-byte
+# `mov w0,wzr; ret` stub, so the kernel never opens aw_cali.bin either. These
+# nodes print "read algo run state failed!" and three zeroes in every state, on
+# stock ZUI included.
+#
+# ⚠️ Two corrections to what stood here, session 35, both measured:
+#   * it said aw_read_msg_from_dsp_v_1_0_0_0 "has an empty transport hook and
+#     zero indirect calls". It is NOT empty — it does mutex_lock, a
+#     __kmalloc(size+0x28) and real work, and aw882xx_dsp_read_r0/read_f0/
+#     write_cali_re all call aw882xx_dsp_{read,write}_dsp_msg normally. The
+#     conclusion was right and the supporting detail was wrong; the missing
+#     imports above are the actual reason and they are not a matter of degree.
+#   * it cited "work/OPEN-ISSUES.md #13" for the derivation. #13 is the
+#     LineageOS touch HAL entry and always has been. That is the #31 class of
+#     defect — a citation that resolves to the wrong thing is worse than none,
+#     because it reads as verified. The derivation is in this comment now.
+#
+# ★ And the thing a future reader will actually be chasing when they get here:
+# the boot log carries `[Awinic]aw_check_dsp_ready: rx topo id is 0x0` and
+# `aw882xx_dev_init_cali_re: out range re value: 0` on all four amps, and
+# NEITHER is a fault. Both printed values are compile-time constants in the
+# codegen (`mov w2, wzr` / `mov w3, wzr`), the "failure" branch of
+# aw_check_dsp_ready falls into the same continuation label as its success
+# branch, and aw882xx_startup discards the return value and starts the monitor
+# work regardless. Calibration is applied by PAL in userspace and it works —
+# measured on this build and, line for line with the SAME per-unit values, on
+# stock ZUI:
+#   aw_ar_cali_dev_get_re_from_file: read re value is 6798/7081/6952/7094
+#   SpeakerProtection: spkrProtProcessingMode: Awinic set cali re success
+# Protection runs in two independent places, both confirmed live: the SPF graph
+# algorithm, and the amps' own ACF monitor tables (`monitor enable: 1`). There
+# is nothing to fix, and no property, DT node or file could change those two
+# messages in a prebuilt .ko that is byte-identical to stock's.
 #
 # This tool instead goes the way PAL does — aw_ar_dsp_get_miid over tinyalsa
 # mixer controls into the SPF graph — so it can actually read the DSP:

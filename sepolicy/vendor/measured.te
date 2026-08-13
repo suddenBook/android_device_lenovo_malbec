@@ -21,6 +21,51 @@
 #     debugfs_bootreceiver_tracing, kernel's net_bind_service. These are
 #     upstream's to fix.
 #
+#   * ★ The SystemPropPoker family, added session 35 — and it is the sharpest
+#     example of that rule, because it looks like four unrelated defects and is
+#     one caller with a provably zero cost. Opening Developer options emits:
+#
+#         { call } system_app -> hal_audio_default : binder            x4..x8
+#         { find } system_app -> system_suspend_control_service
+#         { find } system_app -> system_suspend_control_internal_service
+#         { find } system_app -> tracingproxy_service
+#
+#     All of it is SettingsLib's SystemPropPoker.PokerTask
+#     (development/SystemPropPoker.java:66,82,86): ServiceManager.listServices()
+#     — which system_app IS allowed — then checkService() on every name and an
+#     untyped SYSPROPS_TRANSACTION at every binder it gets back. The audio HAL
+#     is hit only because it owns registered service names. Reproduced with
+#     `am start -a android.settings.APPLICATION_DEVELOPMENT_SETTINGS`, and pinned
+#     to AbstractLogpersistPreferenceController.java:177-181 by a negative
+#     control: re-launching while the activity was already on top produced
+#     wm_on_resume_called and ZERO denials, because that poke is one-shot behind
+#     `!mLogpersistCleared`.
+#
+#     ⚠️ AOSP wrote the exclusion ON PURPOSE and then forgot the silence.
+#     system/sepolicy/private/system_app.te:103-118 subtracts exactly these
+#     three services from the `find` allow; the `dontaudit` at :119-128 lists
+#     only 7 of the 13 subtracted types and omits all three. The same policy
+#     tree already has the correct shape for the identical enumerate-and-poke
+#     pattern, one domain over — atrace.te:61-64 dontaudits service_manager
+#     find and `domain:binder call` wholesale.
+#
+#     Cost of the denials: zero, measured. SYSPROPS_TRANSACTION is handled only
+#     in native code (frameworks/native/libs/binder/Binder.cpp:897-900 ->
+#     report_sysprop_change()), its sole registrant in the whole tree is
+#     libutils/Trace.cpp:23 -> atrace_update_tags, and atrace does that poke
+#     itself with its own credentials whenever a trace starts. The caller
+#     swallows both failure modes (`if (obj != null)` at :83, `catch
+#     (RemoteException) {}` at :87-92) and nothing reaches the UI — `logcat |
+#     grep -i SystemPropPoker` is empty on this device.
+#
+#     ⇒ NO RULE HERE, deliberately, and the `allow` is the tempting wrong one:
+#     it would hand every system-UID app a direct binder channel to the audio
+#     HAL's whole AIDL surface, bypassing audioserver, to buy an atrace-tag
+#     refresh that already happens. `dontaudit system_app domain:binder call`
+#     is the honest form and belongs in AOSP's system_app.te, not in a vendor
+#     tree where it would also mask every future Settings denial to every
+#     domain. Recorded in OPEN-ISSUES.md #99.
+#
 #     ⚠️ NOT because vendor policy cannot reach a coredomain — it can, and
 #     this file does it four times: the `dontaudit` rules whose SOURCE is a
 #     coredomain are zygote, servicemanager and the two vold ones. They

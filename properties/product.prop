@@ -181,3 +181,32 @@ ro.af.client_heap_size_kbyte=7168
 # removing it would put the tree back in the state session 17 diagnosed" — but
 # session 17's premise was that RKP could work here, and it cannot.
 remote_provisioning.tee.rkp_only=false
+
+# ── Two audio-policy values stock sets and this port never did ─────────────
+#
+# Both are read by libraries this build compiles from source, and both have an
+# AOSP default that is measurably worse on a battery-powered music player.
+# Stock carries them at product/etc/build.prop:70,74 -- same partition, which
+# is why they are here and not in system.prop.
+#
+# audio.deep_buffer.media: AudioPolicyConfig.cpp:362, default FALSE. With it,
+# media playback takes the deep-buffer output instead of the primary one --
+# larger buffers, fewer wakeups, lower power, at the cost of latency nobody
+# notices on music. ⚠️ :361 checks an override first, but the only setter for it
+# is setUseDeepBufferForMediaOverrideForTests() and its only callers are in
+# audiopolicymanager_tests.cpp, so on a real device this property is the sole
+# input. Checked, because a value with a higher-priority shadow is exactly the
+# "set, correct, and has no effect" class fact 22 is about.
+#
+# audio.offload.min.duration.secs: AudioPolicyManager.cpp:5043-5052, default -1,
+# which falls through to OFFLOAD_DEFAULT_MIN_DURATION_SECS = 60
+# (AudioPolicyManager.h:87). At 30 the 30-60 s tracks that AOSP decodes on the
+# AP get compressed offload to the DSP as well.
+#
+# Acceptance, and it is a real measurement rather than a getprop: play a track
+# and read which thread it landed on --
+#   adb shell dumpsys media.audio_flinger | grep -E "^Output thread|AudioOut_"
+# deep buffer should show the track on a deep-buffer output, and a 45 s
+# compressed track should reach a COMPRESS/offload thread instead of a PCM one.
+audio.deep_buffer.media=true
+audio.offload.min.duration.secs=30

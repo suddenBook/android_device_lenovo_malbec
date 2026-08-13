@@ -337,3 +337,22 @@ log.tag.InetDiagMessage=W
 # steady state, and it is GMS pushing device_config overrides for flags this
 # build does not define. Loud but bounded, and it is a genuine signal about
 # which Google feature flags this ROM lacks.
+
+# ── Hardware decode for video thumbnails ───────────────────────────────────
+#
+# StagefrightMetadataRetriever.cpp:255,400 reads this with a default of FALSE,
+# so without it every gallery/file-manager video thumbnail is extracted on a
+# software decoder. libhwui.so reads it too. Both libraries are ours, built
+# from source -- verified in the built image, not assumed.
+#
+# Stock sets it, at system/system/build.prop:99, and this is one of the four
+# places stock was simply right and this port was not. It is a `media_config_prop`
+# declared `exact bool` in plat_property_contexts:668, so a typo is a build
+# error rather than a silent no-op.
+#
+# ⚠️ The search that found the readers had to be run with /usr/bin/grep. This
+# host has a `grep` shell FUNCTION, and it returned "no match" for a literal
+# that `strings` finds in the same file -- which had already produced, and very
+# nearly shipped, the opposite conclusion ("no consumer, do not set it").
+# HANDOFF.md lesson 0a, met at the prompt rather than in a script.
+media.stagefright.thumbnail.prefer_hw_codecs=true

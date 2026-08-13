@@ -1186,4 +1186,69 @@
     <bool name="config_letterboxIsHorizontalReachabilityEnabled">true</bool>
     <bool name="config_letterboxIsEducationEnabled">true</bool>
 
+    <!-- ★★ The DeviceConfig writer. Owner's decision, session 35, taken twice:
+         once on a premise that turned out to be wrong, and again with the
+         corrected one in front of them.
+
+         The symptom is 182 lines per boot, from com.google.android.gms.persistent:
+
+             W PlatformConfigurator: setProperties failed with SecurityException
+             E DatabaseUtils: java.lang.SecurityException: Permission denial to
+                 mutate flag, must have root, WRITE_DEVICE_CONFIG, or
+                 WRITE_ALLOWLISTED_DEVICE_CONFIG
+
+         So every Phenotype flag Google pushes for a PLATFORM namespace is
+         rejected, and every AOSP feature Google gates server side sits at its
+         build time default. The chain, all four links read rather than assumed:
+
+             core/res/AndroidManifest.xml:4951-4952
+                 WRITE_DEVICE_CONFIG is signature|verifier|configurator
+             services/permission/.../permission/Permission.kt:75-76
+                 isConfigurator = protectionFlags has PROTECTION_FLAG_CONFIGURATOR
+             services/permission/.../permission/AppIdPermissionPolicy.kt:1737-1738
+                 grants it only to knownPackages[KnownPackages.PACKAGE_CONFIGURATOR]
+             services/core/.../pm/PackageManagerService.java:2322
+                 which is getString(R.string.config_deviceConfiguratorPackageName)
+
+         WRITE_ALLOWLISTED_DEVICE_CONFIG is not a second door: AndroidManifest.xml
+         :4956-4957 gives it the identical protection level, so it resolves to the
+         identical single package. There is exactly ONE slot.
+
+         ⚠️⚠️ THE TRAP, and it cost this session a wrong answer before
+         `cmd overlay lookup --verbose` caught it. AOSP ships this resource EMPTY
+         (core/res/res/values/config.xml:4029), which reads like an unfilled slot
+         and invites the conclusion that naming GMS here costs nothing. It is not
+         empty on a LineageOS build. Upstream fills it at
+         vendor/lineage/overlay/common/frameworks/base/core/res/res/values/config.xml:118
+         with org.protonaosp.deviceconfig, which really ships here
+         (/system_ext/priv-app/SimpleDeviceConfig/, installed, permission granted).
+         So this line does not fill a slot, it TAKES one. Fact 37 is why that was
+         caught: read the value back on the device, never out of AOSP's values/.
+
+         What it takes, exactly. SimpleDeviceConfig's BootReceiver.java:29-48
+         replays a string-array on every BOOT_COMPLETED with makeDefault=true, and
+         LineageOS's payload for it is 8 flags (privacy indicators x2, the privacy
+         dashboard's app-op list, attention keep_screen_on, the MediaProvider cloud
+         picker allowlist, the autofill browser compat list, and two SeedVault
+         transport timeouts). None of those is free here: three have hardcoded
+         defaults with no resource behind them, autofill falls back to a
+         Settings.Global with no def_ resource, and SeedVault IS installed on this
+         build (com.stevesoltys.seedvault). ⚠️ Every flash here wipes /data, so
+         losing the writer loses the values outright rather than leaving them stale.
+
+         ✔ The cost is therefore paid back rather than accepted:
+         work/scripts/55-seed-deviceconfig.sh replays the same 8 as root after a
+         flash. It PARSES upstream's own overlay file rather than copying the
+         values, so the list cannot drift when LineageOS changes it. Root is an
+         accepted writer -- it is the first alternative the denial message itself
+         names, and `device_config put <ns> <key> <value> default` was measured
+         returning 0 on this device before this line was written.
+
+         Acceptance: `cmd overlay lookup --verbose android
+         android:string/config_deviceConfiguratorPackageName` shows the "Overlaid:"
+         line; `grep -c "Permission denial to mutate flag"` over a full boot is 0;
+         and `device_config list` gains keys, diffed against a capture taken before
+         the change. -->
+    <string name="config_deviceConfiguratorPackageName" translatable="false">com.google.android.gms</string>
+
 </resources>
