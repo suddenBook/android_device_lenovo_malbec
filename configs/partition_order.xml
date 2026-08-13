@@ -29,9 +29,9 @@
          returns 1, `cmd uimode night` reports "no". The device comes up light,
          which is the point: on this LCD panel dark mode costs contrast and buys
          no power.
-       * The six /vendor overlays define 82 unique resources between them
-         (FrameworkOverlayMalbec 39, WifiOverlayMalbec 36, SettingsOverlayMalbec
-         3, SettingsProviderOverlayMalbec 2, LineageSDKOverlayMalbec 1,
+       * The six /vendor overlays define 90 unique resources between them
+         (FrameworkOverlayMalbec 46, WifiOverlayMalbec 36, SettingsOverlayMalbec
+         4, SettingsProviderOverlayMalbec 2, LineageSDKOverlayMalbec 1,
          SystemUIOverlayMalbec 1). The 26 /product overlays define 162. The
          INTERSECTION IS EMPTY, and config_defaultNightMode is set by exactly one
          package on the whole device — ours.
@@ -46,13 +46,30 @@
      built-in value (vendor/lineage/overlay/common/.../config.xml:153 sets 2)
      whatever the partition order is.
 
-     Re-check the intersection after any GApps bump:
+     Re-check the intersection after any GApps bump.
 
-         for a in vendor/overlay/*.apk $(find product/overlay -name '*.apk'); do
-             aapt2 dump resources "$a" |
-                 grep -oE '^ *resource 0x[0-9a-f]+ [a-z-]+/[A-Za-z_0-9.]+' |
-                 awk '{print $3}'
-         done | sort | uniq -d
+     ⚠️ THE RECIPE THIS BLOCK USED TO PRINT WAS WRONG, corrected session 36. It
+     pooled both partitions and ended in `sort | uniq -d`, which reports every
+     duplicate INCLUDING product-vs-product pairs — and there are 14 of those
+     (DisplayCutoutEmulation*, NavigationBarMode*, Font*, all sibling GApps
+     overlays legitimately defining the same names). A maintainer running the
+     documented command sees 14 hits and concludes the intersection is non-empty,
+     i.e. the exact opposite of the finding it is meant to re-check.
+
+     The intersection of two SETS needs `comm -12`, not `uniq -d` over a pool:
+
+         res() {
+             for a in "$@"; do
+                 aapt2 dump resources "$a" |
+                     grep -oE '^ *resource 0x[0-9a-f]+ [a-z-]+/[A-Za-z_0-9.]+' |
+                     awk '{print $3}'
+             done | sort -u
+         }
+         comm -12 <(res vendor/overlay/*.apk) \
+                  <(res $(find product/overlay -name '*.apk'))
+
+     Empty output = the reorder is still insurance rather than a live fix.
+     Re-measured session 36: still empty.
 
      THE MECHANISM is AOSP's own. OverlayConfig.PARTITION_ORDER_FILE_PATH is
      hardcoded to "/product/overlay/partition_order.xml"

@@ -190,10 +190,31 @@ PRODUCT_MODEL := TB390FU
 # variables (build/make/core/product_config.mk:402-406) and feed
 # ro.product.system.{name,device} via soong_extra_config.mk:26,29.
 #
-# Verify after first boot: `adb shell getprop ro.build.fingerprint` should match
-# the value below on every partition, and Play Store should not show the
-# uncertified dialog. If it still does, this block is not earning its keep and
-# should go.
+# ⚠️ THE ACCEPTANCE TEST BELOW WAS ALREADY ANSWERED, AND THE ANSWER IS "IT STILL
+# DOES". Corrected session 36 — this paragraph had been handing every reader a
+# test whose result was recorded in OPEN-ISSUES #57 sessions earlier, so `grep`
+# kept returning a falsified claim as the current reasoning.
+#
+#   Verify after first boot: `adb shell getprop ro.build.fingerprint` should
+#   match the value below on every partition  ← ✔ TRUE, verified session 36 on
+#   all nine partitions, including ro.bootimage/system_dlkm/vendor_dlkm.
+#
+#   …and Play Store should not show the uncertified dialog. If it still does,
+#   this block is not earning its keep and should go.  ← ✘ WRONG CONCLUSION.
+#
+# It still does, and that does NOT mean the block should go. #57 measured it:
+# Play Protect certification is not earned by the fingerprint at all. It is
+# earned by REGISTERING THE GSF ANDROID ID at google.com/android/uncertified,
+# which is a per-device, per-`/data`-wipe manual step the owner has to do with
+# their own Google account. Official LineageOS builds are identical in this.
+#
+# ★ What the spoof does buy, per the three bullets above: the device reports a
+# fingerprint Google's certified-device list recognises, so once the GSF ID is
+# registered the dialog goes away and stays away. Without it, the device reports
+# an unknown fingerprint and no registration can help.
+#
+# ⇒ The block IS earning its keep. Do not delete it because the dialog is
+# showing; check whether the GSF ID has been registered since the last wipe.
 PRODUCT_SYSTEM_NAME := TB390FU_EEA
 PRODUCT_SYSTEM_DEVICE := TB390FU
 
