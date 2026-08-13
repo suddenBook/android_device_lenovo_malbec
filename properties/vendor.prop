@@ -267,12 +267,51 @@ vendor.display.enable_rc_support=1
 # that a finding rather than a bad grep is that 4 of the 5
 # vendor.audio.feature.* siblings ARE present while kpi_optimize is not.
 #
-# The 15 are legacy HIDL-era audio_extn switches that the AIDL HAL dropped. They
-# are byte-identical stock parity, which is fact 22's signature exactly: stock
-# sets them too, so comparing with stock is the thing that HIDES this class.
-# They are individually marked below. Setting them costs nothing and proves
-# nothing; they are kept only where parity with the factory build.prop is worth
-# more than the line, and that judgement is per-key.
+# They are legacy HIDL-era audio_extn switches that the AIDL HAL dropped. All are
+# byte-identical stock parity, which is fact 22's signature exactly: stock sets
+# them too, so comparing with stock is the thing that HIDES this class.
+#
+# ⚠️ Named here rather than marked line-by-line, because a `.prop` file cannot
+# carry an inline comment — a `#` after a value becomes part of the value — so
+# per-key marking would mean 15 extra full-width lines in a block of 25.
+#
+# NO READER IN THE BUILT IMAGE (session 36):
+#     vendor.audio.c2.preferred
+#     vendor.audio.compress_capture.aac          (matched only as a substring of
+#                                                 …aac.cut_off_freq)
+#     vendor.audio.compress_capture.enabled
+#     vendor.audio.feature.kpi_optimize.enable   ← the control: its 4 siblings ARE read
+#     vendor.audio.flac.sw.decoder.24bit
+#     vendor.audio.hal.output.suspend.supported
+#     vendor.audio.hw.aac.encoder
+#     vendor.audio.offload.multiple.enabled
+#     vendor.audio.offload.track.enable
+#     vendor.audio.ull_record_period_multiplier
+#     vendor.audio.use.sw.alac.decoder
+#     vendor.audio.use.sw.ape.decoder
+#     vendor.audio.use.sw.mpegh.decoder
+#     vendor.audio_hal.timecheck_timeoutMS
+#
+# ★ KEPT ANYWAY, deliberately. Setting them costs nothing measurable, and stock
+# parity on a vendor property is worth more than the line: if a future blob drop
+# starts reading one, an absent property is a silent behaviour change and a
+# present one is not. Delete them only together with a measurement showing the
+# new blob set still ignores them. **The finding is the header's old claim, not
+# the values.**
+#
+# The same audit found three more outside this block, listed where they sit:
+# vendor.display.{enable_async_powermode,enable_display_extensions,enable_early_wakeup},
+# ro.vendor.perf-hal.ver, ro.vendor.perf.scroll_opt, ro.vendor.qspm.enable,
+# vendor.perf.framepacing.enable, six persist.vendor.bt.*/qcom.bluetooth.* keys,
+# ro.vendor.bluetooth.btconfigstore, ro.af.client_heap_size_kbyte (its reader is
+# DEAD CODE upstream — getClientSharedHeapSize() has zero callers, so the linker
+# strips it) and persist.sys.wfd.virtual. Full derivation, with the control for
+# each group, in work/notes/session36-findings.md §T2.
+#
+# ⚠️ Do NOT add the 16 log.tag.* keys to any such list: liblog builds
+# "log.tag.<tag>" at runtime, so absence from the image proves nothing.
+# ⚠️ And graphics.gpu.profiler.support must STAY — its only consumers are CTS/VTS,
+# which ASSERT it is true on API-S+ handhelds.
 aaudio.hw_burst_min_usec=2000
 aaudio.mmap_exclusive_policy=2
 aaudio.mmap_policy=2
