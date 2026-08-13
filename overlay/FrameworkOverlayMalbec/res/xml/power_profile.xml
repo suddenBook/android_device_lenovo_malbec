@@ -124,10 +124,12 @@
          is Bluetooth.
 
          The AOSP fallback cannot rescue it either: PowerProfile.java:463-490
-         reads config_bluetooth_{idle,rx,tx}_cur_ma and
-         config_bluetooth_operating_voltage_mv, all of which AOSP defaults to 0
-         (core/res/res/values/config.xml:2321-2336) and the loop installs a value
-         only when it is greater than zero.
+         reads config_bluetooth_idle_cur_ma
+         (core/res/res/values/config.xml:2321) and the three that follow it there
+         at five-line intervals, config_bluetooth_rx_cur_ma,
+         config_bluetooth_tx_cur_ma and config_bluetooth_operating_voltage_mv.
+         All four are 0 in AOSP, and the loop installs a value only when it is
+         greater than zero, so the fallback is a no-op rather than a default.
 
          ⚠️ THESE FOUR NUMBERS ARE ESTIMATES, NOT MEASUREMENTS, AND MUST NOT BE
          CITED AS THIS UNIT'S. Owner's decision, session 34: an approximate
