@@ -22,21 +22,31 @@
 #     upstream's to fix.
 #
 #     ⚠️ NOT because vendor policy cannot reach a coredomain — it can, and
-#     this file does it six times. Every `dontaudit` at :246 (zygote), :344
-#     (surfaceflinger), :345 (bootanim), :346 (servicemanager), :362 and :363
-#     (vold) has a coredomain source and all six compile: they are in the
-#     built vendor_sepolicy.cil at lines 29516 and 29528-29532, versioned
-#     (`zygote_202504`, `surfaceflinger_202504`, …) because the platform
-#     EXPORTS those types. The rule that does hold is narrower and is stated
-#     at :407-409: a vendor rule may name a coredomain as SOURCE, but only for
-#     TYPES the platform exports — `adbd_prop` and friends are private and
-#     fail the build with `unknown type`.
+#     this file does it four times: the `dontaudit` rules whose SOURCE is a
+#     coredomain are zygote, servicemanager and the two vold ones. They
+#     compile, and land in the built vendor_sepolicy.cil versioned
+#     (`zygote_202504`, `servicemanager_202504`, …) because the platform
+#     EXPORTS those types. The rule that does hold is narrower: a vendor rule
+#     may name a coredomain as SOURCE, but only for TYPES the platform
+#     exports — `adbd_prop` and friends are private and fail the build with
+#     `unknown type`.
 #
-#     ⚠️ Two entries were deleted from the list above because the same file
-#     contradicts them further down: `servicemanager ->
-#     hal_graphics_composer_default` is granted at :346, and `system_server
-#     mapping libsdmextension.so` was diagnosed at :347-354 as a real,
-#     fixable access and fixed in this tree with one file_contexts line.
+#     ⚠️ THIS PARAGRAPH USED TO CITE SIX RULES BY LINE NUMBER AND EVERY NUMBER
+#     WAS WRONG, which is worth more than the correction. It named :246, :344,
+#     :345, :346, :362 and :363, and the rules were at 268, 367, 368, 369, 385
+#     and 386 — drifted by 20-plus lines through ordinary edits, in a file whose
+#     whole method is citing evidence by location. Two of the six (the
+#     surfaceflinger and bootanim qspmhal rules) have since been deleted as
+#     dead, so the count is four. **Line numbers inside the same file decay
+#     exactly like the `work/…` citations #31 is about; prefer naming the rule.**
+#
+#     ⚠️ And one of its claims was not merely stale but inverted: it said
+#     `servicemanager -> hal_graphics_composer_default` "is granted at :346".
+#     That access is `dontaudit`ed, not granted — the opposite — and :346 is a
+#     different rule entirely (`allow hal_graphics_composer_default
+#     mnt_vendor_file:dir getattr`). The `system_server mapping
+#     libsdmextension.so` half of the same sentence IS right: diagnosed as a
+#     real, fixable access and fixed in this tree with one file_contexts line.
 #     OPEN-ISSUES.md #77.
 #
 #   * vendor_init setting ro.system.build.fingerprint / ro.bootimage.build

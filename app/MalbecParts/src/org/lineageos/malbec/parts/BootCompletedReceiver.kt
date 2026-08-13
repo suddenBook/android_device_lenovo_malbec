@@ -12,6 +12,7 @@ import android.hardware.input.InputSettings
 import android.os.Vibrator
 import android.provider.Settings
 import android.util.Log
+import androidx.preference.PreferenceManager
 import org.lineageos.malbec.parts.display.PenModeController
 
 class BootCompletedReceiver : BroadcastReceiver() {
@@ -155,22 +156,53 @@ class BootCompletedReceiver : BroadcastReceiver() {
      * rate keys.
      */
     private fun materialiseVolumeHushDefault(context: Context) {
-        if (Settings.Secure.getString(context.contentResolver, VOLUME_HUSH_GESTURE) != null) {
-            return
-        }
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        if (prefs.getBoolean(PREF_HUSH_SEEDED, false)) return
+
         val vibrator = context.getSystemService(Vibrator::class.java)
         if (vibrator?.hasVibrator() == true) {
             // Defensive rather than expected: if a future variant of this chassis
-            // does have a motor, upstream's default is the right one and this
-            // should stay out of the way.
+            // does have a motor, upstream's default is the right one. Mark it
+            // done so this never runs again on that device either.
+            prefs.edit().putBoolean(PREF_HUSH_SEEDED, true).apply()
             return
         }
-        Log.i(Constants.TAG, "seeding $VOLUME_HUSH_GESTURE=$VOLUME_HUSH_MUTE (no vibrator)")
-        Settings.Secure.putInt(context.contentResolver, VOLUME_HUSH_GESTURE, VOLUME_HUSH_MUTE)
+
+        val current = Settings.Secure.getInt(
+            context.contentResolver, VOLUME_HUSH_GESTURE, VOLUME_HUSH_VIBRATE
+        )
+        if (current == VOLUME_HUSH_VIBRATE) {
+            Log.i(Constants.TAG, "seeding $VOLUME_HUSH_GESTURE=$VOLUME_HUSH_MUTE (no vibrator)")
+            Settings.Secure.putInt(context.contentResolver, VOLUME_HUSH_GESTURE, VOLUME_HUSH_MUTE)
+        }
+        prefs.edit().putBoolean(PREF_HUSH_SEEDED, true).apply()
     }
 
     private companion object {
         const val VOLUME_HUSH_GESTURE = "volume_hush_gesture"
+        const val VOLUME_HUSH_VIBRATE = 1
         const val VOLUME_HUSH_MUTE = 2
+
+        /**
+         * ⚠️ Why this needs a marker of its own, where
+         * [materialiseTouchpadScrollDefault] needs none.
+         *
+         * The touchpad key really is absent until someone writes it, so "is it
+         * null" is a sound once-only test. `volume_hush_gesture` is **not**:
+         * SettingsProvider stores it during its own initialisation, so on a
+         * freshly wiped device it is already a row —
+         *
+         *     content query --uri content://settings/secure --where 'name="volume_hush_gesture"'
+         *     Row: 0 _id=33, name=volume_hush_gesture, value=1, is_preserved_in_restore=false
+         *
+         * — and the first version of this seed, which returned early on a
+         * non-null value, therefore never ran once. Measured on the flash it was
+         * written for, which is the only reason it was caught.
+         *
+         * So the test is "have WE done this", not "is it unset". And the write
+         * is conditional on the value still being VIBRATE, so a user who picks
+         * Vibrate deliberately on some later build keeps it.
+         */
+        const val PREF_HUSH_SEEDED = "malbec_volume_hush_seeded"
     }
 }

@@ -80,18 +80,27 @@ class PenPresenceWatcher(
             "android.bluetooth.input.profile.action.CONNECTION_STATE_CHANGED"
     }
 
-    // @Volatile because these are written from two threads: the main thread
-    // (the BroadcastReceiver, and onPenAnnouncedDisconnect via the key-gesture
-    // handler) and a binder thread — IKeyGestureHandler.aidl:23 is `oneway`, so
-    // InputManagerGlobal dispatches the pen's goodbye off the main looper
-    // (InputManagerGlobal.java:1188-1199).
-    @Volatile private var localInitiated = false
-    @Volatile private var penSaidGoodbye = false
-    @Volatile private var alertedThisSession = false
+    // ★ These were @Volatile because they were written from two threads: the
+    // main thread (the BroadcastReceiver) and a binder thread
+    // (onPenAnnouncedDisconnect — IKeyGestureHandler.aidl:23 is `oneway`, so
+    // InputManagerGlobal dispatches the pen's goodbye off the main looper,
+    // InputManagerGlobal.java:1188-1199).
+    //
+    // ⚠️ @Volatile made each field's writes visible and did NOT make the sequence
+    // atomic, which is what actually mattered here: onDisconnected reads
+    // penSaidGoodbye at the rule 3/4 check and posts the alert several lines
+    // later, so a goodbye arriving between the two cancelled a Runnable that had
+    // not been posted yet and the alert fired anyway. Session 34 moved the binder
+    // entry point onto the handler instead, so every write and every read now
+    // happens on one thread and the ordering is a property of the queue rather
+    // than of six independent volatile reads.
+    private var localInitiated = false
+    private var penSaidGoodbye = false
+    private var alertedThisSession = false
     // Rule 7's actual state. Set only in onConnected(); an alert can only be
     // armed for a pen this session has actually seen connected.
-    @Volatile private var sawConnected = false
-    @Volatile private var pendingAlert: Runnable? = null
+    private var sawConnected = false
+    private var pendingAlert: Runnable? = null
 
     private val prefs by lazy { PreferenceManager.getDefaultSharedPreferences(context) }
 
@@ -164,10 +173,29 @@ class PenPresenceWatcher(
      *
      * Rule 4.
      */
+    /**
+     * ⚠️ This is the ONE entry point that arrives on a binder thread, and it used
+     * to mutate state the main thread was in the middle of reading.
+     *
+     * `IKeyGestureHandler` is `oneway`, and `InputManagerGlobal`'s local handler
+     * invokes it inline with no Handler hop (`InputManagerGlobal.java:1188-1200`),
+     * so this runs on a binder thread while [onDisconnected] runs on the main
+     * one. `onDisconnected` reads `penSaidGoodbye` at the rule 3/4 check and only
+     * posts the alert several lines later — so a goodbye landing in that window
+     * set the flag and called [cancelPending] on a Runnable that had not been
+     * posted yet, after which the main thread posted it anyway and the alert
+     * fired 30 s later on a pen that had said goodbye.
+     *
+     * Hopping to the handler makes every mutation of this object's state happen
+     * on one thread, which is also why the fields below no longer need to be
+     * `@Volatile`: publication is the handler's, not the memory model's.
+     */
     fun onPenAnnouncedDisconnect() {
-        Log.i(TAG, "pen announced disconnect; suppressing the next alert")
-        penSaidGoodbye = true
-        cancelPending()
+        handler.post {
+            Log.i(TAG, "pen announced disconnect; suppressing the next alert")
+            penSaidGoodbye = true
+            cancelPending()
+        }
     }
 
     private fun onConnected() {
