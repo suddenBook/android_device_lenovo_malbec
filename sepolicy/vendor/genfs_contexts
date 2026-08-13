@@ -177,14 +177,40 @@ genfscon sysfs /devices/platform/soc/ae00000.qcom,mdss_mdp/backlight/panel0-back
 #     …/0:0:0:3/block/sdd/queue/rq_affinity   u:object_r:vendor_sysfs_sd:s0
 #     …/0:0:0:4/block/sde/queue/rq_affinity   u:object_r:vendor_sysfs_sd:s0
 #
-# ⚠️ On this tablet those two are SWAPPED — measured with `readlink -f`:
+# ⚠️⚠️ THE LETTER ASSIGNMENT RACES PER BOOT. DO NOT DELETE THE FOUR RULES BELOW
+# AS REDUNDANT — that is the exact mistake this paragraph now exists to prevent.
+#
+# Session 34 measured, with `readlink -f`:
 #
 #     0:0:0:3 -> sde      (65,536 sectors, the RPMB LUN)
 #     0:0:0:4 -> sdd      (8,388,608 sectors, a boot LUN)
 #
-# genfscon matches the whole path, so QTI's two rules match nothing and exactly
-# these two nodes fall through to plain `sysfs`. The other six LUNs happen to
-# enumerate in the assumed order and are labelled correctly.
+# and recorded it as a property of this unit ("on this tablet those two are
+# SWAPPED"). ★ SESSION 36 MEASURED THE OPPOSITE ON THE SAME TABLET:
+#
+#     0:0:0:3 -> sdd      (65,536 sectors)
+#     0:0:0:4 -> sde      (8,388,608 sectors)
+#
+# The SIZES still identify the LUNs the same way; only the sd* letters flipped.
+# So this is not a device property at all — the letters are handed out in
+# whatever order the LUNs finish probing, and both orders really happen.
+#
+# ✔ NOTHING IS WRONG AND NOTHING NEEDS CHANGING, and that is precisely why the
+# temptation to "clean up" is dangerous. The four rules below are ADDITIVE:
+# QTI's own two rules (device/qcom/sepolicy_vndr/sm8750/generic/vendor/parrot/
+# genfs_contexts) cover the natural order, ours cover the swapped one, and the
+# union covers both. On the boot where the letters land the other way, ours
+# name paths that do not exist and QTI's do the labelling — which is exactly
+# what was observed in session 36: the live nodes were correctly labelled
+# `vendor_sysfs_sd` while our four paths were absent.
+#
+# ⇒ Deleting these because "the paths don't exist" would break `rq_affinity`
+# labelling on roughly half of all boots, and the failure would be
+# intermittent — the worst possible shape.
+#
+# genfscon matches the whole path, so on the boot session 34 measured, QTI's two
+# rules matched nothing and exactly those two nodes fell through to plain
+# `sysfs`. The other six LUNs enumerate in the assumed order either way.
 #
 # ★ HOW THIS WAS FOUND, because the method is the point. It was invisible until
 # session 34 deleted `allow vendor_qti_init_shell sysfs:file rw_file_perms` —

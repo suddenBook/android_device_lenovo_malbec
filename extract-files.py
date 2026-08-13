@@ -921,6 +921,74 @@ blob_fixups: blob_fixups_user_type = {
     # this is a Wi-Fi-only tablet -- so the fixups had nothing left to patch.
     # work/scripts/26-orphan-blobs.py is what would catch them today.
 
+    # ── Camera: turn NCS and EIS back on, session 36 ─────────────────────────
+    #
+    # ★★ THIS IS AN EXPERIMENT, NOT A FIX, AND IT HAS A REVERT CONDITION.
+    # Read the whole comment before deciding it "works".
+    #
+    # OPEN-ISSUES #59 is "the camera works and its gyro/gravity link to the
+    # sensors does not", and its recorded strongest lead is a HIDL /
+    # hwservicemanager theory. ★ THAT LEAD IS WRONG. The root cause is three
+    # lines of this very file's own extracted copy:
+    #
+    #     EISV2Enable=0
+    #     EISV3Enable=0
+    #     enableNCSService=FALSE
+    #
+    # ⚠️ And md5sum says our copy is byte-identical to the factory one
+    # (fc80a91a06c54c92fb97049e1f00e8d7). So EIS has never worked on this
+    # tablet, on either ROM, and this port did not break it.
+    #
+    # Three independent confirmations that it is genuinely off, not merely
+    # declared off (session 36, measured):
+    #   * Aperture REQUESTS it on every frame --
+    #     android.control.videoStabilizationMode = 2 (PREVIEW_STABILIZATION);
+    #   * the HAL still advertises availableVideoStabilizationModes = [0 1 2],
+    #     so the framework tells apps it is available;
+    #   * the recorded frames carry NO EIS margin crop. EIS costs ~10 % and the
+    #     only crop present is 1.14 %, which has an unrelated cause (the HAL
+    #     declares activeArraySize 4208 wide and can only output 4160).
+    #
+    # ★ WHY THIS IS WORTH TRYING AT ALL — the precondition was proven first,
+    # because trap 3 has told this lie four times on this device. The gyro is
+    # REAL: with no vibration motor to use as an actuator, the tablet was made
+    # to shake itself with its own speakers, and the gyro's spectral peak
+    # tracked a runtime-chosen 90 Hz and then 150 Hz tone (89.92 / 150.00) while
+    # falling back to ambient in every silence window -- responding on X/Y where
+    # the accelerometer responded on Z, which is the correct geometry for cone
+    # thrust and therefore an independent transducer rather than an echo.
+    # Samples quantise to the ST 70.000 mdps LSB, and the live bias agrees with
+    # the value this unit's factory line persisted on 2026-05-25 to better than
+    # 5e-5 rad/s. Lenovo's own spec sheet lists the gyroscope. Full derivation:
+    # work/notes/session36-findings.md §0b.
+    #
+    # ⇒ Lenovo shipped EIS off on a device that HAS a working gyro. That is a
+    # configuration decision, not a missing part -- which is what makes flipping
+    # it a reasonable experiment and NOT an obvious oversight to correct.
+    #
+    # NCS is not a missing daemon either: /vendor/lib64/libcamxncsdatafactory.so
+    # is present here, and `find` over the whole factory image returns the same
+    # single library. The only thing switched off is the flag.
+    #
+    # ⚠️ ACCEPTANCE IS BEHAVIOUR, NOT A LOG LINE. A handheld pan recorded before
+    # and after, compared side by side. The log evidence (the per-camera-open
+    # "NCS service for …" errors, and com.qti.node.seg25's ~58 error lines per
+    # second of preview, which is almost certainly downstream of the same
+    # absence) is corroboration, not the test.
+    #
+    # ⚠️ REVERT IF: the camera becomes unstable, stills regress, or there is no
+    # visible stabilisation difference. Lenovo may know something we do not --
+    # they shipped it off on hardware that has the sensor. Do not keep a change
+    # that buys nothing; three lines back.
+    #
+    # ⚠️ This is a NEW blob_fixups key, so the file gains its first hash pin in
+    # the same change -- same as wifi_qos_daemon's did (see that entry above).
+    # Expect proprietary-files.txt:1133 to grow a |<sha1>.
+    ('vendor/etc/camera/camxoverridesettings.txt',): blob_fixup()
+        .regex_replace(r'(?m)^enableNCSService=FALSE$', 'enableNCSService=TRUE')
+        .regex_replace(r'(?m)^EISV2Enable=0$', 'EISV2Enable=1')
+        .regex_replace(r'(?m)^EISV3Enable=0$', 'EISV3Enable=1'),
+
 }  # fmt: skip
 
 # Firmware images (xbl, tz, abl, modem, hyp, …) are deliberately not shipped

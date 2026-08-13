@@ -97,6 +97,20 @@ repo sync
 bootstrap file. Its repository values include `suddenBook/`; even after a move
 to LineageOS those prefixes would need to be removed.
 
+⚠️ **It lists all FOUR forked projects, and session 36 is why.** It used to list
+two — `malbec-kernel` and `vendor/lenovo/malbec` — and omit `frameworks/base`
+and `vendor/gapps`. Those are **precisely the two whose absence is silent**: a
+missing `frameworks/base` fork builds a ROM with no parallel-window engine and
+no error, and a missing `vendor/gapps` builds **green** and ships a device with
+no Play Services (HANDOFF fact 5). The two it did list fail loudly. So the
+incomplete half of the "intent" was the half that needed writing down.
+
+The file is JSON and cannot carry a comment, which is why this paragraph is
+here — and it is also why `malbec.xml` remains the only thing that actually
+works. Nothing consumes `lineage.dependencies` in this port; keeping it complete
+costs nothing and stops a reader diffing it against `malbec.xml` and finding an
+unexplained discrepancy.
+
 ## ⚠️ Then, before the first build
 
 ```bash

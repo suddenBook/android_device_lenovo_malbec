@@ -77,8 +77,23 @@ allow vendor_init proc_lenovo_pen:file { open write getattr };
 #
 #   1. It cannot succeed anyway. Those are ro.* properties, which are write-once,
 #      and build.prop has already set them by the time this trigger fires.
-#   2. If it ever did succeed it would overwrite the fingerprint PixelOS manages
-#      (SetSafetyNetProps(), system/core/init/property_service.cpp:1377-1389).
+#      ★ This is the load-bearing reason and it is correct.
+#   2. If it ever did succeed it would overwrite the fingerprint this tree
+#      spoofs for Play Protect -- lineage_malbec.mk's PRODUCT_BUILD_PROP_OVERRIDES
+#      / PRODUCT_SYSTEM_NAME block.
+#
+#      ⚠️ CORRECTED SESSION 36. This used to read "the fingerprint PixelOS
+#      manages (SetSafetyNetProps(), system/core/init/property_service.cpp:
+#      1377-1389)". That function DOES NOT EXIST IN THIS TREE -- it was a
+#      PixelOS init patch, and `grep -rn SetSafetyNetProps` over system/core/init
+#      and the whole source returns nothing. LineageOS has no equivalent; the
+#      fingerprint here is a plain build-time property override.
+#
+#      This is OPEN-ISSUES #10's class ("statements measured on the PixelOS
+#      port") still live in the tree, and it is the dangerous half of that
+#      class: not a wrong number, but a named mechanism that a reader can go
+#      looking for and will never find. The sibling comment in
+#      property_contexts:16-24 always had it right.
 #
 # The denial is expected noise, not a defect. Leave it.
 
