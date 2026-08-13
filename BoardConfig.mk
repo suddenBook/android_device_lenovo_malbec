@@ -901,12 +901,19 @@ include device/qcom/sepolicy_vndr/SEPolicy.mk
 MALBEC_NO_DONTAUDIT ?= false
 ifeq ($(MALBEC_NO_DONTAUDIT),true)
 MALBEC_SEPOLICY_MIRROR := $(OUT_DIR)/malbec-sepolicy-no-dontaudit
+# ⚠️ `cp -a` PRESERVES TIMESTAMPS, and that is a trap this cost one build to
+# find. The mirror's files inherit the source mtimes, so switching back to the
+# real directory afterwards can leave ninja believing the policy it built from
+# the mirror is still current — the artefact and the tree diverge silently,
+# which is lesson 12 one layer down. `--no-preserve=timestamps` plus an explicit
+# touch makes every mirrored file unambiguously new.
 BOARD_VENDOR_SEPOLICY_DIRS += $(shell \
     rm -rf $(MALBEC_SEPOLICY_MIRROR) && \
     mkdir -p $(MALBEC_SEPOLICY_MIRROR) && \
-    cp -a $(DEVICE_PATH)/sepolicy/vendor/. $(MALBEC_SEPOLICY_MIRROR)/ && \
+    cp -r --no-preserve=timestamps $(DEVICE_PATH)/sepolicy/vendor/. $(MALBEC_SEPOLICY_MIRROR)/ && \
     sed -i -E 's/^([[:space:]]*)dontaudit /\1# MALBEC_NO_DONTAUDIT stripped: dontaudit /' \
         $(MALBEC_SEPOLICY_MIRROR)/*.te && \
+    touch $(MALBEC_SEPOLICY_MIRROR)/* && \
     echo $(MALBEC_SEPOLICY_MIRROR))
 $(warning MALBEC_NO_DONTAUDIT=true: DIAGNOSTIC BUILD, this port's own dontaudit \
 rules are stripped. Do not ship. See BoardConfig.mk and work/notes/dontaudit-probe.md)
