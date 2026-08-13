@@ -167,3 +167,51 @@ genfscon sysfs /class/qcom-battery                                           u:o
 # sepolicy/vendor/hal_lineage_livedisplay.te — one rule, and it is required.
 genfscon sysfs /devices/platform/soc/ae00000.qcom,mdss_mdp/backlight/panel0-backlight     u:object_r:vendor_sysfs_graphics:s0
 genfscon sysfs /devices/platform/soc/ae00000.qcom,mdss_mdp/backlight/panel0-backlight/hbm u:object_r:sysfs_livedisplay_tuneable:s0
+
+# ★ The two UFS LUNs QTI's own genfs rules mislabel on this unit, because it
+# assumes an enumeration order this device does not have.
+#
+# device/qcom/sepolicy_vndr/sm8750/…/genfs_contexts labels all eight LUNs on the
+# assumption that LUN index N is /sys/block/sd<N-th letter>:
+#
+#     …/0:0:0:3/block/sdd/queue/rq_affinity   u:object_r:vendor_sysfs_sd:s0
+#     …/0:0:0:4/block/sde/queue/rq_affinity   u:object_r:vendor_sysfs_sd:s0
+#
+# ⚠️ On this tablet those two are SWAPPED — measured with `readlink -f`:
+#
+#     0:0:0:3 -> sde      (65,536 sectors, the RPMB LUN)
+#     0:0:0:4 -> sdd      (8,388,608 sectors, a boot LUN)
+#
+# genfscon matches the whole path, so QTI's two rules match nothing and exactly
+# these two nodes fall through to plain `sysfs`. The other six LUNs happen to
+# enumerate in the assumed order and are labelled correctly.
+#
+# ★ HOW THIS WAS FOUND, because the method is the point. It was invisible until
+# session 34 deleted `allow vendor_qti_init_shell sysfs:file rw_file_perms` —
+# the blanket grant that let the write succeed on ANY plain-sysfs file and so
+# hid the mislabelling. The MALBEC_NO_DONTAUDIT diagnostic boot then produced:
+#
+#     avc: denied { write } for comm="sh" name="rq_affinity" dev="sysfs"
+#          ino=92075 scontext=u:r:vendor_qti_init_shell:s0
+#          tcontext=u:object_r:sysfs:s0
+#
+# and ino 92075 resolved to /sys/block/sde/queue/rq_affinity. The writer is
+# /vendor/bin/init.kernel.post_boot-tuna.sh:81-82, `for sd in
+# /sys/block/sd*/queue/rq_affinity`, "set rq_affinity to 0 on ufs devices".
+# Measured after the removal: six LUNs read 0 and sdd/sde read 1.
+#
+# ⚠️ Stock has the identical mislabelling and does not notice, because it ships
+# the blanket rule. Two labels are strictly better than one blanket grant: this
+# fixes the two nodes that were wrong instead of permitting every plain-sysfs
+# file on the device.
+#
+# The functional stake is small and is stated rather than oversold: rq_affinity
+# is block-layer completion affinity on a 64 KB RPMB LUN and an 8 MB boot LUN,
+# neither of which carries meaningful I/O. read_ahead_kb is labelled with it for
+# the same reason QTI labels the pair together — nothing writes it on these two
+# today, and leaving one half of a mislabelled pair fixed is how the next reader
+# gets confused.
+genfscon sysfs /devices/platform/soc/1d84000.ufshc/host0/target0:0:0/0:0:0:3/block/sde/queue/rq_affinity    u:object_r:vendor_sysfs_sd:s0
+genfscon sysfs /devices/platform/soc/1d84000.ufshc/host0/target0:0:0/0:0:0:3/block/sde/queue/read_ahead_kb   u:object_r:vendor_sysfs_sd:s0
+genfscon sysfs /devices/platform/soc/1d84000.ufshc/host0/target0:0:0/0:0:0:4/block/sdd/queue/rq_affinity    u:object_r:vendor_sysfs_sd:s0
+genfscon sysfs /devices/platform/soc/1d84000.ufshc/host0/target0:0:0/0:0:0:4/block/sdd/queue/read_ahead_kb   u:object_r:vendor_sysfs_sd:s0

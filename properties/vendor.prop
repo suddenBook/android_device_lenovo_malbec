@@ -239,6 +239,14 @@ vendor.display.enable_dpps_dynamic_fps=1
 vendor.display.enable_early_wakeup=1
 vendor.display.enable_hdr10_gpu_target=1
 vendor.display.enable_optimize_refresh=0
+# ⚠️ REDUNDANT, recorded session 34. init.qti.display_boot.sh:88 sets this to 1
+# at runtime inside the `655|681|659|694|686|720|721|731|732)` branch, and this
+# device is soc_id 694. The values agree so nothing breaks — but this file
+# already applies exactly that criterion to a sibling a few lines away ("the
+# script sets it at runtime for soc_id 694; a static value here would be
+# redundant at best") and did not apply it here. Its two neighbours
+# enable_rounded_corner and use_smooth_motion are correctly kept: the script sets
+# neither for 694.
 vendor.display.enable_rc_support=1
 
 # Audio
@@ -260,6 +268,16 @@ vendor.audio.feature.dmabuf.cma.memory.enable=false
 vendor.audio.feature.hfp.enable=true
 vendor.audio.feature.kpi_optimize.enable=true
 vendor.audio.flac.sw.decoder.24bit=true
+# ⚠️ INERT, corrected session 34. The comment above once called this "the one
+# that matters most"; it is read by nothing. The string occurs in this tree only
+# in hardware/qcom-caf/sm8750/audio/primary-hal/configs/{sun,pineapple}/
+# audio-properties.mk, which are SETTERS, and it is absent from the built
+# out/…/vendor/bin/hw/audiohalservice.qti. What actually selects the AIDL HAL is
+# unconditional: audiohalservice_qti.rc:1 declares `service vendor.audio-hal-aidl
+# /vendor/bin/hw/audiohalservice.qti`, class hal, with no property gate anywhere
+# in the file. ★ The property in this area that IS load-bearing is
+# ro.audio.ihaladaptervendorextension_enabled in system_ext.prop, verified live
+# at DevicesFactoryHalAidl.cpp:126. Kept as stock parity, recorded as dead.
 vendor.audio.hal.aidl.enabled=true
 vendor.audio.hal.output.suspend.supported=true
 vendor.audio.hdr.record.enable=false
@@ -320,7 +338,18 @@ persist.bluetooth.leaudio_offload.disabled=false
 # NO reader. `grep -rlaF` over every partition of both the built image and the
 # factory image finds the string only inside vendor/build.prop itself — Lenovo
 # sets it and nothing consumes it either. The live capability list is
-# persist.bluetooth.a2dp_offload.cap above, which the AOSP stack does read.
+# persist.bluetooth.a2dp_offload.cap above -- which, ⚠️ CORRECTED SESSION 34,
+# NOTHING READS EITHER. Its only occurrence in the whole tree outside
+# property_contexts is an unused constant declaration,
+# hardware/interfaces/bluetooth/bluetooth_hal/include/public/bluetooth_hal/
+# hal_types.h:29 `static constexpr char kA2dpOffloadCap[]`; `grep -rn
+# kA2dpOffloadCap` returns that line and nothing else, and the string is in no
+# shipped blob. In Android 16 the offloaded codec set comes from the Bluetooth
+# Audio HAL's provider capabilities, not from a property. So the DELETION above
+# was right and the reason given for it was not -- both properties are dead, and
+# this one is kept only as stock parity with no reader. ★ The bad half is that
+# the reasoning is reusable: "the other one is the live one" was asserted, not
+# checked.
 # It was also the FIRST SELinux denial of every boot (audit(0.0:3)): QTI labels
 # the prefix persist.vendor.bt.a2dp as bluetooth_prop
 # (device/qcom/sepolicy/generic/private/property_contexts:47), a system_ext type
