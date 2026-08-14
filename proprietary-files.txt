@@ -1420,9 +1420,6 @@ vendor/lib64/vendor.qti.hardware.camera.offlinecamera-service-impl.so|4c7013e5f8
 # (its proprietary-files.txt:2261,2274-2296,2320 take the entire cluster).
 #
 # device.mk must NOT put any of these back into PRODUCT_PACKAGES.
-system_ext/lib64/libwfddisplayconfig.so|6d5ed77a65d765e48a23f3519c6c7a5005945086|0ec23909490dc70c6289a00752fa2c541b664221
-system_ext/lib64/vendor.qti.hardware.wifidisplaysession@1.0.so
-system_ext/lib64/vendor.qti.hardware.wifidisplaysession_aidl-V1-ndk.so
 vendor/bin/hw/vendor.lenovo.hardware.display-service
 vendor/bin/hw/vendor.qti.hardware.display.allocator-service
 vendor/bin/hw/vendor.qti.hardware.display.color-service
@@ -1816,36 +1813,12 @@ vendor/lib64/vendor.qti.hardware.wifi.wifilearner-V1-ndk.so
 # fragment (the derivation is above, next to vendor.qti.diag.rc's old line). So
 # the NEEDED it names is now absent from every partition, not merely from the
 # wrong one.
-# ★ The Java half of Miracast. Extracted from /system/framework and installed to
-# /system_ext/framework, which is not a tidy-up — it is the path the code in THIS
-# tree looks at.
-#
-# ExtendedRemoteDisplayHelper is the AOSP-side integration point and
-# WifiDisplayController:767,775 dispatches through it. It resolves the class two
-# ways, in order (ExtendedRemoteDisplayHelper.java:63-79):
-#
-#     Class.forName("com.qualcomm.wfd.ExtendedRemoteDisplay")        // boot classpath
-#     new PathClassLoader("/system_ext/framework/WfdCommon.jar", …)  // fallback
-#
-# and WFD_COMMON_JAR at :46 is that literal system_ext path. Verified the class
-# is actually in the archive rather than assumed from the name: the jar holds one
-# classes.dex and Lcom/qualcomm/wfd/ExtendedRemoteDisplay; is in its string pool.
-#
-# ⚠️ Deliberately NOT ;BOOT_JAR, which is what this line said first. Stock does
-# use the boot classpath (system/etc/classpaths/bootclasspath.pb lists
-# /system/framework/WfdCommon.jar) and onyx tags the identical file that way, so
-# copying either of them looked right. It is the heavier of the two routes here:
-# PRODUCT_BOOT_JARS pulls a vendor prebuilt into dexpreopt, the boot image
-# profile and derive_classpath's bootclasspath.pb, i.e. into every process on the
-# device — to reach a class that one class in system_server loads reflectively
-# and that the second route reaches with no platform change at all. The rest of
-# the WFD stack already lives in system_ext (wfdservice64, WfdService.apk and
-# twenty libwfd*.so), so this puts the jar with its own stack.
-#
-# The boot-classpath route was checked before being rejected, not assumed to be
-# broken: com.qualcomm.wfd IS on the allowlist that would otherwise fail the
-# build (build/soong/scripts/check_boot_jars/package_allowed_list.txt, "# QC
-# adds"). It would work. It is simply more blast radius than the job needs.
+# The old QTI system_ext Miracast client is deliberately not extracted. Its
+# pre-Android-16 SurfaceComposerClient::Transaction stack object is 0x160 bytes;
+# the current constructor writes through 0x1d8, corrupting its canary and saved
+# registers before __stack_chk_fail. With WfdCommon absent, the framework uses
+# its current-built RemoteDisplay fallback. The separate vendor AIDL WFD
+# services and their source-session libraries remain extracted below.
 # ★ The boot animation is NOT extracted. It was, up to session 20, and the
 # reason it is not any more is a real difference between the two ROMs rather
 # than a change of taste.
@@ -1880,39 +1853,12 @@ vendor/lib64/vendor.qti.hardware.wifi.wifilearner-V1-ndk.so
 #     (vendor/lineage/config/BoardConfigSoong.mk:26). Half res does not shrink
 #     the animation — desc.txt still says 2190x730 — it renders 1095x365 PNGs and
 #     lets BootAnimation upscale them 2x, which on a 3.5K panel is visible.
-system/framework/WfdCommon.jar:system_ext/framework/WfdCommon.jar
 system_ext/app/FrameworksUtilsSysService/FrameworksUtilsSysService.apk
-system_ext/bin/wfdservice64
-system_ext/etc/init/wfdservice.rc
 system_ext/etc/permissions/qti_permissions.xml
-system_ext/etc/permissions/wfd-system-ext-privapp-permissions-qti.xml
-system_ext/etc/seccomp_policy/wfdservice64.policy
 system_ext/etc/sysconfig/qti_whitelist_system_ext.xml
 system_ext/etc/vintf/manifest/vendor.qti.qesdsys.service.xml
-system_ext/etc/wfdconfigsink.xml
 system_ext/framework/vendor.qti.hardware.alarm-V1.0-java.jar
-system_ext/lib64/libmmosal.so
-system_ext/lib64/libmmparser_lite.so
-system_ext/lib64/libmmrtpdecoder.so
-system_ext/lib64/libmmrtpencoder.so
 system_ext/lib64/libqesdk_ndk_platform.qti.so
-system_ext/lib64/libwfdavenhancements.so
-system_ext/lib64/libwfdclient.so
-system_ext/lib64/libwfdcommonutils.so
-system_ext/lib64/libwfdconfigutils.so
-system_ext/lib64/libwfdmminterface.so
-system_ext/lib64/libwfdmmsink.so
-system_ext/lib64/libwfdmmsrc_system.so
-system_ext/lib64/libwfdnative.so;SYMLINK=system_ext/priv-app/WfdService/lib/arm64/libwfdnative.so|659a465b956f38f0c878bd5120f8a42a8787b0a5|1c0047fac0389430f80a0667169a412b9028d04b
-system_ext/lib64/libwfdrtsp.so
-system_ext/lib64/libwfdservice.so
-system_ext/lib64/libwfdsinksm.so
-system_ext/lib64/libwfduibcinterface.so
-system_ext/lib64/libwfduibcsink.so
-system_ext/lib64/libwfduibcsinkinterface.so
-system_ext/lib64/libwfduibcsrc.so
-system_ext/lib64/libwfduibcsrcinterface.so
-system_ext/priv-app/WfdService/WfdService.apk
 
 # Misc
 vendor/bin/cdsprpcd

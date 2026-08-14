@@ -211,35 +211,6 @@ blob_fixups: blob_fixups_user_type = {
     ('vendor/lib64/libaudioserviceexampleimpl.so',): blob_fixup()
         .add_needed('libaudioutils_shim.so'),
 
-    # Miracast (WiFi Display). Exactly the same shape as the line above, and the
-    # shim is likewise already upstream — it just was not noticed the first time.
-    #
-    # libwfdnative.so is WfdService.apk's JNI library. It was compiled against an
-    # Android 15 frameworks/native, where MotionEvent::initialize took `int flags`;
-    # Android 16 changed that parameter to ftl::Flags<MotionFlag>, so the mangled
-    # name it imports no longer exists. Of its 138 undefined symbols, resolved
-    # against all 1086 shared libraries this build installs under /system,
-    # /system_ext and /apex, that one symbol is the *only* miss.
-    #
-    # hardware/lineage/compat/libinput/Input.cpp:29-42 defines precisely that old
-    # mangled name and forwards to the new one, wrapping the int as
-    # ftl::Flags<MotionFlag>(flags). Module `libinput_shim`
-    # (hardware/lineage/compat/Android.bp:355-371) is system_ext_specific and
-    # 64-bit, i.e. the same partition and linker namespace as libwfdnative.so.
-    #
-    # ⚠️ Do NOT reach for ;DISABLE_CHECKELF here instead. That silences the build
-    # check without providing the symbol, so the library still fails to load at
-    # runtime — an installed, permanently broken Miracast, and silently so. The
-    # shim actually defines the symbol, which is why this is a fix and that is not.
-    #
-    # Without these two blobs the whole native WFD stack we already ship (47
-    # entries, plus wfd-system-ext-privapp-permissions-qti.xml allowlisting a
-    # package that was not installed) is dead weight: wfdservice.rc only starts
-    # wfdservice64 `on property:vendor.wfdservice64=enable`, and the APK is what
-    # sets that property.
-    ('system_ext/lib64/libwfdnative.so',): blob_fixup()
-        .add_needed('libinput_shim.so'),
-
     # ⚠️ libaodoptfeature / libcamerapoweroptfeature / libgamepoweroptfeature /
     # liboffscreenpoweroptfeature / libpsmoptfeature / libvideooptfeature used to
     # be in this tuple. Session 14 removed the whole poweropt cluster (its only
@@ -253,7 +224,6 @@ blob_fixups: blob_fixups_user_type = {
     # itself a `user` build, cannot start it either. proprietary-files.txt carries
     # the full derivation next to where the .rc line used to be.
     (
-        'system_ext/lib64/libwfddisplayconfig.so',
         'vendor/lib64/libapengine.so',
         'vendor/lib64/libqcodec2_utils.so',
         'vendor/lib64/libqti-perfd.so',

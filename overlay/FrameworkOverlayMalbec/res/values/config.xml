@@ -948,48 +948,23 @@
         <!-- B y-intercept --> <item>-0.298650895</item>
     </string-array>
 
-    <!-- Miracast / Wi-Fi Display. AOSP default is false
-         (core/res/res/values/config.xml:3425) and
-         DisplayManagerService.java:2397-2405 only builds a WifiDisplayAdapter
-         when it is true, so without this the whole vendor stack this tree
-         already ships is unreachable: wfdservice64, WfdService.apk and
-         libwfdnative.so are extracted, device.mk installs libinput_shim
-         specifically so libwfdnative resolves MotionEvent::initialize on
-         Android 16, and libwfdaac_vendor is in PRODUCT_PACKAGES. Stock turns it
-         on with persist.debug.wfd.enable=1 in system/build.prop:142 — the
-         partition LineageOS replaces, which is how the switch got lost. The
-         matching vendor-side properties are in properties/system.prop.
-
-         The QTI integration point exists in this tree: WifiDisplayController
-         holds mExtRemoteDisplay and dispatches through
-         ExtendedRemoteDisplayHelper (:767,:775), which is what WfdService.apk
-         registers with; AOSP's own RemoteDisplay path is the fallback and is
-         also still present (frameworks/av/media/libstagefright/wifi-display).
-
-         ⚠️ Not yet exercised against a real sink. If casting turns out not to
-         work, set this back to false and drop the five blobs rather than
-         leaving a Settings entry that fails — an option that is guaranteed to
-         fail is worse than an absent one. -->
+    <!-- Miracast / Wi-Fi Display. AOSP defaults this to false
+         (core/res/res/values/config.xml), while this tablet and stock expose
+         Wi-Fi Display. Keep the feature enabled, but use the current-built AOSP
+         RemoteDisplay path. ExtendedRemoteDisplayHelper falls back to it when
+         WfdCommon is absent. The old QTI system_ext client was removed because
+         its pre-Android-16 SurfaceComposerClient::Transaction stack object is
+         smaller than the current constructor and deterministically trips stack
+         protection. The separately retained vendor AIDL WFD services are not
+         that client. Ordinary source-mode casting still requires a real-sink
+         post-flash test. -->
     <bool name="config_enableWifiDisplay">true</bool>
 
-    <!-- ★ Added session 23, and it belongs with the line above rather than on
-         its own: turning Miracast on without it means the cast display cannot
-         carry protected content.
-
-         WifiDisplayAdapter.java:116-117 -> :408 is the only place
-         FLAG_SUPPORTS_PROTECTED_BUFFERS is set on the cast virtual display, and
-         it reads exactly this resource. AOSP defaults it false
-         (core/res/res/values/config.xml:3494); stock sets it true in
-         product/overlay/FrameworksResCommon_Sys.apk. The hardware agrees:
-         `dumpsys wifi` reports WIFI_FEATURE_WFD_R2, and this tree already ships
-         the HDCP half of the stack (android.hardware.drm-service.wfdhdcp,
-         registered live as IDrmFactory/wfdhdcp).
-
-         The same caveat as config_enableWifiDisplay applies — untested against a
-         real sink — but the failure modes differ: without this, DRM video
-         silently casts as a black rectangle rather than not casting at all,
-         which is the harder one to diagnose. -->
-    <bool name="config_wifiDisplaySupportsProtectedBuffers">true</bool>
+    <!-- Do not advertise protected cast buffers. The AOSP source path dlopens
+         libstagefright_hdcp.so, which neither stock nor this image provides; a
+         live vendor wfdhdcp service alone does not satisfy that client path.
+         Local protected rendering remains enabled independently in vendor.prop. -->
+    <bool name="config_wifiDisplaySupportsProtectedBuffers">false</bool>
 
     <!-- ================================================================== -->
     <!-- Desktop windowing: off                                             -->

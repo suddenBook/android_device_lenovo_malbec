@@ -414,12 +414,11 @@ PRODUCT_PACKAGES += \
 # Vendor variants of the AOSP support libraries the stock audio blobs depend on.
 # onyx lists the same set.
 #
-# ⚠️ libaudioutils_shim has NO build-time dependency edge, and the asymmetry with
-# libinput_shim is invisible. extract-files.py adds it to
-# libaudioserviceexampleimpl.so's DT_NEEDED, but that blob carries ;DISABLE_DEPS,
-# so extract_utils/makefiles.py:135-137 sets gen_deps=False and check_elf=False
-# and the generated Android.bp entry has no shared_libs at all. This
-# PRODUCT_PACKAGES line is the ONLY thing installing it.
+# ⚠️ libaudioutils_shim has NO build-time dependency edge. extract-files.py
+# adds it to libaudioserviceexampleimpl.so's DT_NEEDED, but that blob carries
+# ;DISABLE_DEPS, so extract_utils/makefiles.py:135-137 sets gen_deps=False and
+# check_elf=False and the generated Android.bp entry has no shared_libs at all.
+# This PRODUCT_PACKAGES line is the ONLY thing installing it.
 #
 # Deleting the line goes green and then fails at runtime: the blob carries
 # BIND_NOW, so an unresolved symbol makes dlopen fail outright, its consumer is
@@ -427,8 +426,6 @@ PRODUCT_PACKAGES += \
 # ten times and then LOG_ALWAYS_FATALs — audiohalservice.qti in an init respawn
 # loop. work/scripts/33-blob-linkcheck.py is the only guard.
 #
-# libinput_shim is NOT ;DISABLE_DEPS and does get a real edge, which is why it
-# looks like this line is equally safe to remove. It is not.
 PRODUCT_PACKAGES += \
     libalsautilsv2.vendor \
     libaudioaidlcommon.vendor \
@@ -510,13 +507,6 @@ PRODUCT_PACKAGES += \
 # systemReady() and the device sits on the boot animation forever. It did, once.
 PRODUCT_PACKAGES += \
     MalbecParts
-
-# Miracast: the compat shim that gives libwfdnative.so the pre-Android-16
-# MotionEvent::initialize symbol. See the blob_fixup in extract-files.py for why
-# this is the correct fix rather than ;DISABLE_CHECKELF. Installs to
-# /system_ext/lib64, the same namespace as its consumer.
-PRODUCT_PACKAGES += \
-    libinput_shim
 
 # ── Sonames that ;DISABLE_DEPS blobs need and nothing in the tree provides ──
 #
