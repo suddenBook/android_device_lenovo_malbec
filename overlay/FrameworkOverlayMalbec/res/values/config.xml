@@ -201,20 +201,16 @@
          source and PixelConfigOverlay2021_GMS does not exist: it is
          vendor/lineage/overlay/common/frameworks/base/core/res/res/values/
          config.xml:153, a STATIC overlay compiled into framework-res.apk.
-         That matters, because an RRO beats a static overlay on any partition —
-         see the ⚠️ further down about partition_order.xml.
+         That matters because this RRO overrides the value compiled into the
+         target package without changing Android's standard partition order.
 
          It is wrong here on the hardware: this panel is an LCD, not OLED (the
          backlight driver logs [AWNl/E]lcd_brightness_work), so dark mode buys no
          power and costs contrast, and the device owner reported being unable to
          read the UI.
 
-         ⚠️ This line ONLY works because configs/partition_order.xml moves
-         /vendor/overlay above /product/overlay. Without that this resource is a
-         no-op: `cmd overlay list android` prints in increasing priority and
-         android.overlay.malbec came FIRST, below every pixelconfig*_gms. Setting
-         it here and stopping would have looked like a fix and changed nothing.
-         Verify with:
+         The installed product overlays currently do not define this resource,
+         so no global partition-precedence override is needed. Verify with:
              adb shell cmd overlay lookup android android:integer/config_defaultNightMode
          which must return 1.
 
@@ -647,8 +643,8 @@
          Keeping them here as well would be two places that must agree for no
          benefit, since this copy can never win and can never be reached.
          This is the same shape as the tree's other "written but not reachable"
-         findings — see the config_defaultNightMode note in
-         configs/partition_order.xml. -->
+         findings; a resource can resolve correctly in an overlay lookup and
+         still be bypassed by the framework code path. -->
 
 
     <!-- Note: This setting is deprecated, please use
@@ -1026,7 +1022,7 @@
          was missed. Redundant and explicit beats absent and inferred.
 
          Static overlays are baked into framework-res.apk, so an RRO always wins
-         over them — no partition-order question here, unlike config_defaultNightMode.
+         over them — no partition-order question here.
          Verified on the device before writing this: `cmd overlay lookup` in
          verbose mode reported both resolving from framework-res.apk itself with
          no competing RRO in the chain, while config_showNavigationBar on the

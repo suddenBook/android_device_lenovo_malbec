@@ -41,11 +41,10 @@
      overridden HERE as well as (or instead of) in values/.
 
      ── This is a THIRD way for an RRO to be a silent no-op ────────────────
-     The tree already documents two: overriding a resource name the target does
-     not have (session 21, config_show_advanced_refresh_rate), and losing to a
-     higher-priority overlay (partition_order.xml, config_defaultNightMode).
-     This is neither: the name is right, the priority is right, and the value is
-     simply never consulted.
+     The tree already documents overriding a resource name the target does not
+     have (session 21, config_show_advanced_refresh_rate). This is different:
+     the name and overlay order are right, but the unqualified value is simply
+     never consulted on this large-screen configuration.
 
      ── The audit, so this is not rediscovered one resource at a time ──────
      Every resource our six overlays declare was checked against qualified
