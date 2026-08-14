@@ -245,9 +245,15 @@ blob_fixups: blob_fixups_user_type = {
     # be in this tuple. Session 14 removed the whole poweropt cluster (its only
     # loader, vendor/bin/poweropt-service, went in session 11), so those six
     # fixups had nothing left to patch.
+    #
+    # ⚠️ vendor/bin/qguard was here too and went in session 37, together with its
+    # .rc, its .json and its hash pin. It is a QTI hang watchdog whose SELinux
+    # domain exists only in the userdebug-gated sm8750/generic/vendor/test/ tree,
+    # so on the `user` build this port ships it could never start — and stock,
+    # itself a `user` build, cannot start it either. proprietary-files.txt carries
+    # the full derivation next to where the .rc line used to be.
     (
         'system_ext/lib64/libwfddisplayconfig.so',
-        'vendor/bin/qguard',
         'vendor/lib64/libapengine.so',
         'vendor/lib64/libqcodec2_utils.so',
         'vendor/lib64/libqti-perfd.so',

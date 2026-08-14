@@ -7,10 +7,10 @@
 #    machine-written half is `./setup-makefiles.py`, which is
 #    `./extract-files.py --regenerate_makefiles`. OPEN-ISSUES.md #31.
 #
-# ★ THE 32 ENTRIES WITH `|<sha1>|<sha1>` ARE HASH-PINNED, AND THAT IS THE ONLY
+# ★ THE 33 ENTRIES WITH `|<sha1>|<sha1>` ARE HASH-PINNED, AND THAT IS THE ONLY
 #   THING STANDING BETWEEN A VENDOR UPDATE AND A SILENTLY HALF-PATCHED BLOB.
 #
-# Those 32 are exactly the ones extract-files.py rewrites (`blob_fixups`), and
+# Those 33 are exactly the ones extract-files.py rewrites (`blob_fixups`), and
 # the two hashes are the file's sha1 BEFORE and AFTER its fixups
 # (extract_utils/module.py:939,968 — `file_path_sha1`, not sha256).
 #
@@ -32,8 +32,31 @@
 #
 # What a pin does: extraction stops with a hash mismatch instead of shipping the
 # wrong bytes. That is deliberately a hard failure on the day a legitimate ZUI
-# update lands — the cost is re-pinning 32 lines by hand, which is exactly when
+# update lands — the cost is re-pinning 33 lines by hand, which is exactly when
 # each fixup needs re-reading anyway. Owner decision, session 23.
+#
+# ⚠️⚠️ THE SENTENCE ABOVE IS ONLY TRUE ON ONE OF THE TWO EXTRACTION PATHS, AND IT
+# IS NOT THE ONE A NEW ZUI DROP TAKES. Measured session 37:
+#
+#   extract_utils/module.py:1054-1068   restore from backup   result CHECKED  ✔
+#   extract_utils/module.py:1096-1101   fresh from image      result DISCARDED ✘
+#
+# On the fresh path a BAD_FIXUP or MISMATCH prints one coloured console line
+# among ~1500 and process_file() returns True anyway, so the makefiles are
+# regenerated and the build goes green with an un-fixed blob. That is the path a
+# fresh clone, a deleted proprietary/ tree, a `--section` run or another machine
+# all take — i.e. precisely the situation the pins exist for. We do not patch
+# tools/extract-utils (a shared LineageOS repo this port does not fork):
+#
+#   ⇒ python3 work/scripts/57-fixup-pin-check.py
+#
+# re-derives BOTH hashes for all 33 pins, from the pristine factory image and
+# from the shipped blob, cross-checks keys against pins in both directions,
+# replays the current recipe, and exits 1 on any problem. It is a blocking
+# 32-acceptance.py check and has a --selftest that makes every known regression
+# class fail on purpose, including post-literal recipe mutation and changed
+# build-affecting File args. It deliberately is not a 40-build.sh pre-flight: a normal
+# source build must not require this private, unversioned factory-image input.
 #
 # To re-pin after a vendor update: extract normally, confirm each fixup still
 # does what its comment says, then recompute both hashes (the pre-hash is the
@@ -41,10 +64,12 @@
 # sha1 of the file that lands in vendor/lenovo/malbec/proprietary/).
 #
 # ⚠️ Every one was verified to have pre != post when the pins were written, i.e.
-# all 32 fixups are live today. The count has moved three times — 26 -> 31 -> 32
-# (session 25 added media_profiles_tuna_v0.xml) — so treat the number in this
-# header as a claim to re-derive, not a fact: `grep -cE '\|[0-9a-f]{40}\|' `
-# against the number of blob_fixups keys in extract-files.py. (It said 26 for a
+# all 33 fixups are live today. The count has moved five times — 26 -> 31 -> 32
+# (session 25 added media_profiles_tuna_v0.xml) -> 34 (session 36 added the
+# camera EIS/NCS lines) -> 33 (session 37 dropped vendor/bin/qguard) — so treat
+# the number in this header as a claim to re-derive, not a fact. Re-deriving it
+# is now one command, `57-fixup-pin-check.py`, which is also the gate. (It said
+# 26 for a
 # session; five
 # targets carried no pin at all, and they were exactly the fail-open ones --
 # work/OPEN-ISSUES.md #56.) A pin where the two hashes are
@@ -470,7 +495,35 @@ vendor/etc/init/qconfig.rc
 vendor/etc/init/qdcmss.rc
 vendor/etc/init/qesdk-manager.rc
 vendor/etc/init/qesdk-secmanager.rc
-vendor/etc/init/qguard.rc
+# ★★ vendor/etc/init/qguard.rc, vendor/bin/qguard and vendor/etc/qguard.json are
+# DELIBERATELY NOT EXTRACTED, and the same reasoning covers the four diag entries
+# further down. Session 37.
+#
+# QTI declare both domains only in device/qcom/sepolicy_vndr/sm8750/generic/
+# vendor/test/ — qguard.te:28-29 and
+# device/qcom/sepolicy_vndr/sm8750/generic/vendor/test/file_contexts:95 — and
+# device/qcom/sepolicy_vndr/sm8750/SEPolicy.mk:42-46 adds that directory ONLY
+# for userdebug/eng. On the
+# `user` build this port now ships, /vendor/bin/qguard falls to the catch-all
+# vendor_file with no *_exec type, init cannot domain-transition, and under
+# enforcing the service simply fails to start on every boot
+# (system/core/init/service.cpp:102-113). qguard.rc has no `disabled`, so init
+# retries it every boot for as long as the file ships.
+#
+# ★ Stock cannot run it either, and that is the part worth writing down: neither
+# `vendor_qguard` nor `vendor_qguard_exec` appears anywhere in the factory
+# odm/etc/selinux/precompiled_sepolicy, and /vendor/bin/qguard is unlabelled in
+# the factory vendor_file_contexts. ZUI is itself a `user` build, so Lenovo ship
+# a root watchdog their own policy cannot start. Dropping it is BETTER than
+# stock parity, not a regression against it.
+#
+# ⚠️ Do NOT port the domain here instead. test/qguard.te:28-70 gives it
+# `capability KILL`, `domain:process { signal sigstop sigkill }`, write on
+# proc_sysrq and set_prop(powerctl_prop), plus mlstrustedsubject — i.e. a root
+# process able to SIGKILL any domain and trigger sysrq. QTI gate it to userdebug
+# on purpose. Stated loss: whatever hang recovery it offers, which is also the
+# loss stock already takes. Confirmed zero `qguard` lines in a full boot logcat
+# and dmesg on the flashed build.
 vendor/etc/init/qseecomd.rc
 vendor/etc/init/qspa_vendor.rc
 vendor/etc/init/qwesd.rc
@@ -497,7 +550,33 @@ vendor/etc/init/vendor.qti.adsprpc-guestos-service.rc
 vendor/etc/init/vendor.qti.audio-adsprpc-service.rc
 vendor/etc/init/vendor.qti.camera.provider-service_64.rc
 vendor/etc/init/vendor.qti.cdsprpc-service.rc
-vendor/etc/init/vendor.qti.diag.rc
+# ★★ The four diag entries are DELIBERATELY NOT EXTRACTED — vendor.qti.diag.rc,
+# vendor/bin/diag-router, vendor/etc/vintf/manifest/vendor.qti.diag.hal.service.xml
+# and vendor/lib64/vendor.qti.diaghal-V1-ndk.so. Session 37, and this is the
+# action sepolicy/vendor/service_contexts:24-30 prescribed in advance.
+#
+# Same mechanism as qguard above (the domain, its exec type and the service type
+# all live in sm8750/generic/vendor/test/, which
+# device/qcom/sepolicy_vndr/sm8750/SEPolicy.mk:42-46 includes only for
+# userdebug/eng) — but the consequence is a whole class worse, because this
+# one is DECLARED IN VINTF.
+#
+# A declared HAL that never registers is an untimed waitForDeclaredService() on
+# whichever thread asks, and servicemanager refuses the registration before the
+# enforcing check even runs (Access.cpp:165-170 fails the selabel lookup), so
+# permissive would not save it either. HANDOFF fact 2 and closed #34 are the same
+# failure: a black screen that points at nothing.
+#
+# ⚠️ The tempting fix — adding `vendor.qti.diaghal.Idiag/default ...
+# vendor_hal_diaghal_service` to our service_contexts — FAILS THE BUILD at
+# checkfc on `user`, because the type does not exist in that policy; and
+# declaring the type ourselves collides with QTI's on userdebug. There is no
+# label-side answer. Drop the blobs.
+#
+# Cost: nil. `ro.boot.vendor.qspa.modem = disabled` (the SoC fuse map), there is
+# no modem remoteproc, no diag client ships (diag_mdlog, QXDM, qcomsysd are all
+# absent), and vendor.qti.diaghal-V1-ndk.so had exactly one consumer in the whole
+# image — diag-router itself.
 vendor/etc/init/vendor.qti.hardware.alarm-service.rc
 vendor/etc/init/vendor.qti.hardware.capabilityconfigstore-service.rc
 vendor/etc/init/vendor.qti.hardware.display.color-service.rc
@@ -596,7 +675,6 @@ vendor/etc/vintf/manifest/vendor.qti.MemHal.xml
 vendor/etc/vintf/manifest/vendor.qti.camera.aon-impl.xml
 vendor/etc/vintf/manifest/vendor.qti.camera.offlinecamera-impl.xml
 vendor/etc/vintf/manifest/vendor.qti.camera.provider.xml
-vendor/etc/vintf/manifest/vendor.qti.diag.hal.service.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.alarm.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.bluetooth.xpanprovider.xml
 vendor/etc/vintf/manifest/vendor.qti.hardware.capabilityconfigstore-service.xml
@@ -1779,6 +1857,11 @@ vendor/lib64/vendor.qti.hardware.wifi.wifilearner-V1-ndk.so
 # diagnostic and IMS components this tree deliberately does not extract. A
 # binary-safe scan of this whole image finds zero references. Installing it would
 # ship a library guaranteed to fail to resolve.
+# ⚠️ Since session 37 the argument is stronger still: vendor.qti.diaghal-V1-ndk.so
+# is no longer extracted either, along with diag-router, its .rc and its VINTF
+# fragment (the derivation is above, next to vendor.qti.diag.rc's old line). So
+# the NEEDED it names is now absent from every partition, not merely from the
+# wrong one.
 # ★ The Java half of Miracast. Extracted from /system/framework and installed to
 # /system_ext/framework, which is not a tidy-up — it is the path the code in THIS
 # tree looks at.
@@ -1881,7 +1964,6 @@ system_ext/priv-app/WfdService/WfdService.apk
 vendor/bin/cdsprpcd
 vendor/bin/cnss-daemon
 vendor/bin/cnss_diag
-vendor/bin/diag-router
 vendor/bin/dspservice
 vendor/bin/feature_enabler_client
 vendor/bin/hexlpservice
@@ -1941,7 +2023,6 @@ vendor/bin/ppd
 vendor/bin/prop_init
 vendor/bin/qesdk-manager
 vendor/bin/qesdk-secmanager
-vendor/bin/qguard|8d7751231721697c0075c33546feeaf397433148|8144848a2c7342b20d75af484937276e09742de2
 vendor/bin/qlm-service
 vendor/bin/qrtr-ns
 vendor/bin/qsap_dcfd
@@ -2034,7 +2115,6 @@ vendor/etc/models/acd/event.eai
 vendor/etc/models/acd/music.eai
 vendor/etc/models/acd/speech.eai
 vendor/etc/public.libraries.txt
-vendor/etc/qguard.json
 vendor/etc/qspa/nav_disabled.rc
 vendor/etc/sec_config
 vendor/etc/smomo_setting.xml
@@ -2447,7 +2527,6 @@ vendor/lib64/vendor.lenovo.hardware.keyboard-V3-ndk_platform.so
 vendor/lib64/vendor.lenovo.hardware.misc-V1-ndk.so
 vendor/lib64/vendor.lenovo.hardware.touchscreen-V5-ndk.so
 vendor/lib64/vendor.qti.MemHal-V1-ndk.so
-vendor/lib64/vendor.qti.diaghal-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.alarm-V1-ndk.so
 vendor/lib64/vendor.qti.hardware.bttpi-V3-ndk.so
 vendor/lib64/vendor.qti.hardware.cacertaidlservice-V1-ndk.so

@@ -6,28 +6,28 @@
 #
 #   vendor.qti.diaghal.Idiag/default  u:object_r:vendor_hal_diaghal_service:s0
 #
-# We install the fragment (proprietary-files.txt: vendor.qti.diag.hal.service.xml),
-# the .rc and /vendor/bin/diag-router, which really does implement the interface
-# (readelf -d shows NEEDED vendor.qti.diaghal-V1-ndk.so, and the binary carries the
-# aidl::vendor::qti::diaghal::BnIdiag symbols). Stock — a `user` build — carries the
-# label at vendor_service_contexts:131.
+# The extracted stock set used to install the fragment, the .rc and
+# /vendor/bin/diag-router, which really implements the interface (readelf -d shows
+# NEEDED vendor.qti.diaghal-V1-ndk.so, and the binary carries the
+# aidl::vendor::qti::diaghal::BnIdiag symbols). Stock — a `user` build — carries
+# the label at vendor_service_contexts:131. This tree deliberately removed all
+# four files in session 37, so it must not reproduce the dead declaration here.
 #
 # We cannot: the TYPE vendor_hal_diaghal_service is declared in
 # device/qcom/sepolicy_vndr/sm8750/generic/vendor/test/service.te:30, and
-# sm8750/SEPolicy.mk:43-46 adds generic/vendor/test only for userdebug/eng. So
+# device/qcom/sepolicy_vndr/sm8750/SEPolicy.mk:42-46 adds generic/vendor/test only
+# for userdebug/eng. So
 #   - on userdebug (what we build) the label already comes from QTI and everything
 #     works;
 #   - adding the line here would make a `user` build fail at checkfc, because the
 #     type does not exist in that policy;
 #   - declaring the type ourselves would collide with QTI's on userdebug.
 #
-# QTI gate the whole diag-router domain on userdebug/eng on purpose. If this tree is
-# ever built `user`, drop the three diag entries from proprietary-files.txt
-# (vendor/bin/diag-router, vendor/etc/init/vendor.qti.diag.rc,
-# vendor/etc/vintf/manifest/vendor.qti.diag.hal.service.xml) rather than adding a
-# label — a declared HAL with no label is refused by Access.cpp:167-170 before the
-# enforcing check, so clients block on waitForService() forever and permissive does
-# not save them.
+# QTI gate the whole diag-router domain on userdebug/eng on purpose. Because this
+# device tree supports `user`, session 37 dropped the router, library, .rc and
+# VINTF fragment instead of adding a label. A declared HAL with no label is refused
+# by Access.cpp:167-170 before the enforcing check, so clients block on
+# waitForService() forever and permissive does not save them.
 vendor.lenovo.hardware.battery.IBattery/default                 u:object_r:hal_lenovobattery_service:s0
 vendor.lenovo.hardware.display.IDisplay/default                 u:object_r:hal_lenovodisplay_service:s0
 vendor.lenovo.hardware.hyperschedule.IHyperschedule/default     u:object_r:hal_lenovohyperschedule_service:s0
