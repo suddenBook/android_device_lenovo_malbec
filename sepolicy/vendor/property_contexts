@@ -61,9 +61,6 @@ vendor.dolbyv.                                      u:object_r:vendor_dolbyv_pro
 persist.vendor.keymaster.ready                      u:object_r:vendor_check_keymaster_prop:s0
 ro.odm.lenovo.attestationkey                        u:object_r:vendor_check_keymaster_prop:s0
 
-# ArcSoft face unlock — read-only from hal_faceunlock_default.
-persist.vendor.arcsoft.                             u:object_r:vendor_arcsoft_faceunlock:s0
-
 # Userspace thermal mitigation mode. init.qcom.rc:517/:524 uses it to pick which
 # of the seven /vendor/etc/thermal-engine-malbec-*.conf policies
 # thermal-switch-engine loads. Set from properties/vendor.prop, so only init

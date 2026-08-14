@@ -1,4 +1,4 @@
-# Domains for four vendor HALs that ship a binary and a VINTF fragment but had
+# Domains for three vendor HALs that ship a binary and a VINTF fragment but had
 # no policy at all in this tree.
 #
 # Why this is not cosmetic, and why permissive does not paper over it:
@@ -80,81 +80,3 @@ allow dvs_aidl_default vendor_sysfs_graphics:file r_file_perms;
 # ★ Needs to *write* vendor.dolbyv.* — under vendor_default_prop this is blocked
 # by a neverallow that no rule can override. See property.te.
 set_prop(dvs_aidl_default, vendor_dolbyv_prop)
-
-#####################################
-# android.hardware.biometrics.face@4.0-service.face — ArcSoft face unlock
-#
-# Found by work/scripts/36-sepolicy-labels.py, not by the earlier audit: the
-# binary is installed and init service-starts it, but it had no exec label.
-#
-# Unlike the three above it needs no service_contexts entry — it registers
-# android.hardware.biometrics.face.IFace/default, which is the *platform*
-# hal_face_service. hal_server_domain() gives it the hal_face_server attribute
-# that already carries the add_service rule.
-type hal_faceunlock_default, domain;
-type hal_faceunlock_default_exec, exec_type, vendor_file_type, file_type;
-# ⚠️ Declared and labelled, deliberately with NO allow rules. Session 18 filed
-# this as a P1 functional gap — "permissive hides it, enforcing breaks face
-# unlock" — and that is wrong; checked before acting on it rather than after:
-#
-#   * Stock's own vendor_sepolicy.cil grants nothing on this type either. The
-#     only arcsoft allow in the whole stock policy is
-#         (allow hal_faceunlock_default vendor_arcsoft_faceunlock (file (read …)))
-#     which is the PROPERTY type, not this one. Two different things with
-#     similar names, which is how the report got written.
-#   * Nothing opens the directory. A binary-safe scan of the entire stock vendor
-#     partition finds the string /data/vendor/arcsoft in exactly two files:
-#     the HAL's own .rc and vendor_file_contexts. No ELF references it.
-#   * The directory is created by INIT, not by the HAL —
-#     android.hardware.biometrics.face@4.0-service.face.rc:13-15 does
-#     mkdir/restorecon/chmod in post-fs-data, and init already has those perms.
-#     On the device it exists as 0775 system:system correctly labelled.
-#
-# So this is a dump path that a debug build of the HAL would use and this one
-# never does. Kept rather than deleted because the label is what stops a future
-# dump landing as unlabelled vendor_data_file, and it costs nothing. Do not add
-# allow rules here on the strength of the name; a real denial is the only thing
-# that should ever put one in.
-type arcsoft_face_dump_file, file_type, data_file_type;
-
-init_daemon_domain(hal_faceunlock_default)
-hal_server_domain(hal_faceunlock_default, hal_face)
-
-binder_call(hal_faceunlock_default, cameraserver)
-allow hal_faceunlock_default fwk_camera_service:service_manager find;
-# ⚠️ NOT `allow ... hal_graphics_allocator_service:service_manager find`.
-# system/sepolicy/private/hal_graphics_allocator.te:22 neverallows that for any
-# domain outside the client attribute, and `m selinux_policy` rejects it. The
-# supported spelling is the macro, which grants the find plus the binder call and
-# fd use that actually make the client work. (Stock's CIL shows the expanded
-# rules, which is why copying it literally looked correct and was not.)
-hal_client_domain(hal_faceunlock_default, hal_graphics_allocator)
-allow hal_faceunlock_default hal_graphics_mapper_service:service_manager find;
-allow hal_faceunlock_default tee_device:chr_file { ioctl read write open };
-get_prop(hal_faceunlock_default, vendor_arcsoft_faceunlock)
-get_prop(hal_faceunlock_default, vendor_lenovotb_init_prop)
-
-# ★ The measurement this comment asked for has now happened, and it produced
-# exactly three denials. Session 23, `logcat -b all` on a clean boot (audit
-# serials 27-36, contiguous — nothing was dropped by a rolling buffer):
-#
-#   avc: denied { read open getattr map }
-#        path="/dev/__properties__/u:object_r:camera_config_prop:s0"
-#        scontext=u:r:hal_faceunlock_default:s0 tcontext=u:object_r:camera_config_prop:s0
-#   avc: denied { read open ioctl } path="/dev/dma_heap/qcom,qseecom"     ioctlcmd=0x4800
-#   avc: denied { read open ioctl } path="/dev/dma_heap/qcom,qseecom-ta"  ioctlcmd=0x4800
-#        scontext=u:r:hal_faceunlock_default:s0
-#
-# All three are ALLOW in stock's compiled vendor_sepolicy.cil and deny in ours —
-# established by diffing the two policies per domain, not by reading the denial.
-# The HAL is live and registered (android.hardware.biometrics.face.IFace/default,
-# oemStrength 4095 = BIOMETRIC_CONVENIENCE), so under enforcing this is a face
-# unlock that cannot reach its TEE buffers: enrolment and match both fail.
-#
-# Narrower than stock in one respect, deliberately: stock also grants `write` on
-# both heaps and `dmabuf_system_heap_device:chr_file write`. No write denial was
-# observed on either, so it is not granted. If one ever appears, add it then —
-# which is the same rule this block was written under.
-get_prop(hal_faceunlock_default, camera_config_prop)
-allow hal_faceunlock_default vendor_dmabuf_qseecom_heap_device:chr_file { ioctl read open };
-allow hal_faceunlock_default vendor_dmabuf_qseecom_ta_heap_device:chr_file { ioctl read open };

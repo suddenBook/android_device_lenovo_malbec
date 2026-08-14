@@ -10,12 +10,13 @@
 #
 # so any domain other than init/vendor_init that needs to *write* one of those
 # properties is permanently denied, and no rule anywhere can grant it. Three of
-# the seven groups below are exactly that case:
+# the five groups below are exactly that case:
 #
+#   vendor_lenovotb_init_prop  prop_init writes Lenovo identity/config state
 #   vendor_cam_prop     hal_camera_default writes the camera OTP serial numbers
 #   vendor_dolbyv_prop  dvs-aidl-service writes its own state
 #
-# The other four are read-mostly and matter less, but they cost one line each
+# The other two are read-mostly and matter less, but they cost one line each
 # and collapsing unrelated subsystems into a single bucket is a real, if soft,
 # privilege-separation regression: "read the camera serial number" would also
 # imply "read the AI HAL's and Dolby's state".
@@ -33,5 +34,4 @@ vendor_internal_prop(vendor_lenovotb_init_prop)
 vendor_internal_prop(vendor_cam_prop)
 vendor_internal_prop(vendor_dolbyv_prop)
 vendor_internal_prop(vendor_check_keymaster_prop)
-vendor_internal_prop(vendor_arcsoft_faceunlock)
 vendor_internal_prop(vendor_thermal_prop)

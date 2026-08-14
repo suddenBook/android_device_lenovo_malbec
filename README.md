@@ -114,14 +114,12 @@ unexplained discrepancy.
 ## ⚠️ Then, before the first build
 
 ```bash
-cd vendor/lenovo/malbec && git lfs install --local && git lfs pull
-cd ../../../vendor/gapps && git lfs install --local && git lfs pull
+cd vendor/gapps && git lfs install --local && git lfs pull
 ```
 
-`libarcsoft_faceid.so` is 134 MB, while MindTheGapps carries GmsCore and Velvet
-through LFS. An unsmudged vendor pointer stops the build with `must have a valid
-ELF magic word`; unsmudged GApps pointers can produce a green image without Play
-Services. `git lfs pull` **on its own is not enough**: it prints *"Skipping
+MindTheGapps carries GmsCore and Velvet through LFS. Unsmudged GApps pointers
+can produce a green image without Play Services. `git lfs pull` **on its own is
+not enough**: it prints *"Skipping
 object checkout, Git LFS is not installed for this repository"* and exits **0**.
 
 ## Building

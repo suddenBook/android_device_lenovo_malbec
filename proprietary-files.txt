@@ -435,7 +435,6 @@ vendor/gpu/kbc/unified_kbcs_64.bin
 vendor/gpu/kbc/unified_ksqs.bin
 
 # Init
-vendor/etc/init/android.hardware.biometrics.face@4.0-service.face.rc
 vendor/etc/init/android.hardware.bluetooth@aidl-service-qti.rc
 vendor/etc/init/android.hardware.drm@1.1-service.wfdhdcp.rc
 vendor/etc/init/android.hardware.gatekeeper-service-qti.rc
@@ -575,7 +574,6 @@ vendor/etc/vintf/manifest/c2_manifest_vendor_audio.xml
 vendor/etc/vintf/manifest/cacert-saidl.xml
 vendor/etc/vintf/manifest/dms-service.xml
 vendor/etc/vintf/manifest/dvs-aidl-service.xml
-vendor/etc/vintf/manifest/face-default.xml
 vendor/etc/vintf/manifest/manifest_afw.xml
 vendor/etc/vintf/manifest/manifest_audio_qti_services.xml
 vendor/etc/vintf/manifest/manifest_btaudiocoreservices_qti.xml
@@ -1888,7 +1886,6 @@ vendor/bin/dspservice
 vendor/bin/feature_enabler_client
 vendor/bin/hexlpservice
 vendor/bin/hlosminkdaemon
-vendor/bin/hw/android.hardware.biometrics.face@4.0-service.face
 vendor/bin/hw/android.hardware.identity-service-qti
 vendor/bin/hw/dvs-aidl-service
 vendor/bin/hw/qconfigservice
@@ -2124,14 +2121,10 @@ vendor/lib64/libVoiceSdk.so|b7e99e3595a50991f466367d09420f5b106f462d|2acdd2f1579
 vendor/lib64/libadm.so
 vendor/lib64/libapengine.so|0702cb01c0f523796bbd1d0f243a22e3a0df7918|68acf3659ce7622e2b437328bfc573cbcad52bcc
 vendor/lib64/libappclassifier.so
-vendor/lib64/libarcsoft_face_biometric.so
-vendor/lib64/libarcsoft_face_mink.so
-vendor/lib64/libarcsoft_faceid.so
 vendor/lib64/libarmemlog.so;DISABLE_DEPS
 vendor/lib64/libats.so
 vendor/lib64/libbacklight-calib.so
 vendor/lib64/libbase64.so
-vendor/lib64/libbiometricsface_ca.arcsoft.so
 vendor/lib64/libbitmlengine.so
 vendor/lib64/libbitmlenginev2.so
 # ⚠️ Keep. The session-15 blob audit proposed dropping this as a dead chain
@@ -2182,7 +2175,6 @@ vendor/lib64/libdsutils.so
 vendor/lib64/libeai_fixed.so
 vendor/lib64/libeai_float.so
 vendor/lib64/libeepromcutter.so
-vendor/lib64/libfaceid_ca_proxy.arcsoft.so
 vendor/lib64/libfastcrc.so
 vendor/lib64/libfastcvdsp_stub.so
 vendor/lib64/libfastcvopt.so
@@ -2239,7 +2231,6 @@ vendor/lib64/libmmfp.so
 vendor/lib64/libmmosal_vendor.so
 vendor/lib64/libmmrtpdecoder_vendor.so
 vendor/lib64/libmmrtpencoder_vendor.so
-vendor/lib64/libmpbase.so
 vendor/lib64/libnative-api.so
 vendor/lib64/libnicm.so
 vendor/lib64/libnicm_dsi.so

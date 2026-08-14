@@ -852,11 +852,6 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.sensor.stepdetector.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.sensor.stepdetector.xml \
     frameworks/native/data/etc/android.hardware.sensor.dynamic.head_tracker.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.sensor.dynamic.head_tracker.xml
 
-# Biometrics — face only. There is no fingerprint reader on this tablet, and
-# `android.hardware.fingerprint` is correspondingly absent.
-PRODUCT_COPY_FILES += \
-    frameworks/native/data/etc/android.hardware.biometrics.face.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.biometrics.face.xml
-
 # Graphics. The two deqp levels are 132645633 = 0x07E80301 = the 2024-03-01 test
 # list, so the source files are the -2024-03-01 variants.
 #

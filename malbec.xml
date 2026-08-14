@@ -36,19 +36,13 @@
 
      ⚠️ AFTER SYNCING, BEFORE BUILDING
 
-     TWO repositories here use Git LFS and `repo sync` does not smudge it.
+     vendor/gapps uses Git LFS and `repo sync` does not smudge it. GmsCore.apk
+     (175 MB) and Velvet.apk (254 MB) remain pointer files if LFS is not enabled
+     and the objects are not pulled. Left that way, the build can still appear
+     successful while the device has no usable Play Services.
 
-       vendor/lenovo/malbec   libarcsoft_faceid.so, 134 MB — above GitHub's
-                              per-file limit. Left un-smudged it is a 134-byte
-                              text file and the build stops with "must have a
-                              valid ELF magic word", which reads like a corrupt
-                              blob rather than a missing object.
-       vendor/gapps           GmsCore.apk (175 MB) and Velvet.apk (254 MB).
-                              Left un-smudged, GMS builds "successfully" and the
-                              device has no Play Services at all.
-
-     In BOTH, run the two LFS commands from the device tree's README
-     (`git lfs install` with the local flag, then `git lfs pull`). `git lfs pull`
+     Run the two LFS commands from the device tree's README (`git lfs install`
+     with the local flag, then `git lfs pull`). `git lfs pull`
      on its own prints "Skipping object checkout, Git LFS is not installed for
      this repository" and EXITS 0. work/scripts/01-lfs-check.sh is tree-wide and
      is a pre-flight in 40-build.sh, so a build cannot start with a pointer.

@@ -31,7 +31,6 @@
 /(system/vendor|vendor)/bin/hw/vendor\.microtrust\.hardware\.afw-service     u:object_r:hal_afw_exec:s0
 /(vendor|system/vendor)/bin/hw/vendor\.dolby\.dms\.service                   u:object_r:hal_aidl_dms_default_exec:s0
 /(vendor|system/vendor)/bin/hw/dvs-aidl-service                              u:object_r:dvs_aidl_default_exec:s0
-/(vendor|system/vendor)/bin/hw/android\.hardware\.biometrics\.face@4\.0-service\.face u:object_r:hal_faceunlock_default_exec:s0
 # The Dolby DAX Codec2 store reuses AOSP's mediacodec domain rather than getting
 # one of its own — same as stock.
 /(vendor|system/vendor)/bin/hw/vendor\.dolby\.media\.c2-default-service-dax  u:object_r:mediacodec_exec:s0
@@ -88,7 +87,6 @@
 # to exist before first boot or the directory is created as vendor_data_file and
 # stays that way.
 /data/vendor/afw(/.*)?                                                       u:object_r:hal_afw_file:s0
-/data/vendor/arcsoft(/.*)?                                                   u:object_r:arcsoft_face_dump_file:s0
 /dev/afw                                                                     u:object_r:afw_device:s0
 /dev/block/platform/soc/1d84000\.ufshc/by-name/proinfo                       u:object_r:vendor_proinfo_block_device:s0
 

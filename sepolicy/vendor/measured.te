@@ -200,16 +200,6 @@ get_prop(vendor_hal_gatekeeper_qti, vendor_keymint_retry_timer_prop)
 # decide whether to log more. Leaving it denied means it logs less.
 
 #####################################
-# Face unlock allocating from the system dmabuf heap.
-#
-#   avc: denied { read open } name="system"
-#        scontext=u:r:hal_faceunlock_default:s0
-#        tcontext=u:object_r:dmabuf_system_heap_device:s0 tclass=chr_file
-#
-# Standard for any HAL that has to allocate graphics/ION buffers on Android 12+.
-allow hal_faceunlock_default dmabuf_system_heap_device:chr_file r_file_perms;
-
-#####################################
 # Parallel module loading.
 #
 #   avc: denied { write }      scontext=vendor_modprobe tcontext=vendor_modprobe tclass=key
