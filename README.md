@@ -148,6 +148,9 @@ A bare `mka` gets **2** (the release posture, safe to hand to anyone);
 still accepted and mean 0 and 2, so older invocations do not silently change
 meaning; anything else is a build error.
 
+Levels 0 and 1 require a `userdebug` or `eng` build. A `user` build accepts only
+level 2 because permissive SELinux and `adb root` are compiled out there.
+
 ⚠️ **Go 0 → 1 → 2, never 0 → 2.** Level 2 flips SELinux *and* removes root adb
 from the running system **and from recovery** in one flash. If the result does not
 boot, the only way back is bootloader fastboot — volume-down at power-on, i.e.

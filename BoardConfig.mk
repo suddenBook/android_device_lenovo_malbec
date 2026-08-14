@@ -465,8 +465,23 @@ BOARD_BOOTCONFIG += androidboot.wificountrycode=US
 # What it does and does not prove is unchanged: booting permissive does NOT
 # demonstrate the device boots enforcing. Two separate milestones.
 #
-# selinux.cpp:102-118 reads androidboot.selinux from bootconfig, and honours it
-# only when ALLOW_PERMISSIVE_SELINUX is compiled in, which it is on userdebug.
+# ★★ selinux.cpp:113-118 reads androidboot.selinux from bootconfig and honours it
+# ONLY when ALLOW_PERMISSIVE_SELINUX is compiled in — and that is a property of
+# the BUILD VARIANT, not of this file:
+#
+#   system/core/init/Android.bp:124        cflags: -DALLOW_PERMISSIVE_SELINUX=0
+#   system/core/init/Android.bp:139-143    product_variables: { debuggable: {
+#                                            cppflags: -DALLOW_PERMISSIVE_SELINUX=1 } }
+#   build/make/core/soong_config.mk        Debuggable := $(filter userdebug eng,
+#                                                          $(TARGET_BUILD_VARIANT))
+#
+# So on a `user` build IsEnforcing() is a hardcoded `return true`, the bootconfig
+# token is parsed and DISCARDED, and level 0 boots ENFORCING while every document
+# in this port says it is permissive. That is HANDOFF fact 23's shape exactly — a
+# contract implemented in a mechanism the variant removes is not implemented — so
+# levels 0 and 1 are guarded to userdebug/eng below rather than merely documented.
+# ⚠️ It also means MALBEC_NO_DONTAUDIT loses the permissive companion boot its own
+# recipe (below) tells you to use. Diagnose on userdebug; ship on user.
 # ⚠️ Session 9 flipped this default from `true` to `false`. The previous round
 # had made it opt-out for a real reason — a casual bare `m` would produce an
 # enforcing build with no adb, and at that time the device was hundreds of
@@ -476,14 +491,23 @@ BOARD_BOOTCONFIG += androidboot.wificountrycode=US
 # artifact to distinguish it from a permanently permissive ROM.
 #
 # Both halves are now covered: work/scripts/40-build.sh exports
-# MALBEC_BRINGUP=${MALBEC_BRINGUP:-true} explicitly, so building through the
+# MALBEC_BRINGUP=${MALBEC_BRINGUP:-0} explicitly, so building through the
 # usual wrapper still yields permissive + adb, while a bare `m` yields
 # enforcing. The switch is still here; it is simply no longer the default.
 # ── MALBEC_BRINGUP is a LEVEL, not a boolean ────────────────────────────────
 #
-#   0   permissive + adb root + WITH_ADB_INSECURE     bring-up
-#   1   ENFORCING  + adb root + WITH_ADB_INSECURE     the enforcing milestone
+#   0   permissive + adb root + WITH_ADB_INSECURE     bring-up   (userdebug/eng only)
+#   1   ENFORCING  + adb root + WITH_ADB_INSECURE     milestone  (userdebug/eng only)
 #   2   ENFORCING  + no adb root, no insecure adb     release
+#
+# ★ Levels 0 and 1 are userdebug/eng-only and the build now REFUSES the
+# combination rather than shipping a level that does not do what it says:
+#   - level 0 needs ALLOW_PERMISSIVE_SELINUX, compiled out on `user` (see above);
+#   - level 1's `adb root` needs ro.debuggable=1, which `user` also compiles out
+#     (packages/modules/adb/daemon/main.cpp:66-96), so it would give enforcing
+#     with WITH_ADB_INSECURE and no root — a fourth posture nothing documents.
+# ⇒ MALBEC_BRINGUP=2 is the ONLY level a `user` build may carry, which is also
+#   the only combination this port intends to release.
 #
 # ★ Level 1 exists because levels 0 and 2 are two changes at once, and the second
 # of them removes the only way back in. Going 0 -> 2 means flipping SELinux AND
@@ -508,6 +532,21 @@ MALBEC_BRINGUP := 2
 endif
 ifeq (,$(filter 0 1 2,$(MALBEC_BRINGUP)))
 $(error MALBEC_BRINGUP must be 0, 1 or 2 (got '$(MALBEC_BRINGUP)'))
+endif
+
+# ★ Refuse a level the variant cannot honour. Both halves of levels 0 and 1 are
+# compiled out of a `user` build (ALLOW_PERMISSIVE_SELINUX and ro.debuggable), so
+# without this guard `TARGET_BUILD_VARIANT=user MALBEC_BRINGUP=0` produces an
+# ENFORCING image with no root shell and calls it "permissive + adb root". A
+# build error is the only honest outcome: there is nothing to fall back to.
+ifneq (,$(filter 0 1,$(MALBEC_BRINGUP)))
+ifeq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))
+$(error MALBEC_BRINGUP=$(MALBEC_BRINGUP) requires TARGET_BUILD_VARIANT=userdebug or eng \
+  (got '$(TARGET_BUILD_VARIANT)'). On `user`, ALLOW_PERMISSIVE_SELINUX is 0 \
+  (system/core/init/Android.bp:124) so androidboot.selinux=permissive is read and \
+  discarded (selinux.cpp:113-118), and ro.debuggable=0 makes `adb root` impossible \
+  (packages/modules/adb/daemon/main.cpp:66-96). Use MALBEC_BRINGUP=2 for a user build)
+endif
 endif
 
 # Permissive is level 0 ONLY. Levels 1 and 2 are both enforcing.
