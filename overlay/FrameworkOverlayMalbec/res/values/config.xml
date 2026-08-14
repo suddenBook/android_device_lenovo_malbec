@@ -1179,10 +1179,9 @@
          landscape only apps in portrait, which on a landscape primary tablet is
          the rarer case, and each of these is a distinct behaviour to verify.
 
-         ⚠️ Scope, so this is not mis-costed later: the parallel window engine
-         already gives about 4,900 packages a centred MiddleRule presentation, so
-         the population this reaches is the non embedded remainder, not every
-         portrait app. -->
+         Scope: this affects only fullscreen activities that AOSP has already
+         pillarboxed. It does not make a resizable app non-resizable or replace
+         ordinary split-screen and Activity Embedding behaviour. -->
     <bool name="config_letterboxIsHorizontalReachabilityEnabled">true</bool>
     <bool name="config_letterboxIsEducationEnabled">true</bool>
 
@@ -1310,32 +1309,22 @@
          config_dockedStackDividerSnapMode 1). Those three needed no overlay.
          These four do.
 
-         ⚠️ Six more were considered and DELIBERATELY LEFT OFF, session 36. Not
-         oversights:
+         The neighboring
+         config_letterboxIsDisplayAspectRatioForFixedOrientationLetterboxEnabled
+         and config_letterboxIsSplitScreenAspectRatioForUnresizableAppsEnabled
+         remain deliberately off: they change layout for every affected app and
+         are too broad for what they buy. -->
 
-           * config_appCompatUserAppAspectRatioSettingsIsEnabled (+ …Fullscreen…)
-             ships a working Settings > Apps > Aspect ratio UI that is currently
-             CONDITIONALLY_UNAVAILABLE. Turning it on invites per-app layout
-             overrides that would fight the parallel-window rules this port
-             exists for. A dead UI is better than two systems arguing about the
-             same window.
-           * config_letterboxIsDisplayAspectRatioForFixedOrientationLetterboxEnabled
-             and config_letterboxIsSplitScreenAspectRatioForUnresizableAppsEnabled
-             change layout for EVERY portrait app, not just embedded ones. Too
-             blunt for what they buy. -->
-
-    <!-- Apps in the UNFOCUSED pane never get synthetic focus without this, and
-         AOSP's own comment on the flag says some game engines wait to get focus
-         before drawing anything at all. This tablet's default presentation for
-         ~4,900 packages is a centred pane with a second app beside it, so the
-         unfocused pane is not an edge case here — it is half the screen. -->
+    <!-- In standard split-screen and Activity Embedding, one resumed activity
+         can be visible without owning real focus. AOSP's own resource comment
+         notes that some game engines wait for focus before drawing, so fake focus
+         keeps that visible pane usable without changing its windowing mode. -->
     <bool name="config_isCompatFakeFocusEnabled">true</bool>
 
-    <!-- Without this, a translucent activity launched BY a centred pane lays out
-         across the full 1752 dp instead of inheriting the parent's box. That is
-         every permission dialog, share sheet and photo picker raised from an
-         embedded app: the dialog appears anchored to the screen while the app
-         that raised it occupies a third of it. -->
+    <!-- A translucent activity launched from a letterboxed parent should inherit
+         the parent's compatibility bounds. Otherwise a permission dialog, share
+         sheet or photo picker can span the display while the activity that raised
+         it remains letterboxed. -->
     <bool name="config_letterboxIsEnabledForTranslucentActivities">true</bool>
 
     <!-- The folio keyboard is a first-class input on this device (its own
@@ -1362,8 +1351,7 @@
          makes ignoreOrientationRequest true at sw1095dp — portrait-only apps
          LETTERBOX instead of rotating the display. That makes "portrait-locked
          app opens a camera on a landscape tablet and the preview is sideways"
-         the NORMAL case, not the edge case. Which is exactly the Chinese app
-         corpus this port ships 7,045 parallel-window rules for.
+         a normal large-screen compatibility case rather than an edge case.
 
          ⚠️ Only the DISPLAY-ROTATION half will activate.
          AppCompatCameraSimReqOrientationPolicy.isPolicyEnabled() additionally

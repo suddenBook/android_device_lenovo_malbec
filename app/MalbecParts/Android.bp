@@ -5,10 +5,9 @@
 // MalbecParts — the device-specific settings surface for the Lenovo TB390FU.
 //
 // Everything this app does is either (a) a call into an AOSP API that already
-// exists but has no UI on a tablet, (b) a device preference that Settings has
-// no place for, or (c) a projection of this ROM's permission-gated
-// parallel-window control API. It contains NO ported Lenovo code. See README.md
-// next to this file.
+// exists but has no UI on a tablet, or (b) a device preference that Settings has
+// no place for. It contains NO ported Lenovo code. See README.md next to this
+// file.
 //
 // Modelled on packages/apps/DolbyAtmos, which is the precedent this project
 // already accepted for "device feature that needs a Settings page":
@@ -41,8 +40,7 @@ android_app {
 
     // platform_apis rather than an SDK level: every interesting call here is
     // @hide — InputManager#addCustomInputGesture, InputGestureData,
-    // KeyGestureEvent, BluetoothDevice#setMetadata, and the parallel-window
-    // IActivityTaskManager control methods.
+    // KeyGestureEvent, and BluetoothDevice#setMetadata.
     platform_apis: true,
     certificate: "platform",
     privileged: true,
@@ -136,18 +134,4 @@ android_app {
     optimize: {
         proguard_flags_files: ["proguard.flags"],
     },
-}
-
-// Host-side tests for the Android-free models used by the parallel-window page:
-// only installed supported packages acquire rows, source-default-off packages
-// remain visible, and a write is successful only when its reread matches.
-java_test_host {
-    name: "MalbecPartsParallelWindowModelTests",
-    srcs: [
-        "src/org/lineageos/malbec/parts/parallelwindow/ParallelWindowAppListModel.kt",
-        "src/org/lineageos/malbec/parts/parallelwindow/ParallelWindowMutationConfirmation.kt",
-        "tests/src/**/*.kt",
-    ],
-    static_libs: ["junit"],
-    test_suites: ["general-tests"],
 }

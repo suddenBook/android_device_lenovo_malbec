@@ -8,10 +8,6 @@
     "target_path": "vendor/lenovo/malbec"
   },
   {
-    "repository": "suddenBook/android_frameworks_base",
-    "target_path": "frameworks/base"
-  },
-  {
     "repository": "MindTheGapps/vendor_gapps",
     "target_path": "vendor/gapps"
   }

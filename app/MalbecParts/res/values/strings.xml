@@ -113,33 +113,4 @@
     <string name="action_settings">Settings</string>
     <string name="action_launch_app">Open an app</string>
 
-    <!-- Parallel-window controls. The framework, not this app, owns all state;
-         these preferences are deliberately non-persistent. -->
-    <string name="parallel_window_title">Parallel windows</string>
-    <string name="parallel_window_tile_summary">Show two pages side by side in supported apps</string>
-    <string name="parallel_window_master_title">Use parallel windows</string>
-    <string name="parallel_window_master_summary_on">Supported apps can show two pages side by side</string>
-    <string name="parallel_window_master_summary_off">Off for this profile</string>
-    <string name="parallel_window_master_summary_platform_off">Disabled by the device-wide system setting</string>
-    <string name="parallel_window_apps_category">Apps</string>
-    <string name="parallel_window_loading">Loading supported apps…</string>
-    <string name="parallel_window_no_apps">No installed apps currently support parallel windows</string>
-    <string name="parallel_window_footer">Only installed apps covered by this device’s parallel-window rules appear here. Apps outside those rules are never changed. Changing an app closes it so the new layout takes effect straight away; an app you are currently using is left alone and changes the next time it starts.</string>
-    <string name="parallel_window_error_title">Couldn’t load parallel-window settings</string>
-    <string name="parallel_window_error_summary">Nothing was changed. Tap to try again.</string>
-    <string name="parallel_window_save_error_title">Couldn’t save the change</string>
-    <string name="parallel_window_save_error_summary">The previous setting is still in effect. Tap to refresh.</string>
-    <string name="parallel_window_confirm_error_title">Couldn’t confirm the change</string>
-    <string name="parallel_window_confirm_error_summary">The change was sent, but its current value could not be confirmed. Tap to refresh.</string>
-    <!-- ⚠️ These two replace a dialog, and they are not interchangeable — one
-         claims the change is live NOW, the other only that it will be. Which one
-         is shown is decided by parallelWindowRestartOutcome() from a measured
-         process list, never assumed. Deleted with the dialog:
-         parallel_window_change_title, parallel_window_change_message ("…The app
-         was not stopped."), parallel_window_app_info, parallel_window_later. -->
-    <string name="parallel_window_applied"><xliff:g id="app" example="Taobao">%1$s</xliff:g> was closed, so the change is already in effect.</string>
-    <string name="parallel_window_next_start">The change for <xliff:g id="app" example="Taobao">%1$s</xliff:g> takes effect the next time it starts.</string>
-    <!-- The master switch does not close anything: it affects every eligible
-         installed app, and closing all of them from a toggle is not defensible. -->
-    <string name="parallel_window_master_change_message">The change takes effect for each affected app the next time that app starts. No apps were closed.</string>
 </resources>

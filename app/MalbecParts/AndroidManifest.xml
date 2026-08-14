@@ -52,46 +52,6 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- The action picker lists every launchable app. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-    <!-- The framework control surface for the parallel-window rule set. The
-         service derives the user from this process's Binder uid; MalbecParts
-         never asks for cross-user access.
-
-         ★ SESSION 36: this used to be a CUSTOM permission,
-         android.permission.MANAGE_PARALLEL_WINDOW, declared `signature` in
-         frameworks/base/core/res/AndroidManifest.xml — and declaring it was one
-         of only two SEVERE entries in OPEN-ISSUES #84's rebase-conflict table,
-         because a custom permission means a permanent diff against upstream's
-         manifest.
-
-         It was never needed. MANAGE_ACTIVITY_TASKS sits TWO LINES ABOVE where
-         the custom one was declared, is `signature|recents`, and gates exactly
-         this class of API. This app is `certificate: "platform"` (Android.bp),
-         so it satisfies the `signature` half outright — the `recents` flag is
-         an additional door for the recents component, not a restriction on us.
-
-         So the whole SEVERE was removed by a DELETION: four @EnforcePermission
-         sites and one <uses-permission> changed name, and upstream's manifest
-         went back to being untouched. Nothing about the enforcement weakened —
-         `signature|recents` is strictly harder to hold than `signature`. -->
-    <uses-permission android:name="android.permission.MANAGE_ACTIVITY_TASKS" />
-    <!-- Closing an app after its parallel-window rule changed, so its next start
-         reads the new one. A running process cannot: the rule is latched per
-         process on both sides of the Binder.
-
-         protectionLevel is `normal` (core/res/AndroidManifest.xml:4508-4511), so
-         it is auto-granted and MUST NOT be added to
-         privapp-permissions-org.lineageos.malbec.parts.xml — that file's header
-         forbids listing anything that is not `privileged`.
-
-         ⚠️ Declared for the lint and for the record rather than out of
-         necessity: killBackgroundProcesses also reaches a cross-appId check
-         wanting KILL_ALL_BACKGROUND_PROCESSES, and this app clears BOTH by being
-         appId 1000 (ActivityManager.canAccessUnexportedComponents). Do not read
-         "it works" as "this line is what makes it work".
-
-         Deliberately NOT FORCE_STOP_PACKAGES — see ParallelWindowBackend for the
-         bill that one comes with. -->
-    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
 
     <application
         android:allowBackup="false"
@@ -255,46 +215,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity-alias>
-
-        <!-- A row INSIDE Device settings, not a tile Settings injects anywhere.
-
-             ⚠️ SESSION 33. This used to inject itself into
-             com.android.settings.category.ia.apps — Settings > Apps — with an
-             icon and a summary. The owner asked for it under Device settings
-             with no icon, and those two halves of the request point at the same
-             answer rather than at two changes:
-
-               · Every row on the Settings HOMEPAGE carries an icon, and the
-                 Expressive homepage draws a rounded background behind it
-                 (DashboardFeatureProviderImpl.java:556-570), so an icon-less
-                 homepage tile would be the one text-only row in a column of
-                 them. Rows inside a page carry no icon at all.
-               · So "under Device settings, without an icon" is a row in
-                 res/xml/stylus_settings.xml, not a second homepage tile.
-
-             It was also the only row on Settings > Apps with an icon — nothing
-             in packages/apps/Settings/res/xml/apps.xml has one — which is what
-             made it look wrong.
-
-             The activity is now reached only through that row, so it is
-             exported="false": androidx starts it from the <intent> child in our
-             own PreferenceScreen, in this process, and an activity nothing
-             outside the package needs to start should not be exported.
-
-             ⚠️ STATED LOSS. com.android.settings.profile="all_profiles" went
-             with the tile. That is what made Settings show its profile chooser
-             and start this activity AS the chosen user; ParallelWindowBackend
-             derives the user from the Binder caller, so launching from our own
-             page always means the current user, and on a device with a work
-             profile the work-profile rules become unreachable from the UI. This
-             device is single-user and config_showUserSwitcherByDefault is now
-             false, so the cost is zero here — but it IS a cost, and if a work
-             profile is ever wanted the fix belongs in this app, not in a
-             restored tile. -->
-        <activity
-            android:name=".parallelwindow.ParallelWindowSettingsActivity"
-            android:label="@string/parallel_window_title"
-            android:exported="false" />
 
         <!-- ⚠️ There is no PLAY_AUTO_INSTALL marker receiver here any more, and
              that is deliberate rather than an omission. This package used to

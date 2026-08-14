@@ -4,9 +4,7 @@ The device's own settings surface. One platform-signed app, injected into
 Settings through Settings' own extension points.
 
 **It contains no ported Lenovo code.** The hardware controls below use existing
-AOSP APIs or device properties. The parallel-window page is the one explicit
-exception to the older "no framework API" boundary: it is a UI for this ROM's
-own permission-gated `IActivityTaskManager` control surface.
+AOSP APIs or device properties.
 
 ---
 
@@ -19,76 +17,6 @@ own permission-gated `IActivityTaskManager` control surface.
 | **Out-of-range alert** | `BluetoothHidHost` connection-state broadcasts, `Vibrator`, `NotificationManager` | No "you left your accessory behind" concept anywhere in AOSP. Fast Pair / Find My Device need accessory-side provisioning this pen does not have. |
 | **Touch mode** | `Settings.System.peak_refresh_rate` | The panel rate and the touch controller's scan mode are one hardware knob; nothing pairs them |
 | **Native stylus prefs** | `StylusDevicesController` — handwriting, ignore side button, pointer icon, default notes | Only shown when `METADATA_DEVICE_TYPE == DEVICE_TYPE_STYLUS`, which nothing sets for this pen. **Two lines fix that.** |
-| **Parallel windows** | This ROM's `IActivityTaskManager` parallel-window control API | A per-user master switch and per-installed-supported-app switches in Settings > Apps |
-
----
-
-## Parallel-window controls are a projection, not a second settings store
-
-`ParallelWindowSettingsActivity` is injected into **Settings > Apps** with the
-standard `com.android.settings.action.IA_SETTINGS` mechanism. Its profile mode
-is `all_profiles`: when a work profile exists, Settings shows the normal profile
-chooser and launches MalbecParts as that user. Managed-profile provisioning
-keeps the package because it has no `MAIN`/`LAUNCHER` activity and is not in a
-disallowed-app overlay; `OverlayPackagesProvider` only removes launchable or
-explicitly disallowed system apps (`getNonRequiredApps` / `getLaunchableApps`).
-That is a source-backed condition, not an unconditional manifest guarantee: if
-a future product overlay explicitly disallows MalbecParts, the package must be
-added to `vendor_required_apps_managed_profile` or the work-profile entry will
-not exist. Device regression should therefore verify `pm list packages --user
-<work-user> org.lineageos.malbec.parts` whenever work-profile overlays change.
-
-The page reads and writes only these platform APIs, guarded by the signature
-permission `android.permission.MANAGE_PARALLEL_WINDOW`:
-
-- `getParallelWindowControlState()`
-- `setParallelWindowUserEnabled(boolean)`
-- `setParallelWindowPackageEnabled(String, boolean)`
-
-Every preference is `persistent="false"`: the UI widgets do not cache a second
-copy. The framework persists the per-user master and package choices in hidden
-`Settings.Secure` keys shared with the `wm parallel-window` shell surface. It
-returns the installed intersection of this device's loaded parallel-window
-rules. The page intersects that result with the current user's `PackageManager`
-view once more before drawing rows. That second intersection uses one
-`getInstalledApplications` query and an in-memory set; it never probes every
-known package name one at a time. An app outside the device rule set therefore
-has no row and no write path. A supported app whose rule default is off still
-has a row; its switch is unchecked.
-
-After a successful setter call, the page reads the complete state back and
-reports success only when the requested value is in that projection. If an app
-leaves the installed-and-supported intersection during the write, the refreshed
-list is shown with an unconfirmed warning.
-
-**A confirmed per-app change then closes that app** (session 33), because a rule
-is latched per process and a running app cannot pick a new one up. This replaced
-a dialog that said *"the app was not stopped"* and offered an App info shortcut
-so the user could press Force stop themselves.
-
-The mechanism is `ActivityManager#killBackgroundProcesses`, **not**
-`forceStopPackage`: it does not set `FLAG_STOPPED`, so alarms, jobs, sync,
-widgets and saved instance state all survive and the user returns to the screen
-they left. The price is that it does nothing for an app above the background
-cutoff — one in the foreground, visible, or holding a foreground service — and
-says nothing when it doesn't. So the page measures the process list afterwards
-and shows one of two different sentences: *closed, already in effect* or *takes
-effect the next time it starts*. `APPLIED` is a claim that requires evidence;
-everything else, including an unreadable process list, degrades to the weaker
-statement, which is true either way.
-
-**The master switch never closes anything.** It affects every eligible installed
-app, and stopping all of them from a toggle is not defensible at any scale.
-
-The pure list and write-confirmation boundaries are covered by the host module
-`MalbecPartsParallelWindowModelTests`.
-
-The complete control path has also been built, flashed and verified on the
-current enforcing image: state survives reboot, master and supported-package
-off/on controls work, installed unsupported apps remain absent and unaffected,
-and an already-running process retains its previous decision until its next
-start. This page projects the five-package shipped corpus; it does not imply that
-the quarantined full HyperOS corpus was integrated.
 
 ---
 
@@ -217,14 +145,10 @@ Entry points, all through Settings' existing extension hooks:
 |---|---|---|
 | Stylus and keyboard | `com.android.settings.action.IA_SETTINGS` + `meta-data com.android.settings.category = …ia.connect` → **Connected devices** | none |
 | Advanced keyboard settings | the `RemotePreference` AOSP already ships at `physical_keyboard_settings.xml:83-89`, action `org.lineageos.settings.device.ADVANCED_KEYBOARD_SETTINGS`, auto-hidden when nothing answers | none |
-| Parallel windows | `com.android.settings.action.IA_SETTINGS` + `meta-data com.android.settings.category = …ia.apps` → **Apps** | none in Settings; the control API lives in this ROM's framework |
 
 ---
 
 ## The MalbecParts process is not persistent
-
-This section concerns process lifetime, not the `Settings.Secure`-backed
-parallel-window choices above.
 
 `DolbyAtmos` sets `android:persistent="true"` and that is right for an audio
 effect that must survive every process death. Pinning a process into memory
