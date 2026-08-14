@@ -65,9 +65,12 @@ $(call inherit-product, frameworks/native/build/phone-xhdpi-6144-dalvik-heap.mk)
 # This device reports "Only protected VMs are supported"; the recorded
 # `vm run-microdroid --debug full` failure exercised the default non-protected
 # path and therefore does not prove that pVM or CompOS is unavailable. The
-# current vbmeta_system/pvmfw descriptor gap must also be fixed before a
-# protected result is trustworthy. Do not retire the feature or isolated ART
-# compilation on evidence from the unsupported guest mode.
+# firmware image must be built from this tree so its embedded key follows the
+# virt APEX payload key; stock pvmfw cannot authenticate this build. Host-side
+# AVB/OTA/flash wiring is necessary but not proof that protected guests work.
+# Do not retire the feature or isolated ART compilation on evidence from the
+# unsupported guest mode.
+PRODUCT_BUILD_PVMFW_IMAGE := true
 $(call inherit-product, packages/modules/Virtualization/apex/product_packages.mk)
 
 # Qualcomm

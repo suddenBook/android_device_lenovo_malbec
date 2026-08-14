@@ -75,6 +75,7 @@ AB_OTA_PARTITIONS := \
     init_boot \
     odm \
     product \
+    pvmfw \
     recovery \
     system \
     system_dlkm \
@@ -673,6 +674,10 @@ BOARD_VENDOR_RAMDISK_KERNEL_MODULES_BLOCKLIST_FILE := $(RAMDISK_MODULES_PATH)/mo
 BOARD_BOOTIMAGE_PARTITION_SIZE := 100663296
 BOARD_DTBOIMG_PARTITION_SIZE := 52428800
 BOARD_INIT_BOOT_IMAGE_PARTITION_SIZE := 8388608
+# Factory rawprogram4.xml gives pvmfw_a and pvmfw_b 256 sectors of 4096 bytes.
+# Build the matching 1 MiB physical image; do not substitute Lenovo's image,
+# whose embedded virt APEX key belongs to the stock payload.
+BOARD_PVMFWIMAGE_PARTITION_SIZE := 0x00100000
 BOARD_RECOVERYIMAGE_PARTITION_SIZE := 104857600
 BOARD_SUPER_PARTITION_SIZE := 23622320128
 BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 100663296
@@ -987,7 +992,7 @@ BOARD_AVB_RECOVERY_ROLLBACK_INDEX_LOCATION := 1
 # the top-level image. Listing it here moves its descriptor into the chained
 # image (Makefile:4973-4984 excludes chained members from vbmeta.img), which
 # disagrees with both stock and our own fstab.
-BOARD_AVB_VBMETA_SYSTEM := system system_ext product
+BOARD_AVB_VBMETA_SYSTEM := pvmfw system system_ext product
 BOARD_AVB_VBMETA_SYSTEM_KEY_PATH := external/avb/test/data/testkey_rsa4096.pem
 BOARD_AVB_VBMETA_SYSTEM_ALGORITHM := SHA256_RSA4096
 # Same one-way-door reasoning as BOARD_AVB_RECOVERY_ROLLBACK_INDEX above. This was
