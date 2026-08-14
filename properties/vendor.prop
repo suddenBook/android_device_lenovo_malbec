@@ -118,8 +118,9 @@ vendor.display.enable_async_vds_creation=1
 #   OUT — anything the build system generates itself (ro.vendor.build.*,
 #         ro.bionic.*, ro.sf.lcd_density, ro.virtual_ab.*, ro.board.platform),
 #         cellular and IMS (this device is Wi-Fi only), things only Lenovo's own
-#         apps read (ro.vendor.config.lgsi.*, beluga, zui), and Lenovo telemetry
-#         (diag, journey)
+#         apps read (most ro.vendor.config.lgsi.*, beluga, zui), and Lenovo
+#         telemetry (diag, journey). The lgsi market name is retained below
+#         because the installed Qualcomm USB init script consumes it directly.
 #
 # ⚠️ Do not copy stock's two CPU-variant properties, and do not copy corrected
 # versions of them either:
@@ -523,6 +524,10 @@ vendor.usb.qdss.inst.name=qdss_sw
 vendor.usb.rmnet.func.name=gsi
 vendor.usb.rmnet.inst.name=rmnet
 vendor.usb.rndis.func.name=gsi
+# init.qcom.usb.sh unconditionally replaces its generic iProduct fallback with
+# this value. Stock sets the exact SKU name; leaving it unset produced an empty
+# vendor.usb.product_string and an empty configfs USB product descriptor.
+ro.vendor.config.lgsi.market_name=Lenovo Idea Tab Pro Gen 2
 
 # Pin the vendor API level to what the vendor blobs actually are (Android 15).
 #
