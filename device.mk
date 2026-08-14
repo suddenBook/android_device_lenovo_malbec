@@ -21,6 +21,20 @@ PRODUCT_PACKAGES += \
     malbec_wlan_cfg_wcn7750_symlink \
     malbec_wlan_mac_wcn7750_symlink \
 
+# Device-owned configuration whose upstream module is replaced by a proprietary
+# implementation. Unique init/VINTF basenames avoid Soong auxiliary-rule
+# collisions; init and libvintf load every file in these directories.
+PRODUCT_PACKAGES += \
+    aidl_audio_set_scenarios_bfbs \
+    android.hardware.hardware_keystore_V3.xml \
+    hfp_codec_capabilities_xml \
+    init.malbec-proprietary-services.rc \
+    init.qti.display_boot.rc \
+    init.qti.display_boot.sh \
+    malbec_proprietary_hal_manifest \
+    malbec_wpa_supplicant_overlay \
+    qspa_vendor.rc
+
 # ⚠️ There used to be a CneApp.libvndfwk_detect_jni.qti_vendor_symlink here,
 # working around an UnsatisfiedLinkError in CneApp. Session 13 removed CneApp
 # itself along with the rest of the cellular stack: CNE is Qualcomm's
@@ -770,14 +784,12 @@ PRODUCT_SHIPPING_API_LEVEL := 36
 # and no lock screen, and the only symptom would be the device.
 #
 # So they are declared here, from their upstream sources, and removed from the
-# blob list in the same change. 36 of the 38 files declared here were verified
-# byte-identical to a file that already exists in this checkout (each diffed
-# against frameworks/native/data/etc/; re-run session 27, 36 compared and 0
-# differing); the two that are not have device-tree copies in
-# configs/permissions/ with the derivation written in their headers.
-# ⚠️ 36 of 38, not 34 of 36 — the pair in configs/permissions/ belongs to the
-# denominator, and the built /vendor/etc/permissions/ holds 42 because three
-# blobs and features_com.android.virt.xml arrive from elsewhere.
+# blob list in the same change. Every direct copy except
+# handheld_core_hardware.xml comes from frameworks/native/data/etc and was
+# byte-compared with stock. KeyMint 3 uses the upstream
+# android.hardware.hardware_keystore_V3.xml module listed above, so it advertises
+# 300 without colliding with AOSP's V4 default basename. AVF contributes its own
+# virtualization feature declaration through the product inherit above.
 #
 # ⚠️ The destination is $(TARGET_COPY_OUT_VENDOR), matching where stock put them
 # and what build/make/target/product/full_base_telephony.mk does. These describe
@@ -785,8 +797,8 @@ PRODUCT_SHIPPING_API_LEVEL := 36
 #
 # ⚠️ Three files at that path stay blobs, correctly: privapp-permissions-qti-vendor.xml
 # and vendor.qti.{dcf,qva}.xml grant privileged permissions to Qualcomm packages
-# and have no upstream source. features_com.android.virt.xml was never a blob —
-# packages/modules/Virtualization builds it.
+# and have no upstream source. features_com.android.virt.xml is built by AVF,
+# not carried as a blob.
 #
 # ⚠️ The six sensor files are FLATTENED out of the SKU subdirectory stock used.
 # SystemConfig.java:109,709 reads /vendor/etc/permissions/sku_$(ro.boot.product.vendor.sku)/
@@ -796,8 +808,7 @@ PRODUCT_SHIPPING_API_LEVEL := 36
 # gyroscope, light and step-counter would vanish from pm list features with no
 # other symptom. At the top level they are unconditional.
 PRODUCT_COPY_FILES += \
-    $(LOCAL_PATH)/configs/permissions/handheld_core_hardware.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/handheld_core_hardware.xml \
-    $(LOCAL_PATH)/configs/permissions/android.hardware.hardware_keystore.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.hardware_keystore.xml
+    $(LOCAL_PATH)/configs/permissions/handheld_core_hardware.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/handheld_core_hardware.xml
 
 # Audio: low_latency and pro are CDD claims about the audio stack, both of which
 # stock makes and the smart-amp/USB-C stack here supports.

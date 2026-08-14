@@ -12,145 +12,38 @@ DEVICE_PATH := device/lenovo/malbec
 # left in PRODUCT_COPY_FILES is an ELF. (onyx sets it because it uses
 # ;MAKE_COPY_RULE_ONLY on .so blobs. We do not need that -- see below.)
 #
-# BUILD_BROKEN_DUP_RULES is ON, and here is the proof it is needed.
+# BUILD_BROKEN_DUP_RULES remains ON for exactly two fixed-path targets whose
+# stock semantics cannot be preserved through the available overlay mechanisms:
 #
-# Several install targets are claimed by two rules. They fall into THREE classes,
-# and describing them as one is how the version of this comment that stood until
-# session 21 managed to be wrong in five separate ways at once.
+#   vendor/etc/aidl/le_audio/aidl_audio_set_configurations.bfbs
+#   vendor/etc/usb_compositions.conf
 #
-# ⚠️ THIS COMMENT DELIBERATELY CITES NO COUNTS. It used to say "22 ... 13/3/6"
-# while the script said 24 in 14/3/7, and it said so under its own instruction
-# not to edit it from memory -- the two extra members arrived with the thermal
-# HAL fix (#22/#41) and nobody re-ran it. A number that has to be maintained by
-# hand next to a script that computes it will drift, and the drift is invisible.
-# The lists below are the entries whose CHOICE NEEDED A REASON, not an inventory.
-# For the inventory, run:
+# hardware/interfaces/bluetooth/audio/utils generates the canonical BFBS and
+# libbluetooth_audio_session_aidl requires that exact installed path. Lenovo's
+# JSON at the paired fixed path uses the older `device_cnt` and
+# `configuration_strategy` schema fields; the current AOSP schema removed those
+# fields and uses `ase_channel_cnt`. The stock BFBS is therefore not replaceable
+# by AOSP's without a proved JSON data migration, and prebuilt_etc deliberately
+# has no source/prebuilt selection mechanism (build/soong/etc/prebuilt_etc.go).
+# PRODUCT_COPY_FILES supplies the matching stock BFBS and Kati keeps its later
+# recipe.
 #
-#     python3 work/scripts/30-dup-installs.py            # live list + winners
-#     python3 work/scripts/30-dup-installs.py --check    # fail on drift
-#     python3 work/scripts/30-dup-installs.py --write    # re-record after a change
+# QTI's canonical USB table contains a `diag,diag_cnss,adb` composition that
+# Lenovo deliberately removed, while stock adds Lenovo VID/PID and Ready For
+# entries. UsbGadget overlays only insert or replace map entries; they cannot
+# delete that unsupported composition. A device prebuilt at the canonical path
+# also has no Soong source/prebuilt selection mechanism, so the byte-identical
+# stock table must remain the later PRODUCT_COPY_FILES recipe.
 #
-# -- A. PRODUCT_COPY_FILES vs a Soong install rule -- the PCF side wins all
+# Removing this switch would turn these two intentional, measured exceptions
+# into --werror_overriding_commands and stop the build.
 #
-#   ⚠️ "PCF wins", NOT "the blob wins", and the distinction became load-bearing
-#   in #64: android.hardware.hardware_keystore.xml is now a PRODUCT_COPY_FILES
-#   entry from device/lenovo/malbec/configs/permissions/, so the winner is a
-#   file of OURS and the loser is AOSP's
-#   hardware/interfaces/security/keymint/aidl/default. Every other member of
-#   this class is still a blob. The mechanism does not care which.
-#
-#   kati materialises PRODUCT_COPY_FILES from build/make/core/Makefile:148, i.e.
-#   AFTER installs-$(TARGET_PRODUCT).mk, and Make keeps the LAST recipe. The blob
-#   therefore wins every one of these, which is what we want. Without this flag
-#   build/soong/ui/build/kati.go:253-256 adds --werror_overriding_commands and
-#   the build simply stops.
-#
-#     etc/init/{memtrack_qti, qspa_vendor, vendor.qti.audio-adsprpc-service}.rc
-#     etc/init/init.qti.display_boot.rc
-#     etc/init/vendor.qti.hardware.display.{allocator,composer,demura}-service.rc
-#     etc/init/android.hardware.thermal-service.qti.rc
-#     etc/permissions/android.hardware.hardware_keystore.xml
-#     etc/usb_compositions.conf
-#     etc/wifi/wpa_supplicant.conf
-#     etc/aidl/hfp/hfp_codec_capabilities.xml
-#     etc/aidl/le_audio/aidl_audio_set_{configurations,scenarios}.bfbs
-#
-#   Why the winner is right: the .rc files start binaries we ship as blobs (each
-#   one's `service` line names a binary whose only install rule comes from
-#   vendor/lenovo/malbec); usb_compositions.conf carries Lenovo's USB VID 0x17EF
-#   and the Lenovo-only `readyfor` compositions where the generic QTI copy uses
-#   0x05C6. composer-service.rc is the one pair whose sides genuinely differ --
-#   the source module uses `task_profiles ServiceCapacityLow`, the blob uses
-#   `writepid /dev/cpuset/system-background/tasks` -- and the blob is
-#   byte-identical to stock. thermal-service.qti.rc arrived with #22/#41 and is
-#   the blob for the same reason: it starts the blob thermal HAL, which is the
-#   only build of it that carries Lenovo's board config rather than Qualcomm's
-#   reference one.
-#
-#   hardware_keystore.xml is the one member whose winner is OURS rather than a
-#   blob. It declares feature version 300 (KeyMint 3.0), matching the vendor
-#   manifest's android.hardware.security.keymint at AIDL V3 and stock's own
-#   file byte-for-byte; the loser is AOSP's
-#   hardware/interfaces/security/keymint/aidl/default copy, which claims 400 for
-#   a TA this device does not have. Verified on the running device:
-#   `pm list features | grep keystore` -> hardware_keystore=300.
-#
-#   /!\ vndservicemanager.rc was listed here and no longer collides.
-#   /!\ product/media/bootanimation.zip was here until session 21 and is gone:
-#       the stock animation was dropped for LineageOS's generated one, which is
-#       sized from TARGET_SCREEN_{WIDTH,HEIGHT} and therefore actually fits.
-#
-# -- B. Soong install rule vs Soong install rule -- blob wins all
-#
-#     bin/init.qti.display_boot.sh
-#     etc/vintf/manifest/face-default.xml
-#     etc/vintf/manifest/vendor.qti.hardware.display.composer-service3_v3.xml
-#
-#   Both sides are ordinary install rules in installs-$(TARGET_PRODUCT).mk, so
-#   the winner is whichever module Soong visited LAST. That is deterministic for
-#   a fixed tree and NOT contractual -- which is exactly why the winners are
-#   recorded in work/analysis/blob-ownership.txt rather than left to luck.
-#   face-default.xml matters because the AOSP reference face HAL leaks its vintf
-#   fragment into the build while the only face service installed is the ArcSoft
-#   blob (checked against the vendor image input list: the AOSP binary is not
-#   packaged at all). composer-service3_v3.xml matters because device.mk pins the
-#   whole QTI display stack to blobs. init.qti.display_boot.sh is the one whose
-#   two candidates are functionally different -- the blob adds kera soc_ids
-#   720/721/731/732 to the `sun` case, and that case has no `*)` default -- so a
-#   flip there is not cosmetic.
-#
-# -- C. Soong install rule vs a `vintf_fragments:` rule -- the source module
-#       wins all
-#
-#     etc/vintf/manifest/android.hardware.thermal-service.qti.xml
-#     etc/vintf/manifest/manifest_audio_qti_services.xml
-#     etc/vintf/manifest/mapper.qti.xml
-#     etc/vintf/manifest/memtrack_qti.xml
-#     etc/vintf/manifest/soundtrigger.qti.xml
-#     etc/vintf/manifest/vendor.qti.hardware.display.allocator-service.xml
-#     etc/vintf/manifest/vendor.qti.hardware.display.demura-service.xml
-#
-#   *** This class is STRUCTURAL and cannot be changed from this device tree.
-#   build/soong/android/module.go:2216-2228 turns a module's `vintf_fragments:`
-#   into a katiVintfInstall, and build/soong/android/makevars.go:552-564 writes
-#   those into a SEPARATE block appended after every normal install rule. Last
-#   recipe wins, so a vintf_fragments-derived rule ALWAYS beats a
-#   prebuilt_etc_xml install of the same path. The only lever is removing
-#   `vintf_fragments:` from the source module, i.e. patching shared HAL repos.
-#
-#   It is also harmless. The recipe is `assemble_vintf`
-#   (build/make/core/definitions.mk:3209-3215), not a copy -- the same
-#   normalisation that produced stock's own copies -- and each was compared
-#   tuple-by-tuple on (format, name, version, fqname) against the extracted stock
-#   vendor image and is semantically identical. In each, the source module that
-#   wins is itself replaced by a `prefer: true` blob and ships no binary; only
-#   its manifest fragment reaches the image.
-#
-#   ★ Which is exactly why every member of this class also has a redundant
-#   `prebuilt_etc_xml` module and a proprietary-files.txt line that can never
-#   reach the image. `prefer: true` replaces the BINARY; it does not disable the
-#   source module's `vintf_fragments:`. See work/OPEN-ISSUES.md #41 -- the
-#   extraction is the thing to drop, not the collision.
-#
-# /!\ vendor.qti.hardware.vibrator.service.rc used to be in class A. It is gone
-# -- the whole vibrator stack was removed once the tablet was confirmed to have
-# no motor, and session 21 re-confirmed that the hard way: stock runs a
-# COMPLETE, LIVE vibrator stack (service running, IVibrator registered, nine
-# primitives, a real PMIC node at pm7550ba@7:qcom,vibrator@df00) and the owner
-# still feels nothing, because Lenovo shares one vendor image across SKUs. If it
-# reappears here, something re-added the stack.
-#
-# What replaces the lost kati error: work/scripts/30-dup-installs.py lists every
-# duplicate target with both sources AND which side kati keeps, and `--check`
-# fails if any winner stops matching work/analysis/blob-ownership.txt. That is
-# strictly stronger than the kati error, which only said "there is a tie" and
-# never said who won.
-#
-# /!\ The claim that used to end this block -- "this is NOT the 58-duplicate
-# problem ... removing the tags took 58 -> 0 and needed no BUILD_BROKEN_* at
-# all" -- was FALSE for classes B and C: nine paths collide Soong-against-Soong
-# today. The ;MODULE_SUFFIX= story is still true as history; the "took it to
-# zero" conclusion never was.
+# Every other former duplicate was removed without changing fixed-path
+# semantics: byte-identical configs use source modules; KeyMint uses AOSP's V3
+# feature XML; Wi-Fi uses the supported overlay file; init and VINTF data use
+# unique device basenames. Keep the audit honest with
+# work/scripts/30-dup-installs.py, whose baseline must contain exactly the two
+# targets above, both as stock PRODUCT_COPY_FILES winners.
 BUILD_BROKEN_DUP_RULES := true
 
 # A/B

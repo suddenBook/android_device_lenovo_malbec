@@ -62,6 +62,33 @@ install_symlink {
     symlink_target: "/mnt/vendor/persist/wcn7750/wlan_mac.bin",
 }
 
+// `prefer: true` replaces only a source module's main artifact. Soong still
+// exports the source module's init_rc/vintf_fragments auxiliary rules, which
+// used to collide with same-named extracted files. Init and libvintf load every
+// file in their respective directories, so device-owned unique basenames keep
+// the declarations without depending on Make's last-recipe-wins behaviour.
+prebuilt_etc {
+    name: "init.malbec-proprietary-services.rc",
+    src: "configs/init/init.malbec-proprietary-services.rc",
+    filename_from_src: true,
+    sub_dir: "init",
+    vendor: true,
+}
+
+vintf_fragment {
+    name: "malbec_proprietary_hal_manifest",
+    src: "configs/vintf/manifest_malbec_proprietary.xml",
+    vendor: true,
+}
+
+prebuilt_etc {
+    name: "malbec_wpa_supplicant_overlay",
+    src: "configs/wifi/wpa_supplicant_overlay.conf",
+    filename: "wpa_supplicant_overlay.conf",
+    sub_dir: "wifi",
+    vendor: true,
+}
+
 // CneApp loads libvndfwk_detect_jni.qti_vendor.so from its own lib directory,
 // and stock points that at the copy in /vendor/lib64 rather than shipping it
 // twice. No module for it here: upstream already has one that does exactly

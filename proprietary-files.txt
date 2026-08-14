@@ -464,7 +464,6 @@ vendor/etc/init/android.hardware.bluetooth@aidl-service-qti.rc
 vendor/etc/init/android.hardware.drm@1.1-service.wfdhdcp.rc
 vendor/etc/init/android.hardware.gatekeeper-service-qti.rc
 vendor/etc/init/android.hardware.identity-service-qti.rc
-vendor/etc/init/android.hardware.thermal-service.qti.rc
 vendor/etc/init/android.hardware.power-service.rc
 vendor/etc/init/android.hardware.security.keymint-service-qti.rc
 vendor/etc/init/com.qualcomm.qti.wifidisplayhal@1.0-service.rc
@@ -489,7 +488,6 @@ vendor/etc/init/init.time_daemon.rc
 vendor/etc/init/init.vendor.sensors.rc
 vendor/etc/init/init.vendor.wlan.rc|cf8dbc3a20454932cc79d0270689fc4926401449|e259d8165dd082960aee377511abd2aeadfa4410
 vendor/etc/init/init_thermal-engine-v2.rc|3ebe0e867707876cea6cfcd51d34626d775107be|6e7fda5c7471a567460f91d8104ecd300dbaf12c
-vendor/etc/init/memtrack_qti.rc
 vendor/etc/init/prop_init.rc
 vendor/etc/init/qconfig.rc
 vendor/etc/init/qdcmss.rc
@@ -525,7 +523,6 @@ vendor/etc/init/qesdk-secmanager.rc
 # loss stock already takes. Confirmed zero `qguard` lines in a full boot logcat
 # and dmesg on the flashed build.
 vendor/etc/init/qseecomd.rc
-vendor/etc/init/qspa_vendor.rc
 vendor/etc/init/qwesd.rc
 vendor/etc/init/shsusrd.rc
 vendor/etc/init/snapdragon_services.rc
@@ -547,7 +544,6 @@ vendor/etc/init/vendor.qsap.qapeservice.rc
 vendor/etc/init/vendor.qsap.sensors.rc
 vendor/etc/init/vendor.qti.MemHal-service.rc
 vendor/etc/init/vendor.qti.adsprpc-guestos-service.rc
-vendor/etc/init/vendor.qti.audio-adsprpc-service.rc
 vendor/etc/init/vendor.qti.camera.provider-service_64.rc
 vendor/etc/init/vendor.qti.cdsprpc-service.rc
 # ★★ The four diag entries are DELIBERATELY NOT EXTRACTED — vendor.qti.diag.rc,
@@ -607,41 +603,15 @@ vendor/etc/init/wifisar.rc
 
 # VINTF
 #
-# ★ SEVEN FRAGMENTS HERE LOSE THE CONTENT RACE AND STILL HAVE TO BE EXTRACTED:
-#
-#     android.hardware.thermal-service.qti.xml   manifest_audio_qti_services.xml
-#     mapper.qti.xml                             memtrack_qti.xml
-#     soundtrigger.qti.xml   vendor.qti.hardware.display.allocator-service.xml
-#     vendor.qti.hardware.display.demura-service.xml
-#
-# ⚠️ THEY WERE DELETED IN SESSION 27 AND PUT BACK IN THE SAME SESSION, BY
-# MEASUREMENT. Do not delete them again without repeating it.
-#
-# What is true: `prefer: true` on a blob replaces the source module's BINARY and
-# does NOT disable its `vintf_fragments:`, and
-# build/soong/android/makevars.go:552-564 writes fragment installs into a block
-# appended after every ordinary install rule — so the CONTENT of these seven
-# paths comes from `assemble_vintf -i <source>.xml`, never from the blob. That
-# is visible in the bytes: the shipped copy carries the source path in its
-# provenance comment and `manifest version="9.0"` where the blob says `"8.0"`.
-# OPEN-ISSUES.md #41 concluded from that the extraction was dead weight.
-#
-# It is not. The `prebuilt_etc_xml` module is what puts the PATH into the
-# product's install set at all; the fragment rule only overrides the recipe for
-# a path that is already there. Remove the extraction and the path leaves the
-# product, the assemble_vintf rule becomes unreachable, and the file is simply
-# not built. Measured: /vendor/etc/vintf/manifest/ went from 78 files to 71,
-# losing exactly these seven — i.e. seven HAL declarations including
-# android.hardware.thermal.IThermal/default, which `service check` confirms is
-# live on the flashed build.
-#
-# So the collision (BoardConfig.mk class C) is the price of the declaration, and
-# it is the right price. What is genuinely wasted is the blob's bytes, which are
-# built and discarded — 7 files, ~9 KB total, and there is no way to keep the
-# path without them.
+# Seven QTI source binaries leak their legacy `vintf_fragments:` rule even when
+# `prefer: true` selects the proprietary implementation. Their extracted
+# same-basename prebuilts used to keep those otherwise-unreachable paths alive,
+# at the cost of seven duplicate install recipes. The tuple-equivalent
+# declarations now live in the device-owned, uniquely named
+# manifest_malbec_proprietary.xml `vintf_fragment`; filenames have no VINTF
+# semantics, and the unique name avoids Make recipe arbitration.
 vendor/etc/vintf/manifest/android.hardware.drm-service.xml
 vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml
-vendor/etc/vintf/manifest/android.hardware.thermal-service.qti.xml
 vendor/etc/vintf/manifest/bcs-ranging.xml
 vendor/etc/vintf/manifest/bluetooth-finder.xml
 vendor/etc/vintf/manifest/bluetooth_hci.xml
@@ -654,14 +624,11 @@ vendor/etc/vintf/manifest/cacert-saidl.xml
 vendor/etc/vintf/manifest/dms-service.xml
 vendor/etc/vintf/manifest/dvs-aidl-service.xml
 vendor/etc/vintf/manifest/manifest_afw.xml
-vendor/etc/vintf/manifest/manifest_audio_qti_services.xml
 vendor/etc/vintf/manifest/manifest_btaudiocoreservices_qti.xml
 vendor/etc/vintf/manifest/manifest_identity_credential.xml
-vendor/etc/vintf/manifest/memtrack_qti.xml
 vendor/etc/vintf/manifest/qasr_vintf.xml
 vendor/etc/vintf/manifest/qesdk-manager.xml
 vendor/etc/vintf/manifest/snapdragon_services.xml
-vendor/etc/vintf/manifest/soundtrigger.qti.xml
 vendor/etc/vintf/manifest/vendor.dolby.media.c2-default-service-dax.xml
 vendor/etc/vintf/manifest/vendor.lenovo.hardware.battery-service.xml
 vendor/etc/vintf/manifest/vendor.lenovo.hardware.display-service.xml
@@ -1186,9 +1153,7 @@ vendor/lib64/vendor.qti.hardware.bluetooth_sar-V1-ndk.so
 
 # Bluetooth
 vendor/bin/hw/android.hardware.bluetooth@aidl-service-qti
-vendor/etc/aidl/hfp/hfp_codec_capabilities.xml
 vendor/etc/aidl/le_audio/aidl_audio_set_configurations.bfbs
-vendor/etc/aidl/le_audio/aidl_audio_set_scenarios.bfbs
 vendor/lib64/android.hardware.bluetooth.audio-impl.so;DISABLE_DEPS
 vendor/lib64/hw/android.hardware.bluetooth.lmp_event-impl-qti.so
 vendor/lib64/hw/android.hardware.bluetooth.ranging@aidl-impl-qti.so
@@ -1463,7 +1428,6 @@ vendor/bin/hw/vendor.qti.hardware.display.allocator-service
 vendor/bin/hw/vendor.qti.hardware.display.color-service
 vendor/bin/hw/vendor.qti.hardware.display.composer-service;DISABLE_DEPS|4c3e5116fce5862b578fe75a7157b617876cf891|18bfef7b11099b4c59e74dc53f9c03f00892fba6
 vendor/bin/hw/vendor.qti.hardware.display.demura-service
-vendor/bin/init.qti.display_boot.sh
 vendor/bin/qdcmss
 vendor/bin/wifidisplayhalservice
 vendor/etc/display/DPU1230.xml
@@ -1483,15 +1447,7 @@ vendor/etc/display/sdm_display_resolution_extn.xml
 vendor/etc/display/thermallevel_to_fps.xml
 vendor/etc/display/ubwc_alignments.json
 vendor/etc/display/video_alignments.json
-vendor/etc/init/init.qti.display_boot.rc
-vendor/etc/init/vendor.qti.hardware.display.allocator-service.rc
-vendor/etc/init/vendor.qti.hardware.display.composer-service.rc
-vendor/etc/init/vendor.qti.hardware.display.demura-service.rc
 vendor/etc/snapdragon_color_libs_config.xml
-vendor/etc/vintf/manifest/mapper.qti.xml
-vendor/etc/vintf/manifest/vendor.qti.hardware.display.allocator-service.xml
-vendor/etc/vintf/manifest/vendor.qti.hardware.display.composer-service3_v3.xml
-vendor/etc/vintf/manifest/vendor.qti.hardware.display.demura-service.xml
 vendor/lib64/hw/android.hardware.graphics.mapper@4.0-impl-qti-display.so
 vendor/lib64/hw/mapper.qti.so
 vendor/lib64/libdemura_oem_plugin.so
@@ -1843,8 +1799,6 @@ vendor/etc/hostapd/hostapd_default.conf
 vendor/etc/wifi/p2p_supplicant_overlay.conf
 vendor/etc/wifi/vendor_cmd.xml
 vendor/etc/wifi/wcn7750/WCNSS_qcom_cfg.ini
-vendor/etc/wifi/wpa_supplicant.conf
-vendor/etc/wifi/wpa_supplicant_overlay.conf
 vendor/lib64/vendor.qti.hardware.wifi.wifilearner-V1-ndk.so
 
 # System-side QTI
