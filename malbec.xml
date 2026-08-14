@@ -25,7 +25,7 @@
 
          Default revision lineage-23.2 not found in ... Bailing.
 
-     Moving the three repos onto the `lineage-23.2` branch was a real and
+     Moving the four custom repos onto the `lineage-23.2` branch was a real and
      separate bug, and fixing it was necessary but not sufficient: the
      organisation prefix cannot be fixed from the device tree at all. Hence this
      file.
@@ -67,6 +67,13 @@
   <remote name="suddenBook"
           fetch="https://github.com/suddenBook"
           revision="refs/heads/lineage-23.2" />
+
+  <remove-project name="LineageOS/android_packages_apps_Launcher3" />
+
+  <project path="packages/apps/Launcher3"
+           name="android_packages_apps_Launcher3"
+           remote="suddenBook"
+           groups="pdk-cw-tvc,pdk-fs,sysui-studio" />
 
   <project path="device/lenovo/malbec"
            name="android_device_lenovo_malbec"

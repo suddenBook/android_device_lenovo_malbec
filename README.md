@@ -54,8 +54,8 @@ malbec/
 |---|---|
 | [`android_device_lenovo_malbec`](https://github.com/suddenBook/android_device_lenovo_malbec) | `device/lenovo/malbec` |
 | [`android_device_lenovo_malbec-kernel`](https://github.com/suddenBook/android_device_lenovo_malbec-kernel) | `device/lenovo/malbec-kernel` |
+| [`android_packages_apps_Launcher3`](https://github.com/suddenBook/android_packages_apps_Launcher3) | `packages/apps/Launcher3` |
 | [`proprietary_vendor_lenovo_malbec`](https://github.com/suddenBook/proprietary_vendor_lenovo_malbec) | `vendor/lenovo/malbec` |
-| [`android_frameworks_base`](https://github.com/suddenBook/android_frameworks_base) | `frameworks/base` |
 | [MindTheGapps `vendor_gapps`](https://gitlab.com/MindTheGapps/vendor_gapps) | `vendor/gapps` |
 
 The four suddenBook repositories track **`lineage-23.2`**; MindTheGapps tracks
@@ -64,8 +64,8 @@ resolved SHAs from a release build when byte-for-byte source selection matters.
 
 ## ⚠️ `breakfast malbec` cannot fetch these repos. Use the local manifest.
 
-`lineage.dependencies` is the LineageOS-native mechanism and it **cannot** work
-for a fork outside the LineageOS organisation.
+`lineage.dependencies` is the LineageOS-native mechanism and it **cannot** fetch
+a repository outside the LineageOS organisation.
 `vendor/lineage/build/tools/roomservice.py` hardcodes the org in two places:
 
 ```
@@ -97,13 +97,15 @@ repo sync
 bootstrap file. Its repository values include `suddenBook/`; even after a move
 to LineageOS those prefixes would need to be removed.
 
-⚠️ **It lists all FOUR forked projects, and session 36 is why.** It used to list
-two — `malbec-kernel` and `vendor/lenovo/malbec` — and omit `frameworks/base`
-and `vendor/gapps`. Those are **precisely the two whose absence is silent**: a
-missing `frameworks/base` fork builds a ROM with no parallel-window engine and
-no error, and a missing `vendor/gapps` builds **green** and ships a device with
-no Play Services (HANDOFF fact 5). The two it did list fail loudly. So the
-incomplete half of the "intent" was the half that needed writing down.
+⚠️ **It lists the two external device dependencies (kernel and proprietary
+vendor) plus `vendor/gapps`.** The current device repository is already the
+checkout containing this file and therefore is not its own dependency.
+`frameworks/base` and `packages/apps/Settings` intentionally come from the
+official LineageOS manifest. Launcher3 is the sole upstream source fork and is
+selected only by `malbec.xml`; it is not a roomservice dependency. A missing
+`vendor/gapps` can still build **green** and ship a device with no Play Services
+(HANDOFF fact 5), which is why that otherwise non-device dependency remains
+explicit.
 
 The file is JSON and cannot carry a comment, which is why this paragraph is
 here — and it is also why `malbec.xml` remains the only thing that actually
