@@ -432,7 +432,8 @@ BOARD_BOOTCONFIG := \
 BOARD_BOOTCONFIG += androidboot.wificountrycode=US
 
 # ⚠️ BRING-UP ONLY. Gated on MALBEC_BRINGUP, which work/scripts/40-build.sh
-# exports and 35-upstream-readiness.py checks.
+# exports. (This used to name a checker "35-upstream-readiness.py" as the second
+# enforcer. No such script has ever existed in work/scripts/ — session 37.)
 #
 # ⚠️ This paragraph used to say "the default is ON (?= true), i.e. opt-OUT",
 # which stopped being true when the default became `false`, and is doubly wrong

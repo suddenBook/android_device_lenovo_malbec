@@ -36,8 +36,9 @@
 # line is visible to it.
 #
 # ⚠️ Aliases spelled out, and no reuse of BoardConfig.mk's normalisation, for the
-# same reason device.mk:1444 spells them out: BoardConfig.mk has not been parsed
-# yet, so `?=` and the true/false rewriting there are not visible. An unset
+# same reason the MALBEC_BRINGUP property block in device.mk spells them out:
+# BoardConfig.mk has not been parsed yet, so `?=` and the true/false rewriting
+# there are not visible. An unset
 # variable filters to nothing and gets the release posture, which is the correct
 # default for anything shipped.
 ifneq (,$(filter 0 1 true,$(MALBEC_BRINGUP)))

@@ -60,72 +60,14 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/virtual_ab_ota/compression_wit
 # The "phone" in the name is historical; the profiles are keyed on RAM and density.
 $(call inherit-product, frameworks/native/build/phone-xhdpi-6144-dalvik-heap.mk)
 
-# ── AVF ─────────────────────────────────────────────────────────────────────
-#
-# ⚠️ MEASURED SESSION 25: **no VM of any kind can start on this device**, and two
-# of the three sentences this comment used to carry were wrong. Kept as a comment
-# rather than acted on, for a reason given at the end.
-#
-# What was here: *"Stock ships com.android.virt, so keep parity. Note that
-# VmTerminalApp is deliberately NOT included: the hypervisor here is Gunyah, not
-# KVM, /dev/kvm does not exist and only protected VMs are supported, so the
-# Terminal's non-protected Debian VM cannot start."*
-#
-#   1. **"Stock ships it, so keep parity" is not why the 95 MB is here.**
-#      `com.android.virt` is in build/make/target/product/base_system.mk:79
-#      unconditionally, so it ships whether this line exists or not. Removing this
-#      inherit would NOT reclaim `/system/apex/com.android.virt.apex` (94.9 MB).
-#   2. **VmTerminalApp IS included.** It is an apex payload
-#      (packages/modules/Virtualization/apex/Android.bp), not a PRODUCT_PACKAGES
-#      entry, so nothing in a device tree can exclude it — and
-#      `dumpsys package` lists `com.android.virtualization.terminal` at
-#      `/apex/com.android.virt/priv-app/VmTerminalApp`. The *outcome* was right
-#      (its launcher category is `android.virtualization.VM_TERMINAL`, not
-#      LAUNCHER, so it is not on the home screen); the mechanism claim was not.
-#   3. **`ro.boot.hypervisor.protected_vm.supported=true` is not evidence.** It is
-#      a token BoardConfig.mk copies out of stock's vendor_boot bootconfig. It is
-#      a static claim on both ROMs.
-#
-# The measurement, which nobody had taken in 25 sessions:
-#
-#   $ /apex/com.android.virt/bin/vm run-microdroid --debug full
-#   crosvm: creating hypervisor: Gunyah { device: Some("/dev/gunyah") }
-#   crosvm: exiting with error 1: the architecture failed to build the vm
-#           Caused by: failed to initialize virtual machine No such device (os error 19)
-#   VM ended: StartFailed
-#
-#   [kernel] gunyah_rsc_mgr hypervisor:qcom,resource-manager-rpc@…:
-#            RM rejected message 56000004. Error: 2
-#   [kernel] misc gunyah: Failed to start VM: -19
-#
-# ★ The refusal comes from the **Gunyah Resource Manager**, i.e. from firmware in
-# the `hyp` partition, signed by Qualcomm/Lenovo. It is not SELinux (`/dev/gunyah`
-# is correctly labelled `vendor_gunyah_dev` and there is no denial), not DAC
-# (`crw-rw-rw-`), and not a missing device node. **Nothing in this ROM can change
-# it.** So `android.software.virtualization_framework`, which
-# `features_com.android.virt.xml` declares, is a feature bit this device cannot
-# honour.
-#
-# ⚠️ WHY THE LINE STAYS ANYWAY, which is a judgement and not a measurement:
-# removing it buys only the feature bit and `com.android.compos`, because the
-# 94.9 MB belongs to base_system. Against that, `product_packages.mk` assigns
-# PRODUCT_APEX_SYSTEM_SERVER_JARS, PRODUCT_SYSTEM_EXT_PROPERTIES,
-# PRODUCT_PRODUCT_PROPERTIES and PRODUCT_FSVERITY_GENERATE_METADATA with `:=`, so
-# dropping the inherit changes four product variables whose other contributors are
-# not obvious, and it interacts with the RELEASE_AVF_* release-config flags. A
-# 95 MB saving would justify that risk; a feature bit does not.
-#
-# If a future session wants the bit gone, the honest route is to stop inheriting
-# this and re-verify those four variables in the built `build.prop` and
-# `apex-info-list`, not to `filter-out` the feature XML — see lesson 0c about
-# workarounds that silently do nothing.
-#
-# ⚠️ One residual uncertainty, stated rather than hidden: our `vbmeta_system`
-# drops the `pvmfw` hash descriptor stock carries (774144 bytes), we build no
-# `pvmfw.img`, and 42-flash.sh never writes that partition — so the factory pvmfw
-# is still there but is no longer described by any vbmeta we sign. Whether a
-# correctly-described pvmfw would change the RM's answer was NOT tested. It is the
-# one thread left if anyone ever wants AVF here.
+# ── Android Virtualization Framework ────────────────────────────────────────
+# Keep the stock-matching protected-VM stack until it is tested correctly.
+# This device reports "Only protected VMs are supported"; the recorded
+# `vm run-microdroid --debug full` failure exercised the default non-protected
+# path and therefore does not prove that pVM or CompOS is unavailable. The
+# current vbmeta_system/pvmfw descriptor gap must also be fixed before a
+# protected result is trustworthy. Do not retire the feature or isolated ART
+# compilation on evidence from the unsupported guest mode.
 $(call inherit-product, packages/modules/Virtualization/apex/product_packages.mk)
 
 # Qualcomm
@@ -1455,32 +1397,12 @@ PRODUCT_PACKAGES += \
     wpa_supplicant \
     wpa_supplicant.conf
 
-# ⚠️ BRING-UP ONLY — root shell on first boot, gated on MALBEC_BRINGUP.
+# ⚠️ BRING-UP ONLY — root shell from adbd's first start, gated on
+# MALBEC_BRINGUP.
 #
-# ⚠️ SESSION 21: the reason this block used to give is FALSE on LineageOS, and
-# the property may well be unnecessary now. Kept for the first flash only, and
-# to be re-tested on it.
-#
-# What it used to say: "`adb root` does NOT work on this ROM, because PixelOS
-# patches init — SetSafetyNetProps() (system/core/init/property_service.cpp
-# :1377-1389) hard-codes ro.debuggable=0 before bootconfig is parsed, and ro.* is
-# write-once. PixelOS compensates by compiling adbd with ANDROID_DEBUGGABLE=1
-# (packages/modules/adb/Android.bp:47-56)."
-#
-# Both halves are wrong here:
-#   · `SetSafetyNetProps` does not exist anywhere in this tree. It was a PixelOS
-#     init patch; LineageOS does not carry it, so on a LineageOS userdebug build
-#     ro.debuggable=1 propagates normally and `adb root` should just work.
-#   · The adbd citation is not a PixelOS patch either — Android.bp:47 defaults
-#     `-DANDROID_DEBUGGABLE=0` and :49-56 flips it from the `debuggable` product
-#     variable. That is stock AOSP.
-#
-# ★ TEST ON THE FIRST BOOT: `adb root && adb shell id`. If it returns uid=0, the
-# whole block can go; delete it rather than leave a workaround for a problem this
-# ROM does not have.
-#
-# The one reason that survives is the narrow one at the end of this comment: it
-# avoids `ctl.restart adbd`. Read that before deciding.
+# LineageOS propagates ro.debuggable normally; this property is retained only as
+# measured recovery infrastructure. It avoids the adbd restart that can lose the
+# diagnostic USB connection during a boot failure, as detailed below.
 #
 # What actually gates root is packages/modules/adb/daemon/main.cpp:66-96:
 #

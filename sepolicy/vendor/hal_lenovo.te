@@ -1,4 +1,4 @@
-# Lenovo's ten private AIDL HALs.
+# Lenovo's eight private AIDL HALs.
 #
 # The service binaries ship in the vendor image and their init rc files start
 # them, so they need domains or init cannot transition them out of its own.
@@ -79,4 +79,3 @@ type hal_lenovousb_default_exec, exec_type, vendor_file_type, file_type;
 init_daemon_domain(hal_lenovousb_default)
 binder_use(hal_lenovousb_default)
 add_service(hal_lenovousb_default, hal_lenovousb_service)
-

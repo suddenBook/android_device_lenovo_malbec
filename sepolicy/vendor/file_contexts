@@ -39,14 +39,10 @@
 /(vendor|system/vendor)/bin/prop_init                                        u:object_r:prop_init_exec:s0
 
 # Adaptive backlight (CABL) and smart video intelligence (SVI) helper scripts.
-# All seven just exec /vendor/bin/ppd with a different argument. The domain
-# vendor_qti_init_shell already exists in device/qcom/sepolicy_vndr, so these
-# need no .te at all — only the label.
-# ⚠️ Stock labels the five cabl scripts but NOT the two svi ones, which then fall
-# to vendor_file on stock too. Labelling them the same way here is a deliberate
-# (small) deviation: they are the same program with a different argument, and
-# leaving two of seven unlabelled looks like an oversight in stock rather than
-# intent.
+# Stock applies this exact label to all five CABL and both SVI scripts. All seven
+# just exec /vendor/bin/ppd with a different argument. The domain
+# vendor_qti_init_shell already exists in device/qcom/sepolicy_vndr, so matching
+# stock needs no device-specific .te rules — only these labels.
 /(vendor|system/vendor)/bin/init\.qcom\.cabl\.sh                             u:object_r:vendor_qti_init_shell_exec:s0
 /(vendor|system/vendor)/bin/init\.qcom\.cabl\.low\.sh                        u:object_r:vendor_qti_init_shell_exec:s0
 /(vendor|system/vendor)/bin/init\.qcom\.cabl\.medium\.sh                     u:object_r:vendor_qti_init_shell_exec:s0
@@ -95,39 +91,53 @@
 # right before first boot. See sepolicy/vendor/hal_audio.te for the derivation.
 /mnt/vendor/persist/factory/audio(/.*)?                                      u:object_r:vendor_persist_audio_file:s0
 
-# ★ libsdmextension.so is a SAME-PROCESS HAL, and labelling it as one is a real
-# fix rather than a silenced denial. Session 24.
+# ★ libsdmextension.so needs a SAME-PROCESS HAL label, and the label is right —
+# but the MECHANISM this comment gave for eight sessions was wrong, and the wrong
+# one is the more alarming of the two. Corrected session 37, by reading
+# /proc/<pid>/maps rather than by re-reading the policy.
 #
-# It is QTI's display extension library and it is genuinely loaded into a CORE
-# process — measured on the running device, both of these have it mapped:
+# It is QTI's display extension library and it really is mapped into a CORE
+# process. What was inferred from that was `dlopen` from system_server, hence a
+# `:file execute` that system/sepolicy/private/domain.te:1257-1271's
+# full_treble_only neverallow FORBIDS for a coredomain over vendor_file_type.
+# That story is false, and the maps say so in one column:
 #
-#   /vendor/bin/hw/vendor.qti.hardware.display.composer-service   (vendor)
-#   system_server                                                 (coredomain)
+#   system_server  7322400000-7322635000 r--s  /vendor/lib64/libsdmextension.so
+#   composer       773232d000-77323d0000 r--p  /vendor/lib64/libsdmextension.so
+#                  77323d1000-7732554000 r-xp  …            <- a real dlopen
+#                  7732555000-7732560000 r--p  …
+#                  7732561000-7732562000 rw-p  …
 #
-# With the default `vendor_file` label that second one is not merely ungranted,
-# it is FORBIDDEN: system/sepolicy/private/domain.te:1258-1271 is a
-# full_treble_only neverallow on `coredomain … vendor_file_type
-# -same_process_hal_file -vndk_sp_file … :file execute`. So no `allow` could ever
-# have been written for it, and it only works today because the device is
-# permissive. The day SELinux goes enforcing, system_server silently loses the
-# library.
+# ONE read-only SHARED mapping in system_server, no executable segment. That is
+# PinnerService's mmap(PROT_READ, MAP_SHARED) + mlock, and this port asks for it
+# itself: the library is item 7 of config_defaultPinnerServiceFiles in
+# overlay/FrameworkOverlayMalbec/res/values/config.xml:714. The linker is never
+# involved, so `execute` is never requested and that neverallow never applied.
 #
-# `same_process_hal_file` is AOSP's designated type for exactly this shape — a
-# vendor library loaded into a process that is not vendor — and it is one of the
-# exclusions in that neverallow. It needs NO new rule from us:
+# ⚠️ Structurally it could not have been a dlopen either: readelf -d lists 14
+# vendor DT_NEEDEDs (libsdmutils.so, libsdm-color.so, libdisplayqos.so,
+# libsdedrm.so, …) and none of those is same_process_hal_file, so a real dlopen
+# from system_server would have failed on the first dependency, not on this file.
 #
-#   system/sepolicy/private/system_server.te:385
-#       allow system_server same_process_hal_file:file
-#             { execute read open getattr map };
+# ★ The label is still REQUIRED, and the reason is smaller and checkable: there
+# is NO `allow system_server vendor_file:file …` anywhere in the loaded policy
+# (re-derived from the built plat_sepolicy.cil and vendor_sepolicy.cil: zero
+# hits), so without it PinnerService's open/read/map is denied. With it,
+# system/sepolicy/private/system_server.te:385 —
+#     allow system_server same_process_hal_file:file
+#           { execute read open getattr map };
+# — already covers it, and no rule of ours is needed. The vendor side keeps
+# working through domain.te:186.
 #
-# is already in the loaded platform policy. The vendor side keeps working too:
-# domain.te:186 grants `{ domain -coredomain } same_process_hal_file:file
-# { execute read open getattr map }`, which covers the composer.
+# ★★ The honest justification is the SIBLING SYMMETRY, not the neverallow: the
+# two OTHER vendor libraries in that same pinner array, libllvm-qgl.so and
+# libllvm-glnext.so, are already same_process_hal_file upstream. libllvm-qgl.so
+# is in fact BOTH pinned (r--s) and genuinely dlopen'd into system_server (r-xp)
+# on this device — so the array mixes both cases and AOSP labels the ones it
+# ships. This line finishes the set.
 #
 # ⚠️ Stock leaves it as plain `vendor_file` (its vendor_file_contexts has no line
-# for it), so on the shipping ZUI image — which IS enforcing — system_server does
-# NOT have this library. We are deliberately better than stock here rather than
-# at parity, and that is the one case in this file where the difference is
-# visible at runtime.
+# for it), so on the shipping ZUI image — which IS enforcing — system_server
+# cannot pin this library. We are deliberately better than stock here rather than
+# at parity.
 /vendor/lib(64)?/libsdmextension\.so                                           u:object_r:same_process_hal_file:s0
-

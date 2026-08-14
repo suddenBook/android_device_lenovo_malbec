@@ -105,9 +105,9 @@ allow prop_init sysfs_dt_firmware_android:file r_file_perms;
 # granted, and if the binary ever does show up the missing rules will be obvious.
 type check_keymaster, domain;
 
-# Not declared: qti-testscripts, referenced by
-# `seclabel u:r:qti-testscripts:s0` at init.qcom.rc:832. A '-' is not legal in an
-# SELinux type name, and the stock policy does not define it either (0 hits in
-# the factory vendor_sepolicy.cil and precompiled_sepolicy). It is an upstream
-# QTI defect that stock carries too; that one service fails to start on stock as
-# well. Nothing to fix here — recorded so the next person does not go looking.
+# Not declared: qti-testscripts, requested by
+# `seclabel u:r:qti-testscripts:s0` at init.qcom.rc:833. QTI's test policy defines
+# `vendor-qti-testscripts` instead; the failure is that name mismatch, not the
+# hyphen syntax. The referenced product script is absent from both this build and
+# stock, and this tree removes its boot-completed trigger, so the disabled stanza
+# is inert. Do not invent a second domain merely to satisfy an unusable service.

@@ -96,10 +96,12 @@ vendor.display.disable_stc_dimming=1
 vendor.display.enable_async_powermode=0
 vendor.display.enable_async_vds_creation=1
 
-# TODO: the remaining ~240 stock vendor properties (audio, bluetooth, camera,
-# perf) are staged in work/analysis/properties-candidates/vendor.prop. They need
-# to be reviewed one by one against what PixelOS already sets before being
-# merged here — blindly importing them will conflict.
+# Stock's vendor-property inventory has been audited as a closed set against
+# current readers, build-generated properties, this Wi-Fi-only product and the
+# blobs that actually ship. The entries below are the selected hardware/runtime
+# subset; omitted stock keys are deliberate, not an unreviewed staging backlog.
+# Do not bulk-import stock properties: each addition still needs a current
+# consumer and a device-specific functional reason.
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Everything below was derived by diffing against stock /vendor/build.prop —
@@ -719,28 +721,9 @@ keyguard.no_require_sim=true
 # kernel's own config (work/device_dump/root/kernel/config.gz).
 ro.incremental.enable=yes
 
-# AVF: remote attestation off. The hypervisor here is Gunyah, not KVM —
-# /dev/kvm does not exist (work/device_dump/root/avf/kvm.txt) and `vm info`
-# reports "Only protected VMs are supported" — so say this explicitly rather
-# than leaving it to a default.
-#
-# ⚠️ This comment used to add "and PRODUCT_AVF_ENABLED is off". That was FALSE.
-# device.mk:62 inherits packages/modules/Virtualization/apex/product_packages.mk,
-# whose line 45 is `PRODUCT_AVF_ENABLED := true`, and it takes effect —
-# out/soong/soong.custom_malbec.variables records "avf_enabled": "true".
-#
-# It is left ON deliberately, because the shipped result matches the factory ROM
-# exactly, which is the parity we want:
-#   system/apex/com.android.virt.apex   ours 94.9 MB / factory 87.8 MB (both full)
-#   ro.config.isolated_compilation_enabled=true   set by both
-#   com.android.compos                  shipped by NEITHER
-#   VmTerminalApp                       shipped by NEITHER (this is the one that
-#                                       would actually fail: its Debian guest is
-#                                       an unprotected VM, which this hypervisor
-#                                       refuses)
-# Turning PRODUCT_AVF_ENABLED off would ship a *stub* virt apex the factory does
-# not ship, while isolated_compilation_enabled=true stayed pointing at a CompOS
-# that is not there. Do not "fix" it.
+# Remote AVF attestation remains disabled. This does not disable local protected
+# VMs or CompOS; their real gate is the protected-VM/pvmfw validation documented
+# beside the AVF product inherit in device.mk.
 avf.remote_attestation.enabled=false
 
 # Userspace thermal mitigation. Without this line the entire subsystem is dead.
