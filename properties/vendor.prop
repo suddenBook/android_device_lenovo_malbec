@@ -221,15 +221,13 @@ ro.surface_flinger.clear_slots_with_set_layer_buffer=false
 ro.surface_flinger.force_hwc_copy_for_virtual_displays=true
 ro.surface_flinger.max_frame_buffer_acquired_buffers=3
 ro.surface_flinger.max_virtual_display_dimension=4096
-# ⚠️ ro.surface_flinger.protected_contents and .use_color_management were here
-# and are GONE: both have zero readers in Android 16. They still exist in
-# frameworks/native/services/surfaceflinger/sysprop/SurfaceFlingerProperties.sysprop,
-# which is why "the sysprop is defined" looks like a green light, but nothing
-# calls the generated accessor -- 0 hits for either symbol across
-# frameworks/native/services/surfaceflinger and frameworks/native/libs, against
-# 5 for has_wide_color_display and 1 for auto_latch_unsignaled in the same scan.
-# They came from stock's vendor/build.prop. The tree already deleted debug.sf.hw
-# and debug.egl.hw on exactly this criterion; these two were missed.
+# SurfaceFlinger reads this through the generated enable_protected_contents()
+# accessor when creating RenderEngine. Stock sets it and reports protected
+# context support; without it this build reports support=0 even though its WFD
+# overlay advertises protected buffers.
+ro.surface_flinger.protected_contents=true
+# ro.surface_flinger.use_color_management remains omitted: unlike the property
+# above, Android 16 has no caller of its generated accessor.
 ro.surface_flinger.wcg_composition_dataspace=143261696
 
 # Display HAL
@@ -579,13 +577,15 @@ wifi.aware.interface=wifi-aware0
 #   gralloc.enable_logs     -> libgrallocutils.so, libgralloccore.so
 #
 # Deliberately NOT carried, having checked:
-#   vendor.display.vds_allow_hwc   — no installed binary reads it
-#   vendor.display.svi_threshold_nits — likewise
+#   vendor.display.svi_threshold_nits — no installed binary reads it
 #   vendor.gralloc.enable_snapalloc — init.qti.display_boot.sh:93 sets it at
 #                                     runtime for soc_id 694; a static value
 #                                     here would be redundant at best
 vendor.display.enable_rounded_corner=1
 vendor.display.use_smooth_motion=1
+# SurfaceFlinger reads this directly. Stock enables it; without it Miracast
+# virtual displays always fall back to GPU composition on this API-36 device.
+vendor.display.vds_allow_hwc=1
 vendor.display.svi.config=1
 vendor.display.svi.config_path=/vendor/etc/display/SVIConfig.xml
 vendor.gralloc.disable_ubwc=0
