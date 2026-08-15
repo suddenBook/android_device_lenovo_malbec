@@ -1,0 +1,13 @@
+//
+// SPDX-FileCopyrightText: The LineageOS Project
+// SPDX-License-Identifier: Apache-2.0
+//
+
+// Soong resolves a bare `certificate: "platform"` against the default
+// certificate directory on its own, so the sibling keys need no modules here.
+// This one exists for Soong modules that reference the release key explicitly
+// as `certificate: ":releasekey"`, which cannot resolve to a bare path.
+android_app_certificate {
+    name: "releasekey",
+    certificate: "releasekey",
+}
