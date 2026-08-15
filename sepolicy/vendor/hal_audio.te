@@ -101,6 +101,49 @@ allow hal_audio_default sysfs_awinic:file r_file_perms;
 # share.
 
 #####################################
+# Hardware-variant selection.
+#
+#   avc: denied { set } for property=vendor.audio.device.switch
+#        scontext=u:r:hal_audio_default:s0
+#        tcontext=u:object_r:vendor_audio_prop:s0 tclass=property_service
+#
+# Measured once per boot, at HAL init (pid 1544, 16:24:05, before ATS starts
+# retrying — the two are unrelated).
+#
+# QTI's own policy grants only the read half:
+#
+#   device/qcom/sepolicy_vndr/legacy-um/generic/vendor/common/hal_audio_default.te:60
+#       get_prop(hal_audio, vendor_audio_prop)
+#
+# so this denial is upstream's, not something this port introduced, and nothing
+# in AOSP or QTI ever grants the write. Adding it here is the same shape as
+# hal_camera.te's set_prop(hal_camera_default, vendor_cam_prop) and needs no
+# upstream change: vendor sepolicy dirs are unioned, `vendor_audio_prop` is
+# declared by QTI and visible here, and no neverallow covers it.
+#
+# ⚠️ Worth naming because the first reading of this denial was wrong. The
+# property looks diagnostic — the only place its name appears in libagm.so is a
+# printf format that ends in "failed" — but the surrounding strings are the
+# amplifier and calibration variants:
+#
+#   YC_0x2308_AW88461      <- this unit (hal_audio.te above: four AW88461)
+#   YC_0x2418_AW88470
+#   /vendor/etc/acdbdata/tuna_qrd_2308{hs,yc}   <- the two ACDB sets we ship
+#   /vendor/etc/acdbdata/tuna_qrd_2418{hs,yc}   <- referenced, not shipped
+#
+# i.e. the format string reports the failure of a write that records which
+# variant was selected, and the write is on the selection path rather than
+# beside it. `getprop vendor.audio.device.switch` is empty on a denied boot.
+#
+# ⚠️ What this does NOT claim: that granting it changes the AW88461 calibration
+# state. OPEN-ISSUES.md #65 established that the topo-id-0 and
+# aw882xx_dev_init_cali_re errors have their own cause in the ADSP graph, and
+# one session has already been spent reading a plausible audio grant as their
+# fix. This rule removes a measured denial on the variant-selection path; it is
+# not offered as a fix for #65.
+set_prop(hal_audio_default, vendor_audio_prop)
+
+#####################################
 # Not granted, deliberately:
 #
 #   avc: denied { read open } scontext=u:r:hal_audio_default:s0
